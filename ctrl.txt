@@ -1,0 +1,83 @@
+		for(i=0; ctrltab[i] != 0; i += ctrltab[i+1]){
+			if( ctrltab[i] == cnum){
+				// found control
+				if( ctrltab[i+2] == 1){
+					// slider
+					ct = new sliderBit( this);
+					this.ctrl = ct;
+					ct.setData();
+					return ct;
+				}else if(ctrltab[i+2] == 2){	// bargraph
+					ct = new barGraphBit( this);
+					this.ctrl = ct;
+					return ct;
+				}else if(ctrltab[i+2] == 3){	// bargraph2
+					ct = new barGraph2Bit( this);
+					this.ctrl = ct;
+					return ct;
+				}else if(ctrltab[i+2] == 4){	// piano
+					ct = new pianoBit( this);
+					piano = ct;
+					this.ctrl = ct;
+					ct.setData();
+					return ct;
+				}else if(ctrltab[i+2] == 5){	// output Note
+					ct = new outputNoteBit( this);
+					this.ctrl = ct;
+					ct.setData();
+					return ct;
+				}else if(ctrltab[i+2] == 6){	// output CC
+					ct = new outputCCBit( this);
+					this.ctrl = ct;
+					ct.setData();
+					return ct;
+				}else if(ctrltab[i+2] == 7){	// Arduino
+					ct = new ArduinoBit_midi( this);
+					arduino = ct;
+					this.ctrl = ct;
+
+					ct.Init();
+					ct.setData();
+
+					return ct;
+				}else if( ctrltab[i+2] == 8){
+					// slider
+					ct = new rotaryBit( this);
+					this.ctrl = ct;
+					ct.setData();
+					return ct;
+				}else if( ctrltab[i+2] == 9){
+					// push switch
+					ct = new pushSw( this);
+					this.ctrl = ct;
+					ct.setData();
+					this.value = 0;
+					return ct;
+				}else if( ctrltab[i+2] == 10){
+					// toggle switch
+					ct = new toggleSw( this);
+					this.ctrl = ct;
+					ct.setData();
+					this.value = 0;
+					return ct;
+				}else if( ctrltab[i+2] == 11){
+					// graph
+					ct = new graphBit( this);
+					this.ctrl = ct;
+					ct.setData();
+					this.value = 0;
+					return ct;
+				}else if( ctrltab[i+2] == 12){
+					// wire
+					ct = new wireBit( this);
+					this.ctrl = ct;
+					ct.setData();
+					this.value = 0;
+					return ct;
+				}else {
+					message("Unknown control "+ctrltab[i+2]);
+				}
+			}
+		}
+		return null;
+

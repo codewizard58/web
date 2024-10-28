@@ -1,0 +1,324 @@
+﻿<?php
+  // 10/19/24
+  $port = "";
+  $nonet = 0;
+  $loaddata="";
+  
+  $action = "";
+  if( isset($_POST['action'] )) {
+    $action= $_POST['action'];
+  }
+
+  if( $action == "" && isset($_GET['action'] )){
+    $action= "get_".$_GET['action'];
+  }
+
+  if( isset($_POST['savedata']) ){
+	  $data = $_POST['savedata'];
+	  header("Content-type: application/x-sbl");
+	  header("Content-disposition: application; filename=saved.sbl");
+	  echo $data;
+    die("");
+  }
+  
+  if( $action == "Load"){
+      $updir ="/tmp/";
+      if( !is_dir( $updir) ){
+        mkdir($updir);
+      }
+      $lname = $updir.md5( $_FILES["loadfilename"]["name"].date('D=d+M Y H:i:s') ).".sbl";
+
+      if( ! move_uploaded_file($_FILES["loadfilename"]["tmp_name"], $lname) ) {
+        echo "<p>Load file data to $lname failed!</p>\n";
+        die("");
+      }
+      
+      $code = fopen($lname, "rb");
+      if( $code !== false){
+        
+        while( ($buf = fgets($code, 1024) ) !== false ){
+          $loaddata = $loaddata.$buf;  
+        }
+      
+        fclose($code);
+        
+        unlink( $lname);
+        
+      }else {
+        echo "<p>Couild not open $lname for reading</p>";
+        die("");
+      }
+      $action="";
+  }
+  if( $action == "New" || $action == "get_New" ){
+    $action= "";
+    $loaddata="";
+  }
+
+  if( $action != ""){
+     if( $action == "code"){
+       die("");
+        $senddata = base64_decode($_POST['data']);
+        $host="";
+        $port=0;
+        $comport="";
+        if( isset($_POST['host']) ){
+          $host=$_POST['host'];
+        }
+        if( isset($_POST['port']) ){
+          $port= $_POST['port'];
+        }
+        if( isset($_POST['comport']) ){
+          $comport=$_POST['comport'];
+        }
+        if( $nonet == 0){
+          $com7 = stream_socket_client("tcp://$host:$port", $errno, $errstr, 30);
+          if (!$com7) {
+            $msg = "Connect($host,$port,$comport) $errstr ($errno)<br />\n";
+            $errf = fopen("/tmp/sblerror","a");
+            fwrite($errf, $msg);
+            fclose($errf);
+            
+            echo "$errstr ($errno)<br />\n";
+          } else {
+              fwrite($com7, $senddata);
+              fpassthru($com7);
+              fclose($com7);
+          }
+      }else {
+          echo "                                                             No Connection\n";
+      }
+
+      die("");
+
+    }else if( $action == "noteon"){
+      $note = $_POST['note'];
+      $vel = $_POST['vel'];
+      
+      die("");
+      echo "noteon($note, $vel)";
+     
+      if( $note >= 48 && $note <= 68){     
+        if( $vel == 0){
+          // note off
+          $data[0] = 0x80;
+          $vel = 0;
+        }else {
+          $data[0] = 0x90;
+        }
+        $data[1] = $note;
+        $data[2] = $vel;
+        
+        
+        $senddata = implode( array_map( "chr", $data) );
+
+        $com7 = stream_socket_client("tcp://192.168.0.80:5331", $errno, $errstr, 30);
+        if (!$com7) {
+          echo "$errstr ($errno)<br />\n";
+        } else {
+            fwrite($com7, $senddata);
+            fpassthru($com7);
+            fclose($com7);
+        }
+      }
+      die("");
+    }
+    echo "Action=$action";
+  
+    die("");
+  }
+?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" >
+<head>
+  <title>Softbits Live 2024.6</title>
+</head>
+  
+<body onload="sketchinit();">
+  <style>
+    .box { border-style: solid;
+      border-width: 2px;
+      border-color: red;
+    }
+  </style>
+  <script  type="text/javascript">
+  <?php include "softbitsglobals.js"; ?>
+  </script>
+  <script type="text/javascript">
+  <?php include "softbitsctrls.js" ; ?>
+  </script>
+  <?php
+    if( is_dir("ctrls")){
+      $dir = new DirectoryIterator("ctrls");
+      foreach ($dir as $fileinfo) {
+        if (!$fileinfo->isDot()) {
+          echo("<script type=\"text/javascript\" >\n");
+          echo("// filename=".$fileinfo->getPathname()."\n");
+          include($fileinfo->getPathname());
+          echo("</script>\n");
+        }
+      }
+    }
+  ?>
+  <?php
+    if( is_dir("kits")){
+      $dir = new DirectoryIterator("kits");
+      foreach ($dir as $fileinfo) {
+        if (!$fileinfo->isDot()) {
+          echo("<script type=\"text/javascript\" >\n");
+          echo("// filename=".$fileinfo->getPathname()."\n");
+          include($fileinfo->getPathname());
+          echo("</script>\n");
+        }
+      }
+    }
+  ?>
+  <script type="text/javascript">
+  <?php include "softbitslive.js"; ?>
+  </script>
+  <?php
+    if( is_file("header.php") ){
+      include "header.php";
+    }
+  ?>
+
+    <div style="display:none;">
+      <img src="background.png" id="background" />
+      <img src="up.png" id="up" />
+      <img src="down.png" id="down" />
+  </div>
+
+  <div>
+
+    <?php
+    if( is_file("bodytext.php") ){
+      include "bodytext.php";
+    }
+    ?>
+    
+    <?php
+    echo "<script type='text/javascript'>\n";
+    echo "var initdataonLoad= [\n";
+    if( $loaddata == ""){
+      $loaddata = "'bit',1,'power_on',0,245,319,0,0,0,0,  1,
+      'bit',2,'power_off',16,426,319,0,0,0,0,  1,
+      ";
+    }
+    echo $loaddata;
+    echo "'end'";
+    echo "];\n";
+    
+    echo "var initdataonReset= [\n";
+      $loaddata = "'bit',1,'power_on',0,245,319,0,0,0,0,  1,
+      'bit',2,'power_off',16,426,319,0,0,0,0,  1,
+      'options',1,1,1,1,
+      ";
+    echo $loaddata;
+    echo "'end'";
+    echo "];\n";
+    
+    echo "</script>\n";
+    ?>
+    <div >
+      <table>
+        <tr>
+          <td valign="top">
+                <div id="canvasbox">
+                  <canvas width ="800" height="600" tabindex="1" id="canvas">
+                  </canvas>
+                </div>
+              </td>
+              <td valign="top">
+                <div style="padding:20px;">
+                  <span class="box" style="padding:10px;border-color:green;">
+                    <input type="button" id="loadbutton" value="Load" onclick="UIdoLoad()"></input>
+                    <input type="button" id="savebutton" value="Save" onclick="UIdoSave()"></input>
+                    <input type="button" value="New" onclick="UIdoNew()"></input>
+                    <input type="button" value="Reload" onclick="UIdoReload()"></input>
+                  </span>
+                </div>
+                <table>
+                  <tr>
+                    <td colspan="2">
+                      <div id="bitprops">
+                        <form id="bitform">
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colspan="3" id="showbittype" >Basic/Power</td>
+                  </tr>
+                  <tr>
+                    <td valign="top">
+                        <div id="addbitdiv" style="width:100px;border-color:grey; border-width:2px; border-style:solid;">
+                          Select bit type to populate list then click to add.
+                        </div>
+                        <p>&nbsp;</p>
+                    </td>
+                    <td valign="top">
+                      <div  >
+                        <div class="power" style="width:75px;height:25px;border-color:blue; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchoosePower();"> Power </div>
+                        <div class="input" style="width:75px;height:25px;border-color:purple; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseInput();"> Input </div>
+                        <div class="output" style="width:75px;height:25px;border-color:green; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseOutput();"> Output </div>
+                        <div class="wire" style="width:75px;height:25px;border-color:orange; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseWire();"> Wire </div>
+                        <div class="action" style="width:75px;height:25px;border-color:red; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseAction();"> Action </div>
+                        <div class="logic" style="width:75px;height:25px;border-color:black; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseLogic();"> Logic </div>
+                      </div>
+                      <div style="padding:5px;" id="programdiv">
+                        <div class="box" style="border-color:green;" id="program"></div>
+                      </div>
+                      <div style="padding:5px;" id="codediv">
+                        <div class="box" style="border-color:blue;" id="code">
+                          Code display in hex
+                        </div>
+                       </div>
+                    </td>
+                    <?php if( is_dir("kits")){
+                        echo('<td valign="top">');
+                        $dir = new DirectoryIterator("kits");
+                        // show Basic first
+                        echo('<div  style="width:75px;height:25px;border-color:green; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseKit(\''."Basic".'\');"> Kit '."Basic"."</div>\n");
+                        foreach ($dir as $fileinfo) {
+                          if (!$fileinfo->isDot()) {
+                            echo("<!-- filename=".$fileinfo->getPathname()." -->\n");
+                            $xid = explode(".", $fileinfo->getFilename());
+                            $kid = explode("_", $xid[0]);
+                            if( $kid[1] != "Basic"){
+                              echo('<div  style="width:75px;height:25px;border-color:green; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseKit(\''.$kid[1].'\');"> Kit '.$kid[1]."</div>\n");
+                            }
+                          }
+                        }
+                                      echo('</td>');
+                      }
+                    ?>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+      </table>
+      <hr />
+      <div id="options">
+          <span>Show Chains:</span>
+          <input type="checkbox" id="showchains" onchange="UIdoShowChains()" checked="checked"/>
+          <span>Show Program:</span>
+          <input type="checkbox" id="showprogram" onchange="UIdoShowProgram()" checked="checked"/>
+          <span>Show Code:</span>
+          <input type="checkbox" id="showcode" onchange="UIdoShowCode()" checked="checked"/>
+      </div>
+    </div>
+    <div id="logger" class="box" style="padding:10px;border-color:blue;">
+        Version 1.1
+    </div>
+    <input type="button" value="Trace" onclick="UIsettrace();" ></input>
+    <div id="debugdiv">Debug messages</div>
+    <form id="saveform" method="post" action="softbitslive.php">
+      <textarea id="savedata" name="savedata" style="display:none"></textarea>
+    </form>
+    <?php
+    if( is_file("footer.php") ){
+      include "footer.php";
+    }
+?>
+  </body>
+</html>

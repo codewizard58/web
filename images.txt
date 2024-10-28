@@ -1,0 +1,42 @@
+    ?>
+      <div style="display:none;" >
+      <?php
+        if( is_dir("resources/images") ){
+          $dir = new DirectoryIterator("resources/images");
+          foreach ($dir as $fileinfo) {
+            if (!$fileinfo->isDot()) {
+              echo("<!-- filename=".$fileinfo->getPathname()." -->\n");
+              $xid = explode(".", $fileinfo->getFilename());
+              echo("<img id=\"".$xid[0]."\" src=\"".$fileinfo->getPathname()."\" />\n");
+//              echo("<script type=\"text/javascript\" >\n");
+//              include($fileinfo->getPathname());
+//              echo("</script>\n");
+            }
+          }
+        }
+    ?>
+      <?php
+        if( is_dir("bits") ){
+          $dir = new DirectoryIterator("bits");
+          foreach ($dir as $fileinfo) {
+            if (!$fileinfo->isDot()) {
+              echo("<!-- filename=".$fileinfo->getPathname()." -->\n");
+              $xid = explode(".", $fileinfo->getFilename());
+              echo("<img id=\"".$xid[0]."\" src=\"".$fileinfo->getPathname()."\" />\n");
+            }
+          }
+        }
+    ?>
+
+<?php
+        if( is_dir("snaps") ){
+          $dir = new DirectoryIterator("snaps");
+          foreach ($dir as $fileinfo) {
+            if (!$fileinfo->isDot()) {
+              echo("<!-- filename=".$fileinfo->getPathname()." -->\n");
+              $xid = explode(".", $fileinfo->getFilename());
+              echo("<img id=\"".$xid[0]."\" src=\"".$fileinfo->getPathname()."\" />\n");
+            }
+          }
+        }
+    ?>

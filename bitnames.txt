@@ -1,0 +1,163 @@
+// maps bit type to image type.
+//                                      l     r           t     b
+//  image, title, w, h, l-snap, r-snap, t-snap, b-snap
+//
+var bitnames = [
+	"poweron", "power_on", 50, 50,		null, "powerout", null, null,		
+	"poweroff", "power_off", 50, 50,	"powerin", null, null, null,		
+	
+	"defaulta", "input_a0", 100, 50,	"blankin", "inputout" ,null,  null,
+	"defaulta", "input_a1", 100, 50,	"blankin", "inputout" ,null,  null,
+	"defaulta", "input_d0", 100, 50,	"blankin", "inputout" ,null,  null,
+	
+	"defaulta", "output_a5", 100, 50,	"outputin", "outputout" ,null,  null,	// 5
+	"defaulta", "output_a9", 100, 50,	"outputin", "outputout" ,null,  null,	
+	"defaulta", "output_d1", 100, 50,	"outputin", "outputout" ,null,  null,
+	"defaulta", "output_d5", 100, 50,	"outputin", "outputout" ,null,  null,
+	"defaulta", "output_d9", 100, 50,	"outputin", "outputout" ,null,  null,	
+
+	"control", "input_ax",  100, 50,	"blankin", "inputout"  , null,  null,	// 10	
+	"control", "output_ax", 100, 50,	"outputin", "outputout" ,null,  null,	// 11	
+	"split",   "wire_split", 100, 50,	"wirein",  "wireout" ,null,  "wireout",	// 12	
+	"default", "a_invert", 100, 50,		"actionin", "actionout" , null,  null,	// 13
+	"control", "a_dimmer", 100, 50,		"actionin", "actionout" , null,  null,	// 14
+	"default", "a_setvalue", 100, 50,	"blankin", "actionout" , null,  null,	// 15
+
+	"default", "logic_and", 100, 50,	"logicin", "logicout" , "logicin",  null,	// 16
+	"default", "logic_or",  100, 50,	"logicin", "logicout" , "logicin",  null,	// 17
+	"default", "logic_not", 100, 50,	"logicin",  "logicout" , null,  null,	// 18
+	"default", "logic_nand", 100, 50,	"logicin", "logicout", "logicin",  null,	// 19
+	"default", "logic_nor", 100, 50,	"logicin", "logicout" , "logicin",  null,	// 20
+
+	"defaulta", "osc_squelch", 100, 50,	"actionin", "actiontout", null,  null,	// 21
+	"default", "input_midi", 100, 50,	"blankin", "inputout" ,null,  null,		// 22
+	"default", "midi_gate",  100, 50,	"actionin", "actionout" ,null, "actionout",	// 23
+	"control", "midi_cc",	100, 50,	"actionin", "actionout" ,"actionin",  null, // 24
+	"default", "midi_cv",	100, 50,	"actionin", "actionout" ,null,  null,		// 25
+
+	"defaulta", "output_d10", 100, 50,	"outputin", "outputout" ,null,  null,	// 26
+	"defaulta", "output_d11", 100, 50,	"outputin", "outputout" ,null,  null,	// 27
+	"defaulta", "output_d12", 100, 50,	"outputin", "outputout" ,null,  null,	// 28
+	"defaulta", "output_d13", 100, 50,	"outputin", "outputout" ,null,  null,	// 29
+	"defaulta", "output_a11", 100, 50,	"outputin", "outputout" ,null,  null,	// 30
+
+	"defaulta", "env_attack", 100, 50,		"actionin", "actionout" ,"actionin",  null,		// 31
+	"defaulta", "env_decay", 100, 50,		"actionin", "actionout" ,"actionin",  null,		// 32
+	"defaulta", "env_sustain", 100, 50,		"actionin", "actionout" ,"actionin",  null,		// 33
+	"defaulta", "env_release", 100, 50,		"actionin", "actionout" ,"actionin",  null,		//34
+	"defaulta", "env_value", 100, 50,		"actionin", "actionout" , null,  null,		// 35
+
+	"default", "a_plus", 100, 50,		"actionin", "actionout" ,"actionin",  null,		// 36
+	"default", "a_minus", 100, 50,		"actionin", "actionout" ,"actionin",  null,		// 37
+	"default", "a_times", 100, 50,		"actionin", "actionout" ,"actionin",  null,		// 38
+	"default", "a_divide", 100, 50,		"actionin", "actionout" ,"actionin",  null,		// 39
+	"default", "input_dx", 100, 50,		"actionin", "actionout" ,null,  null,	 	    // 40
+
+	"default", "a_diff", 100, 50,		"actionin", "actionout" ,"actionin",  null,		// 41
+	"default", "logic_xor", 100, 50,	"logicin", "logicout" ,"logicin",  null,		// 42
+	"default", "l_compare", 100, 50,    "actionin", "logicout" ,"actionin",  null,		// 43
+	"default", "l_latch", 100, 50,	    "logicin", "logicout" ,"logicin",  null,		// 44
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,				// 45
+
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,		// 46
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,		// 50
+
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,		// 51
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,		// 60
+
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,		// 61
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,		// 70
+
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,		// 71
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,		// 80
+
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,		// 81
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,		// 90
+
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,		// 91
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,
+	"default", "logic", 100, 50,		"logicin", "logicout" ,null,  null,		// 100
+
+	
+	"control", "bargraph", 100, 50,		"outputin", "outputout" ,null,  null,		// 101
+	"control", "bargraph2", 100, 50,	"outputin", "outputout" ,"outputin",  null,	// 102
+	"control", "piano", 200, 100,		"blankin",  "inputout" , null,  "logicout",	// 103
+	"control", "output_note", 100, 50,	"outputin", "outputout" ,null,  null,		// 104
+	"control", "output_cc", 100, 50,	"outputin", "outputout" ,null,  null,		// 105
+
+	"control", "arduino", 200, 100,  	null, null , null   ,null,              // 106
+	"wiresend", "wire_send", 100, 50,  	"wirein", "wireout" ,null,  null,		// 107
+	"wirerecv", "wire_recv", 100, 50,  	"wirein", "wireout" ,null,  null,		// 108
+	"control", "wire", 50, 50, 		    "wirein",  "wireout",null , null,		// 109	
+	"corner", "wire_corner", 100, 50,	"wirein",  null     ,null , "wireout",	// 110
+
+	"default", "a_counter", 100, 50,	"blankin", "actionout" , null,  null,	// 111
+	"control", "push_switch", 100, 50,	"inputin",  "inputout" , null,  null,	// 112
+	"control", "toggle_switch", 100, 50,"inputin",  "inputout" , null,  null,	// 113
+	"control", "a_rotary",  100, 50,    "actionin", "actionout" , null,  null,	// 114
+	"control", "graph", 200, 100,		"outputin", "outputout" ,"outputin",  null,		// 115
+
+	"default", "logic", 100, 50,		"wirein",  "wireout",null , null,		// 116	
+
+	null, null, null, null,				null, null, null, null
+];
+
+var ctrltab = [
+//  ID, len, args
+	14, 3, 1,		// slider 
+	106, 3, 7,		// arduino
+	101, 3, 2,		// bargraph
+	102, 3, 3,		// bargraph2
+	103, 3, 4,		// piano
+	104, 3, 5,		// output note
+	105, 3, 6,		// output CC
+	114, 3, 8,		// rotary control
+	112, 3, 9,		// push switch		
+	113, 3, 10,		// toggle switch
+	115, 3, 11,		// graph
+	109, 3, 12,		// wire
+	0, 0, 0, 0, 0	// end of table
+];
+

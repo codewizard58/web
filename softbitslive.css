@@ -1,0 +1,72 @@
+.variable {
+color: green;
+}
+
+.function {
+color: blue;
+}
+
+.header {
+border-width:1;
+border-color: red;
+border-style: solid;
+}
+
+.vsep {
+background-color: grey;
+}
+
+.imgright {
+float:right;
+}
+
+
+th {
+background-color: grey;
+}
+
+.power {
+color: blue;
+}
+
+.output {
+color: green;
+}
+
+.action {
+color: red;
+}
+
+.input {
+color: purple;
+}
+
+.note {
+color: grey;
+}
+
+.arg {
+color: black;
+}
+
+.digital {
+color: black;
+}
+
+.logic {
+color: grey;
+}
+.wire {
+color: orange;
+}
+
+
+.box {
+border-width:1;
+border-color: red;
+border-style: solid;
+}
+
+
+
+

@@ -1,0 +1,70 @@
+///////////////////////////////////////////////////////////
+// generic control
+function controlBit(bit)
+{	this.bit = bit;
+
+
+	this.getDockedBit = function(s)
+	{	var b = this.bit;
+		var s, p;
+
+		s = b.snaps[s];
+		if( s == null){
+			return null;
+		}
+		p = s.paired;
+		if( p == null){
+			return null;
+		}
+
+		return p.bit;
+	}
+
+	this.Draw = function( )
+	{
+	}
+
+	this.HitTest = function(x, y)
+	{	var res = null;
+
+		return res;
+	}
+
+	this.getData = function()
+	{
+	}
+
+	this.setData = function()
+	{
+	}
+
+// controlbit
+	this.onMove = function()
+	{
+	}
+
+
+// controlbit
+	this.startMove = function()
+	{
+	}
+
+
+// controlbit
+	this.stopMove = function()
+	{
+	}
+
+	this.doSave = function()
+	{	var msg = "1,";
+
+		return msg;
+	}
+		
+	this.doLoad = function(initdata,  idx)
+	{	var i = initdata[idx];
+	}		
+		
+}
+
+
