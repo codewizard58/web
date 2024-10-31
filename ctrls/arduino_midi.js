@@ -115,7 +115,7 @@ function ArduinoBit_midi( abit)
 
 		if( bitform != null){
 
-			bitformaction = 0;
+			bitformaction = null;
 		}
 	}
 
@@ -132,7 +132,7 @@ function ArduinoBit_midi( abit)
 			msg += "</table>\n";
 
 			bitform.innerHTML = msg;
-			bitformaction = 7;
+			bitformaction = this;
 		}
 	}
 

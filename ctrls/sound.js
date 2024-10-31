@@ -506,11 +506,18 @@ function seqBit(bit)
 		let x = mx-b.x;
 		let y = my-b.y;
 		let i = 0;
+		let len = this.values.length;
 
 		x = x - 42;
 		y = y - 5;
 
-		for(i=0; i < 4; i++){
+		debugmsg("hitstart "+x+" "+y);
+		for(i=0; i < len; i++){
+			if( i == 4 || i == 8 || i == 12){
+				y -= 50;
+				x += 160;
+				debugmsg("hit "+x+" "+y);
+			}
 			if( x > (i * 40) && x < i*40+20 && y > 0 && y < 20 ){
 				this.selstep = i+1;
 				this.initx = mx;
@@ -522,6 +529,7 @@ function seqBit(bit)
 		return null;
 	}
 
+	// seq
 	this.Draw = function( )
 	{	var b = this.bit;
 		var bt;
@@ -529,6 +537,9 @@ function seqBit(bit)
         let seq = this.bitimg;
 		let i = 0;
 		let ac = this.getstep();
+		let len=this.values.length;
+		let tx = b.x;
+		let ty = b.y;
 
 		if( b == null){
 			return;
@@ -539,10 +550,14 @@ function seqBit(bit)
         ctx.fillStyle = "#ffffff";
 		if( bt == 0){
 			ctx.drawImage(bitpics[ seq ], b.x, b.y-5);
-			for(i = 0; i < 4; i++){
+			for(i = 0; i < len; i++){
+				if( i == 4 || i == 8 || i == 12){
+					tx -= 160;
+					ty += 50;
+				}
 				xval = this.values[i];
 				ctx.save();
-				ctx.translate( b.x+50+(40 * i), b.y+20);
+				ctx.translate( tx+50+(40 * i), ty+20);
 				ctx.rotate( (xval-120 )*this.deg );
 				ctx.drawImage(bitpics[roundknobimg], -10, -10);
 				ctx.restore();
@@ -551,13 +566,14 @@ function seqBit(bit)
 				}else {
 					ctx.fillStyle = "#ff0000";
 				}
-				ctx.fillRect(b.x+35+i*40,  b.y+30, 5, 10);
+				ctx.fillRect(tx+35+i*40,  ty+30, 5, 10);
 				}
 		}else {
-			ctx.drawImage(bitpics[ osc+1 ], b.x, b.y);
+			ctx.drawImage(bitpics[ this.bitimg+1 ], tx, ty);
 		}
 	}
 
+	// seq
 	this.exec = function(data)
 	{	let t = 1;
 
@@ -581,24 +597,38 @@ function seqBit(bit)
 	}
 
 	this.getstep = function()
-	{
+	{	let len = this.values.length;
+
+		if( len == 8){
+			return Math.floor(this.step / 32);
+		}else if(len == 16){
+			return Math.floor(this.step / 16);
+		}
 		return Math.floor(this.step / 64);
 	}
 
+	// seq
 	this.setData = function()
 	{	let msg="";
 		let i = 0;
+		let len = this.values.length;
+
 		if( bitform != null){
 			bitform.innerHTML="";
 		}
 		bitform = document.getElementById("bitform");
 		if( bitform != null){
 			msg = "<table>";
-			for(i=0; i < 4 ; i++){
-				msg += "<tr><td align='right'>";
-				msg += "Knob "+(i+1)+"</td><td > <input type='text' id='knob_"+i+"' name='knob_"+i+"' value='"+this.values[i]+"' /></td></tr>\n";
+			msg += "<tr><th>Knob "+(i+1)+"</th>";
+			for(i=0; i < len ; i++){
+				if( i == 4 || i == 12 || i == 8){
+					msg += "</tr>\n";
+					msg += "<tr><th>Knob "+(i+1)+"</th>";
+				}
+				msg += "<td > <input type='text' id='knob_"+i+"' name='knob_"+i+"' value='"+this.values[i]+"' size='4' /></td>";
 			}
-			msg += "<tr><th>Tempo</th><td><input type='text' id='tempo' value='"+this.tempo+"' /></td></tr>\n";
+			msg += "</tr>\n";
+			msg += "<tr><th>Tempo</th><td colspan='4'><input type='text' id='tempo' value='"+this.tempo+"'  size='4' /></td></tr>\n";
 			msg += "</table>\n";
 
 			bitform.innerHTML = msg;
@@ -607,13 +637,15 @@ function seqBit(bit)
 	
 	}
 
+	// seq
 	this.getData = function()
 	{	let i = 0;
 		let f = null;
 		let val = 0;
 		let t=0;
+		let len = this.values.length;
 
-		for(i=0; i < 4; i++){
+		for(i=0; i < len; i++){
 			f = document.getElementById("knob_"+i);
 			if( f != null){
 				val = f.value;
@@ -638,6 +670,7 @@ function seqBit(bit)
 
 	}
 
+	// seq
 	this.onMove = function(x, y)
 	{	let vx = x - this.initx;
 		let vy = y - this.inity;
@@ -649,17 +682,20 @@ function seqBit(bit)
 
 	}
 
+	// seq
 	this.settempo = function(tempo)
-	{
+	{	let len = this.values.length;
 		this.tempo = tempo;
 		// 64 ticks = 1.0
 		// 120 = 0.5   
-		this.stepinc = (100/ 64) * tempo / 60 ;
+		this.stepinc = ( 4 / len) * (100/ 64) * tempo / 60 ;
 		debugmsg("tempo "+tempo+" t="+this.stepinc);
 
 	}
 
-	this.settempo(60);
+	this.settempo(100);
 }
+
+
 
 

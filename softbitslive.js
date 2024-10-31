@@ -15,6 +15,7 @@ const none = null;
 var trace = 0;
 // 10/27/24
 var activedomains = 1;		// which domains are active  1 == basic
+var hidetouch = true;		
 
 const POWERON=0;
 const AINVERT = 13;
@@ -28,6 +29,33 @@ const OSC = 120;
 const SPEAKER = 121;
 const FILTER = 122;
 const SEQUENCER = 123;
+
+function UIhidetouch()
+{	let f = null;
+	hidetouch = false;
+
+	f = document.getElementById("headerdiv");
+	if( f != null){
+		f.style.display = "none";
+	}
+	f = document.getElementById("bodydiv");
+	if( f != null){
+		f.style.display = "none";
+	}
+	f = document.getElementById("logger");
+	if( f != null){
+		f.style.display = "none";
+	}
+	f = document.getElementById("debugdiv");
+	if( f != null){
+		f.style.display = "none";
+	}
+	f = document.getElementById("footerdiv");
+	if( f != null){
+		f.style.display = "none";
+	}
+
+}
 
 function UIsettrace()
 {
@@ -119,6 +147,7 @@ function bitRemove()
 		message("Remove: nothing selected" );
 		return;
 	}
+
 	if( docktarget != null){
 		return;						// dont remove a bit that is docking.
 	}
@@ -126,16 +155,6 @@ function bitRemove()
 	rem = selected.getDrag();		// drag is always the bit.
 	if( rem != null && rem.ctrl != null){
 		rem.ctrl.getData();
-	}
-
-
-	if( rem == piano || rem.ctrl == piano){
-		piano = null;
-		UIchooseInput();
-	}
-	if( rem == arduino || rem.ctrl == arduino){
-		arduino = null;
-		UIchooseWire();
 	}
 
 	if( sketch.delBit( rem ) != 0){
@@ -198,6 +217,7 @@ function drawChoice(bname, domain, kit)
 	if( (domain & activedomains) == 0){
 		greyed = 1;
 	}
+//	debugmsg("drawchoice "+bname+" "+domain+" kit "+kit);
 
 	bits = k.bitnames;
 
@@ -346,6 +366,8 @@ function UIchooseKit(kit)
 
 	if( k != null){
 		curkit = k;
+
+		k.selected();
 
 		msg = chooseGroup(curbittype);
 		alist.innerHTML = msg;
@@ -3341,6 +3363,9 @@ function Sketch() {
 				let rect=this.getBoundingClientRect();
 				let ox = rect.left + window.scrollX;
 				let oy = rect.top + window.scrollY;
+				if( hidetouch){
+					UIhidetouch();
+				}
 				e.preventDefault();
 				if( e.touches.length == e.targetTouches.length){
 					mx = touchobj.pageX-ox;
@@ -3354,6 +3379,9 @@ function Sketch() {
 				let rect=this.getBoundingClientRect();
 				let ox = rect.left + window.scrollX;
 				let oy = rect.top + window.scrollY;
+				if( hidetouch){
+					UIhidetouch();
+				}
 				e.preventDefault();
 
 				mx = touchobj.pageX-ox;
@@ -3366,6 +3394,9 @@ function Sketch() {
 				let rect=this.getBoundingClientRect();
 				let ox = rect.left + window.scrollX;
 				let oy = rect.top + window.scrollY;
+				if( hidetouch){
+					UIhidetouch();
+				}
 				e.preventDefault();
 
 				mx = touchobj.pageX-ox;

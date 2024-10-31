@@ -46,6 +46,12 @@ function kit_sound()
 		"control", "seq", 200, 50,	"actionin", "actionout" ,null,  null,		// 0
 				0,	1, "Sequencer",	"sequencer",	 0x0011, "Action", 0, 1,	// 0
 
+		"control", "seq8", 200, 100,	"actionin", "actionout" ,null,  null,		// 0
+		0,	1, "Seq8",	"8 step sequencer",	 0x0011, "Action", 0, 1,	// 0
+
+		"control", "seq16", 200, 200,	"actionin", "actionout" ,null,  null,		// 0
+		0,	1, "Seq16",	"16 step sequencer",	 0x0011, "Action", 0, 1,	// 0
+
 		null, null, null, null,				null, null, null, null
 		];
 
@@ -60,6 +66,10 @@ function kit_sound()
 		"delay-v", 1,
 		"seq", 1,
 		"seq-v", 1,
+		"seq8", 1,
+		"seq8-v", 1,
+		"seq16", 1,
+		"seq16-v", 1,
 		"audioout-r", 0,	// snaps
 		"audioout-b", 0,
 		"audioin-t", 0,	// snaps
@@ -77,6 +87,8 @@ function kit_sound()
 	"mixer", 3, 5,		// mixer
 	"env", 3, 6,		// envelope
 	"seq", 3, 7,		// sequencer
+	"seq8", 3, 8,		// sequencer 8 step
+	"seq16", 3, 9,		// sequencer 16 step
 	null, 0, 0, 0, 0	// end of table
 	];
 
@@ -87,6 +99,8 @@ function kit_sound()
 		"speaker", 121,
 		"filter", 122,
 		"seq", 123,
+		"seq8", 123,	// generic sequencer 8 step
+		"seq16", 123,	// generic sequencer 16 step
 		null, 254
 	];
 
@@ -132,6 +146,24 @@ function kit_sound()
 				}else if( this.ctrltab[i+2] == 7){
 					// sequencer
 					ct = new seqBit( bit);
+					bit.ctrl = ct;
+					ct.setData();
+					return ct;
+				}else if( this.ctrltab[i+2] == 8){
+					// sequencer
+					ct = new seqBit( bit);
+					ct.values = [100,104,60,112, 64, 68, 72, 74];
+					ct.bitimg =ct.bit.findImage("seq8");
+					ct.bitname = "seq8";
+					bit.ctrl = ct;
+					ct.setData();
+					return ct;
+				}else if( this.ctrltab[i+2] == 9){
+					// sequencer
+					ct = new seqBit( bit);
+					ct.values = [100,104,60,112, 64, 68, 72, 74, 100,104,60,112, 64, 68, 72, 74];
+					ct.bitimg =ct.bit.findImage("seq16");
+					ct.bitname = "seq16";
 					bit.ctrl = ct;
 					ct.setData();
 					return ct;

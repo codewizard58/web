@@ -795,7 +795,7 @@ function sbmodule( name )
 		let name="";
 
 		i = 0;
-		debugmsg("Load images "+this.name);
+//		debugmsg("Load images "+this.name);
 
 		while( this.bitimagemap[i] != null){
 			name = this.bitimagemap[i];
@@ -816,7 +816,7 @@ function sbmodule( name )
 			i += 2;
 		}
 
-//			debugmsg("Load "+imagedir+this.bitimagemap[i]+" "+dst);
+		debugmsg("Load "+imagedir+this.bitimagemap[i]+" "+dst);
 
 		flipimg = findimage("flip");
 		flipvimg = findimage("flip-v");
@@ -859,6 +859,13 @@ function sbmodule( name )
 	this.getdomain = function()
 	{
 		return 0;
+	}
+
+	this.selected = function()
+	{
+		if( bitform != null){
+			bitform.innerHTML="";
+		}
 	}
 }
 

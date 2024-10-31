@@ -178,7 +178,9 @@
   </script>
   <?php
     if( is_file("header.php") ){
+      echo ("<div id='headerdiv' >\n");
       include "header.php";
+      echo("</div>\n");
     }
   ?>
 
@@ -192,7 +194,9 @@
 
     <?php
     if( is_file("bodytext.php") ){
+      echo ("<div id='bodydiv' >\n");
       include "bodytext.php";
+      echo("</div>\n");
     }
     ?>
     
@@ -289,7 +293,7 @@
                             }
                           }
                         }
-                                      echo('</td>');
+                        echo('</td>');
                       }
                     ?>
                   </tr>
@@ -317,7 +321,9 @@
     </form>
     <?php
     if( is_file("footer.php") ){
+      echo ("<div id='footerdiv' >\n");
       include "footer.php";
+      echo ("</div>\n");
     }
 ?>
   </body>
