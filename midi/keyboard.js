@@ -1449,15 +1449,16 @@ function scenecontroller( )
 	
 //	scenecontroller.timer
 	this.timer = function()
-	{	var cl;
-		var d;
+	{	let cl = null;
+		let cln = null;
 
 		cl  = this.ctrllist.head;
 		while( cl != null){
+			cln = cl.next;
 			if( cl.ob.timer( cl.data) ){
 				this.ctrllist.removeobj( cl);
 			}
-			cl = cl.next;
+			cl = cln;
 		}
 
 		this.slowtimer++;
@@ -1521,13 +1522,15 @@ function scenecontroller( )
 	// find and remove a label by its name.
 	// scene
 	this.removebyname = function( name)
-	{	var cl = this.ctrllist.head;
+	{	let cl = this.ctrllist.head;
+		let ob = null;
 
 		while(cl != null){
 			if( cl.ob.name == name){
 				// found it.
+				ob = cl.ob;
 				this.ctrllist.removeobj( cl);
-				return cl.ob;
+				return ob;
 			}
 			cl = cl.next;
 		}

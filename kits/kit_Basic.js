@@ -20,76 +20,76 @@ function kit_basic()
 
 	this.bitnames = [
 		"poweron", "power_on", 50, 50,		null, "powerout", null, null,			// 0
-				0,	0, "Power On",		"Start a chain of SoftBits", 0x0030, "Power", 0, 1,	// 0
+				0,	0, "Power On",		"Start a chain of SoftBits", 0x0010, "Power", 0, 1,	// 0
 		"poweroff", "power_off", 50, 50,	"powerin", null, null, null,			// 1
-				0,	0, "Power Off",		"End of a chain, optional.", 0x0003, "Power", 0, 1,	// 1
+				0,	0, "Power Off",		"End of a chain, optional.", 0x0001, "Power", 0, 1,	// 1
 	
 		"split",   "wire_split", 100, 50,	"wirein",  "wireout" ,null,  "wireout",	// 2	
 				0,	0, "Wire Split",	"Split one output into two",	0x3033, "Wire", 0, 1,		// 2	"split",   "wire_split"
 		"default", "a_invert", 100, 50,		"actionin", "actionout" , null,  null,	// 3
-				0,	0, "Analog Invert",	"Turn value upside down",		 0x3, "Action", 0, 1,		// 3
+				0,	0, "Analog Invert",	"Turn value upside down",		 0x0011, "Action", 0, 1,		// 3
 		"control", "a_dimmer", 100, 50,		"actionin", "actionout" , null,  null,	// 4
-				0,	1, "Dimmer",		"",								 0x3, "Action", 0, 1,		// 4
+				0,	1, "Dimmer",		"",								 0x0011, "Action", 0, 1,		// 4
 		"default", "a_setvalue", 100, 50,	"blankin", "actionout" , null,  null,	// 5
 				0,	0, "",				"", 							0x3,  "Action", 0, 0,		// 22
 
 		"and",	"logic_and", 100, 50,		"logicin", "logicout" , "logicin", null,	// 6
-				0,	0, "And",			"", 							0x3, "Logic", 0, 1,		// 5
+				0,	0, "And",			"", 							0x0111, "Logic", 0, 1,		// 5
 		"default", "logic_or",  100, 50,	"logicin", "logicout" , "logicin",  null,	// 7
-				0,	0, "Or",			"", 							0x3, "Logic", 0, 1,		// 6
+				0,	0, "Or",			"", 							0x0111, "Logic", 0, 1,		// 6
 		"default", "logic_not", 100, 50,	"logicin",  "logicout" , null,  null,	// 8
-				0,	0, "Not",			"", 0x3,  "Logic", 0, 1,		// 7
+				0,	0, "Not",			"", 0x0011,  "Logic", 0, 1,		// 7
 		"default", "logic_nand", 100, 50,	"logicin", "logicout", "logicin",  null,	// 9
-				0,	0, "Nand",			"", 0x3,  "Logic", 0, 1,		// 8
+				0,	0, "Nand",			"", 0x0111,  "Logic", 0, 1,		// 8
 		"default", "logic_nor", 100, 50,	"logicin", "logicout" , "logicin",  null,	// 10
-				0,	0, "Nor",			"", 0x3,  "Logic", 0, 1,		// 9
+				0,	0, "Nor",			"", 0x0111,  "Logic", 0, 1,		// 9
 
 		"default", "a_plus", 100, 50,		"actionin", "actionout" ,"actionin",  null,		// 11
-				0,	0, "Add ",				"", 0x3, "Action", 0, 1,		// 22
+				0,	0, "Add ",				"", 0x0111, "Action", 0, 1,		// 22
 		"default", "a_minus", 100, 50,		"actionin", "actionout" ,"actionin",  null,		// 12
-				0,	0, "Subtract top/bottom from left",		"", 0x3, "Action", 0, 1,		// 22
+				0,	0, "Subtract top/bottom from left",		"", 0x0111, "Action", 0, 1,		// 22
 		"default", "a_times", 100, 50,		"actionin", "actionout" ,"actionin",  null,		// 13
-				0,	0, "Multiply",				"", 0x3, "Action", 0, 1,		// 22
+				0,	0, "Multiply",				"", 0x0111, "Action", 0, 1,		// 22
 		"default", "a_divide", 100, 50,		"actionin", "actionout" ,"actionin",  null,		// 14
-				0,	0, "Divide left by top/bottom",				"", 0x3, "Action", 0, 1,		// 22
+				0,	0, "Divide left by top/bottom",				"", 0x0111, "Action", 0, 1,		// 22
 
 		"default", "a_diff", 100, 50,		"actionin", "actionout" ,"actionin",  null,		// 15
 				0,	0, "",				"", 0x3, "Action", 0, 1,		// 22
 		"default", "logic_xor", 100, 50,	"logicin", "logicout" ,"logicin",  null,		// 16
-				0,	0, "Xor",				"", 0x3, "Logic", 0, 1,		// 22
+				0,	0, "Xor",				"", 0x0111, "Logic", 0, 1,		// 22
 		"default", "l_compare", 100, 50,    "actionin", "logicout" ,"actionin",  null,		// 17
-				0,	0, "",				"", 0x3, "Logic", 0, 1,		// 22
+				0,	0, "",				"", 0x0111, "Logic", 0, 1,		// 22
 		"default", "l_latch", 100, 50,	    "logicin", "logicout" ,"logicin",  null,		// 18
-				0,	0, "",				"", 0x3, "Logic", 0, 1,		// 22
+				0,	0, "",				"", 0x0111, "Logic", 0, 1,		// 22
 
 		"control", "bargraph", 100, 50,		"outputin", "outputout" ,null,  null,		// 19
-				0,	1, "Bargraph",				"", 0x2, "Output", 0, 1,		// 22
+				0,	1, "Bargraph",				"", 0x0011, "Output", 0, 1,		// 22
 		"control", "bargraph2", 100, 50,	"outputin", "outputout" ,"outputin",  null,	// 20
-				0,	1, "Dual Bargraph",				"", 0x2,  "Output", 0, 1,		// 22
+				0,	1, "Dual Bargraph",				"", 0x111,  "Output", 0, 1,		// 22
 		"control", "pianox", 100, 50,		"blankin",  "inputout" , null,  "logicout",	// 21
 				0,	1, "Pianox",			"", 0x2, "Notused", 0, 1,		// 22
 
-		"defaulta", "Arduino Kit", 100, 50,  	null, null , null   ,null,              // 22
-				0,	1, "Arduino Kit",	"Loads the Arduino Kit", 0x3, "Kits", 0, 1,		// 22
-		"wiresend", "wire_send", 100, 50,  	"wirein", "wireout" ,null,  null,		// 23
-				0,	0, "",				"", 0x7, "Wire", 0, 1,		// 22
-		"wirerecv", "wire_recv", 100, 50,  	"wirein", "wireout" ,null,  null,		// 24
-				0,	0, "",				"", 0x7, "Wire", 0, 1,		// 22
+//		"defaulta", "Arduino Kit", 100, 50,  	null, null , null   ,null,              // 22
+//				0,	1, "Arduino Kit",	"Loads the Arduino Kit", 0x3, "Kits", 0, 1,		// 22
+//		"wiresend", "wire_send", 100, 50,  	"wirein", "wireout" ,null,  null,		// 23
+//				0,	0, "",				"", 0x7, "Wire", 0, 1,		// 22
+//		"wirerecv", "wire_recv", 100, 50,  	"wirein", "wireout" ,null,  null,		// 24
+//				0,	0, "",				"", 0x7, "Wire", 0, 1,		// 22
 		"control", "wire", 50, 50, 		    "wirein",  "wireout",null , null,		// 25	
-				0,	1, "Wire",	"Join output to input", 0x7, "Wire", 0, 1,		// 22
-		"corner", "wire_corner", 100, 50,	"wirein",  null     ,null , "wireout",	// 26
-				0,	0, "Corner","Join output to input", 0x7, "Wire", 0, 1,		// 22
+				0,	1, "Wire",	"Join output to input", 0x0011, "Wire", 0, 1,		// 22
+		"corner", "wire_corner", 100, 50,	"wirein", null ,null ,"wireout",	// 26
+				0,	0, "Corner","Join output to input", 0x1001, "Wire", 0, 1,		// 22
 
 		"default", "a_counter", 100, 50,	"blankin", "actionout" , null,  null,	// 27
-				0,	0, "Counter",		"", 0x3, "Action", 0, 1,		// 22
+				0,	0, "Counter",		"", 0x0011, "Action", 0, 1,		// 22
 		"control", "push_switch", 100, 50,	"blankin",  "inputout" , null,  null,	// 28
-				0,	1, "Push switch",	"", 0x3, "Input", 0, 1,		// 22
+				0,	1, "Push switch",	"", 0x0011, "Input", 0, 1,		// 22
 		"control", "toggle_switch", 100, 50,"blankin",  "inputout" , null,  null,	// 29
-				0,	1, "Toggle switch",	"", 0x3, "Input", 0, 1,		// 22
+				0,	1, "Toggle switch",	"", 0x0011, "Input", 0, 1,		// 22
 		"control", "a_rotary",  100, 50,    "actionin", "actionout" , null,  null,	// 30
-				0,	1, "",				"", 0x3, "Action", 0, 1,		// 22
+				0,	1, "",				"", 0x0011, "Action", 0, 1,		// 22
 		"control", "graph", 200, 100,		"outputin", "outputout" ,"outputin",  null,		// 31
-				0,	1, "Draw line graph",	"", 0x2, "Output", 0, 1,		// 22
+				0,	1, "Draw line graph",	"", 0x0111, "Output", 0, 1,		// 22
 
 //		"default", "Midi Kit", 100, 50,			null, null, null, null,
 //				0,	1, "Midi Kit", "Load the Midi Kit", 0x3, "Kits", 0, 1,		// 22
@@ -120,6 +120,7 @@ function kit_basic()
 this.kitctrlcodes = [
 	"power_on", 0,
 	"power_off", 2,
+	"a_invert", 13,
 	"a_dimmer", 14,
 	"wire", 109,
 	"wire_corner", 110,
@@ -186,7 +187,7 @@ this.kitctrlcodes = [
 					ct.setData();
 					this.value = 0;
 					return ct;
-				}else if( this.ctrltab[i+2] == 11){
+				}else if( this.ctrltab[i+2] == 11){	//  code 115
 					// graph
 					ct = new graphBit( bit);
 					bit.ctrl = ct;

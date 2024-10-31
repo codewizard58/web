@@ -153,27 +153,6 @@ function kit_arduino( )
 		return null;
 	}
 
-	this.loadmenu = function()
-	{	var t;
-		var idx;
-		var m;
-
-		t = 0;
-		idx = 0;
-
-		while( this.bitnames[idx] != null){
-			m = addmenuitem( this.bitnames[idx+13] , this.bitnames[ idx+1], this.bitnames[ idx+12], this.bitnames[idx+15], this.name, idx)
-			if( this.bitnames[idx+15] == 0){
-				m.class = "arduino";
-			}
-
-			idx += 16;
-			t++;
-		}
-		
-	}
-
-
 }
 
 addkit( new kit_arduino() );

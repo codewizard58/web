@@ -10,15 +10,24 @@ var wiretinimg = 0;
 var wireroutimg = 0;
 var wireboutimg = 0;
 var defaultimg = 0;
+var seqimg = 0;
 const none = null;
 var trace = 0;
 // 10/27/24
 var activedomains = 1;		// which domains are active  1 == basic
 
 const POWERON=0;
+const AINVERT = 13;
+const DIMMER = 14;
 const ENDPROG=255;
 const WIRE = 109;
 const CORNER = 110;
+const ROTARY = 114;
+const GRAPH = 115;
+const OSC = 120;
+const SPEAKER = 121;
+const FILTER = 122;
+const SEQUENCER = 123;
 
 function UIsettrace()
 {
@@ -31,6 +40,8 @@ function message(msg)
 	logger.innerHTML = msg;
 }
 
+
+var debugcnt = 0;
 function debugmsg(msg)
 {
 	if(debug == null){
@@ -38,6 +49,11 @@ function debugmsg(msg)
 	}
 	if( debug != null){
 		debug.innerHTML += msg+"<br />";
+		debugcnt++;
+		if( debugcnt > 50){
+			debugcnt = 0;
+			debugreset();
+		}
 	}
 }
 
@@ -399,8 +415,8 @@ function Source()
 		}
 		if( code < 0){
 			code = 0;
-		}else if( code > 127){
-			code = 127;
+		}else if( code > 255){
+			code = 255;
 		}
 
 		this.code[ this.codeptr] = code;
@@ -721,43 +737,9 @@ function Program()
 			bpair = this.getPair( bit.snaps[1]);
 			xsnap = bit.snaps[1];		// remember which snap bpair is associated with
 
-			// check for domain switch.
-			if( code == 0x6b && bpair != null){ // wire send
-				// switch domains..
-
-				nbit = this.insertTempPowerOn( bit.snaps[1].paired);
-				nbit.chain = 0;
-				nbit.domain = 1;	
-
-//				msg = "Mark "+bit.print();
-//				msg += nbit.print();
-//				if( bpair != null){
-//					msg += bpair.print();
-//				}
-//				message(msg);
-
-				this.markChain(nbit);
-
-				bpair = null;		// the temp bitlist will continue the marking.
-			}
-
 			// look for wire recv			
 			if( bpair != null){
 				code = bpair.code;
-				if( code == 0x6c && 
-					bit.code != 0 &&	// this is not a power on
-					bpair.snaps[0] != null &&
-					bpair.snaps[0].paired == xsnap
-				 ){
-					nbit = this.insertTempPowerOn( bit.snaps[1].paired);
-					nbit.chain = 0;
-					nbit.domain = 2;
-
-					bpair.value = chain;	// use the value field of the recv to store the remote chain number.
-
-					this.markChain(nbit);
-					bpair = null;		// the temp bitlist will continnue the marking.
-				}
 			}
 			// look for output sends..
 			if(  bit.snaps[3] != null && bit.snaps[3].paired != null){
@@ -1244,12 +1226,12 @@ function Program()
 
 //////////////////////////////////////////////////////////////////////////
 
-	this.getValue = function(progbits, idx)
+	this.getValue = function(progbits, idx, def)
 	{
 		if( progbits != null && progbits[idx] != null){
 			return progbits[idx].value;		// get the value
 		}
-		return 255;
+		return def;
 	}
 
 	this.getchaindata  = function(arg, nchains)
@@ -1281,7 +1263,7 @@ function Program()
 		let ibp = 0;
 		let arg = 0;
 		let arg2, arg3;
-		let data = 97, data2;
+		let data = 0, data2;
 		let nchains = 20;
 		let rchain = curchain;	// result chain
 		let rdata = data;
@@ -1322,7 +1304,7 @@ function Program()
 					arg2 = prog[bp];
 					bp++;
 					if( curchain != 0){
-						this.chains[ curchain].data = this.getValue( progbits, ibp);
+						this.chains[ curchain].data = this.getValue( progbits, ibp, 255);
 						if(  arg2 > 0 && arg2 < nchains){
 							if( this.chains[ curchain].data != 0){
 								this.chains[ arg2 ].startvalue = 255;
@@ -1619,7 +1601,7 @@ function Program()
 						progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
 					}
 
-				}else if(code == 115){	// graph
+				}else if(code == GRAPH){	// graph
 					arg2 = prog[bp];
 					bp++;
 					if( curchain != 0){
@@ -1638,7 +1620,7 @@ function Program()
 
 				}else if( curchain != 0){
 					// single byte codes that do nothing when curchain is 0
-					if(code == 13){
+					if(code == AINVERT){
 						this.chains[ curchain].data = 255 - data;	// arith_invert
 						progbits[ibp].snaps[1].indcolor = "#ffffff";
 						progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
@@ -1652,16 +1634,16 @@ function Program()
 						progbits[ibp].snaps[1].indcolor = "#00ff00";
 						progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
 
-					}else if(code == 14 || code == 114){	// dimmer or rotary
-						this.chains[ curchain].data = Math.floor( ( data * this.getValue( progbits, ibp) ) / 256);	// arith_dimmer
+					}else if(code == DIMMER || code == ROTARY){	// dimmer or rotary
+						this.chains[ curchain].data = Math.floor( ( data * this.getValue( progbits, ibp, 255) ) / 256);	// arith_dimmer
 						progbits[ibp].snaps[1].indcolor = "#ffffff";
 						progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
 
 					}else if(code == 15){
-						this.chains[ curchain].data = this.getValue( progbits, ibp);	// arith_setvalue
+						this.chains[ curchain].data = this.getValue( progbits, ibp, 255);	// arith_setvalue
 
 					}else if(code == 111){
-						this.chains[ curchain].data = this.getValue( progbits, ibp);	// arith_counter
+						this.chains[ curchain].data = this.getValue( progbits, ibp, 255);	// arith_counter
 						if( data > 128){
 							progbits[ibp].value++;
 						}else {
@@ -1676,7 +1658,10 @@ function Program()
 						progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
 
 					}else if(code == 112 || code == 113){			// push switch or toggle switch
-						this.chains[ curchain].data = this.getValue( progbits, ibp);
+						if( this.getValue( progbits, ibp, 0) < 127){
+							data = 0;
+						}
+						this.chains[ curchain].data = data;
 						progbits[ibp].snaps[1].indcolor = "#00ff00";
 						progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
 
@@ -1702,6 +1687,31 @@ function Program()
 					}else if(code == 27){
 					}else if(code == 28){
 					}else if(code == 29){
+					}else if(code == OSC){		// osc
+						if(curchain  == 0){
+							data = 0;			// silence osc if not linked in a chain.
+						}else {
+							progbits[ ibp].ctrl.setValue(data, 0);
+						}
+						progbits[ibp].snaps[1].indcolor = "#ff0000";
+						progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
+					}else if(code == SPEAKER){		// speaker
+						if(curchain  == 0){
+							data = 0;			// silence osc if not linked in a chain.
+						}
+						progbits[ ibp].ctrl.setValue(data, 0);
+						progbits[ibp].value = this.chains[ curchain].data;
+						this.chains[ curchain].data = this.getValue( progbits, ibp, 255);
+					}else if(code == 122){		// filter
+						progbits[ibp].value = this.chains[ curchain].data;
+						this.chains[ curchain].data = this.getValue( progbits, ibp, 255);
+						progbits[ibp].snaps[1].indcolor = "#ff0000";
+						progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
+					}else if(code == 123){		// seq
+						progbits[ibp].ctrl.exec(data);
+						this.chains[ curchain].data = this.getValue( progbits, ibp, 255);
+						progbits[ibp].snaps[1].indcolor = "#ffffff";
+						progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
 					}
 				}
 			}
@@ -1841,18 +1851,15 @@ function Snap(bit, side, x, srx, y, sry, w, h)
 
 // snap dodock
 	this.doDock = function( other)
-	{	var b = this.bit;
-		var i = 0;
-		var s = 0;
-		var r = null;
-		var dom = this.domain;
-		var dom2 = 0;
+	{	let b = this.bit;
+		let dom = this.domain;
+		let dom2 = 0;
 
 		if( other == null){
 			return;
 		}
 		if( dom == 0){
-			dom = this.bit.domain;
+			dom = b.domain;
 		}
 
 		dom2 = other.domain;
@@ -1867,6 +1874,13 @@ function Snap(bit, side, x, srx, y, sry, w, h)
 			this.domain = (dom & dom2);
 			other.domain = (dom & dom2);
 
+			if( b.snaps[0] == this || b.snaps[2] == this){
+				b.dock(other.bit);
+			}else {
+				other.bit.dock(b);
+			}
+
+
 		}
 
 		this.findLinkedTarget();
@@ -1876,12 +1890,17 @@ function Snap(bit, side, x, srx, y, sry, w, h)
 	}
 
 	this.unDock = function()
-	{	var p = this.paired;
-		var i;
-		var b = this.bit;
+	{	const p = this.paired;
+		let i;
+		const b = this.bit;
 		var s;
 		var p2;
 
+		if( b.snaps[0] == this || b.snaps[2] == this){
+			b.undock(p.bit);
+		}else {
+			p.bit.undock(b);
+		}
 		this.unConnect();
 
 		reLabel(sketch.blist);
@@ -2169,7 +2188,7 @@ function Bit( btype, x, y, w, h, k) {
 			}
 		}
 	}
-	debugmsg("Bit: "+ this.kit.name + " idx "+ idx + " name "+this.name+" img "+this.bitimg+" "+this.name+" domain "+this.domain);
+	debugmsg("Bit: "+ this.kit.name + " idx "+ idx + " name "+this.name+" img "+this.bitimg+" "+this.name+" domain "+this.domain.toString(16));
 
 // bit addctrl
 	this.addCtrl = function( idx)
@@ -2396,6 +2415,41 @@ function Bit( btype, x, y, w, h, k) {
 			}
 		}
 		return false;
+	}
+
+	// input / output
+	this.dock = function(partner)
+	{
+		debugmsg("Docked "+this.name+" to "+partner.name);
+		if( this.ctrl != null){
+			this.ctrl.dock(partner);
+		}
+	}
+
+	this.dockto = function(partner, dom)
+	{
+		debugmsg("dockto "+this.name+" -> "+partner.name);
+		if( this.ctrl != null){
+			this.ctrl.dockto(partner, dom);
+		}
+
+	}
+
+	// bit input / output
+	this.undock = function(partner)
+	{
+		debugmsg("Undock "+this.name+" from "+partner.name);
+		if( this.ctrl != null){
+			this.ctrl.undock(partner);
+		}
+	}
+
+	this.undockfrom = function(partner, dom)
+	{
+		debugmsg("Undock from "+this.name+" <- "+partner.name);
+		if( this.ctrl != null){
+			this.ctrl.undockfrom(partner, dom);
+		}
 	}
 
 	// flip a bit between portrait and landscape
@@ -2868,7 +2922,7 @@ function Sketch() {
 			if( curctrl == null && i.bit.ctrl != null && i.bit.isDocked() ){
 				curctrl = i.bit.ctrl.HitTest(mx, my);
 				if( curctrl != null){
-					curctrl.startMove();
+					curctrl.startMove(mx, my);
 					selected = null;			// dont animate
 					scanning = null;			// not a snap
 					dragging = null;			// not dragging
@@ -3003,7 +3057,7 @@ function Sketch() {
 		}
 
 		if( curctrl != null){
-			curctrl.onMove();
+			curctrl.onMove(mx, my);
 			sx = 0;				// if control selected then not dragging...
 			sy = 0;
 			ldrag = null;
@@ -3083,8 +3137,8 @@ function Sketch() {
 
 // sketch
     this.doMouseUp = function() {
-		var dockbit;
-		var cw, ch;
+		let dockbit;
+		let cw, ch;
 
 		cw = sketch.canvas.width;
 		ch = sketch.canvas.height;

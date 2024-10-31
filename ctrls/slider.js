@@ -44,7 +44,7 @@ function sliderBit(bit)
 			return;
 		}
 		bt = b.btype & 7;	// 0 = horiz, 1 == vert
-//		message("Draw slider "+ xval);
+//		debugmsg("Draw slider "+ xval);
 
         ctx.fillStyle = "#ffffff";
 		if( bt == 0){
@@ -163,6 +163,18 @@ function sliderBit(bit)
 		if( i == 2){
 			b.value = initdata[idx+1];
 		}
-	}		
-		
+	}	
+	
+	this.dock = function(from)
+	{
+		debugmsg("Connect "+from.name+" to slider");
+	}
+
+	// control
+	// from is a bit
+	this.undock = function(from)
+	{
+		debugmsg("Disconnect "+from.name+" from sliderr");
+	}
+	
 }

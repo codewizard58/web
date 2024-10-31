@@ -26,7 +26,7 @@ var docking = null;	// bit that we are docking
 var dockX;
 var dockY;
 var bitform = null;
-var bitformaction = 0;		// what to do with the form data..
+var bitformaction = null;		// what to do with the form data..
 var displaying = null;
 var startX, startY;
 var softprogram = null;		// program instance for web
@@ -521,7 +521,7 @@ function outBitValues()
 }
 
 
-function doSave()
+function UIdoSave()
 {	var msg = "";
 	var bl = sketch.blist;
 	var bit;
@@ -543,7 +543,7 @@ function doSave()
 		bit = bl.bit;
 		bt = bit.btype & 7;
 		idx = bit.btype - bt;
-		msg += "'bit',"+bl.num+",'"+bitnames[idx + 1]+"',"+bit.btype+','+bit.x+","+bit.y+",";
+		msg += "'bit',"+bl.num+",'"+bit.name+"',"+bit.btype+','+bit.x+","+bit.y+",";
 		for(i=0; i < 4; i++){
 			if( bit.snaps[i] != null && bit.snaps[i].paired != null){
 				msg += bit.snaps[i].paired.bit.carrier.num;
@@ -574,7 +574,7 @@ function doSave()
 }
 
 
-function doLoad()
+function UIdoLoad()
 {	var msg = "";
 
 
@@ -828,6 +828,7 @@ function sbmodule( name )
 		wireroutimg = findimage("wireout-r");
 		wireboutimg = findimage("wireout-b");
 		defaultimg = findimage("default");
+		seqimg = findimage("seq");
 	}
 
 // sbmodule.addctrl

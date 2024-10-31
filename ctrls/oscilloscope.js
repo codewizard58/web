@@ -182,5 +182,13 @@ function graphBit(bit)
 	{	var i = initdata[idx];
 	}		
 		
+	this.dock = function(from)
+	{
+	}
+
+	this.undock = function(from)
+	{
+	}
+
 }
 

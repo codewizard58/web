@@ -131,6 +131,18 @@ function toggleSw(bit)
 			b.value = initdata[idx+1];
 		}
 	}		
+
+	this.dock = function(from)
+	{
+		debugmsg("Connect "+from.name+" to switch");
+	}
+
+	// control
+	// from is a bit
+	this.undock = function(from)
+	{
+		debugmsg("Disconnect "+from.name+" from switch");
+	}
 		
 }
 
