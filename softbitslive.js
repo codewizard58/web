@@ -1216,13 +1216,13 @@ function Program()
 			this.newprogram = null;
 			this.current = prog;
 			this.currentbits = progbits;
-			debugmsg("New program");
-			for(i=0; i < prog.length; i++){
-				debugmsg(" "+i+" "+prog[i]);
-				if( prog[i] == 255){
-					break;
-				}
-			}
+//			debugmsg("New program");
+//			for(i=0; i < prog.length; i++){
+//				debugmsg(" "+i+" "+prog[i]);
+//				if( prog[i] == 255){
+//					break;
+//				}
+//			}
 		}			
 
 		if( prog == null){
@@ -1289,6 +1289,7 @@ function Program()
 		let nchains = 20;
 		let rchain = curchain;	// result chain
 		let rdata = data;
+		let osnap = null;
 
 		this.needsend = 0;	
 		this.sendsize = 8;		// allow for 0xf0 S B P 0x06 seqh seql ver
@@ -1299,6 +1300,9 @@ function Program()
 			bp++;
 			if( curchain > 0 && curchain < nchains){
 				data = this.chains[ curchain].data;
+			}
+			if( progbits[ibp] != null && progbits[ibp].snaps[1] != null){
+				osnap = progbits[ibp].snaps[1];
 			}
 			// first few codes run even if curchain is 0
 			if( code == POWERON){			// power on
@@ -1314,9 +1318,16 @@ function Program()
 			}else if(code == ENDPROG){
 				prog = null;		// end of program
 			}else {
-				// these codes do not run if curchain == 0.
-				// two byte codes. 
-				if(code == 12){	// wire_split
+				if(code == SPEAKER){		// speaker
+					if(curchain  == 0){
+						data = 0;			// silence osc if not linked in a chain.
+					}
+					progbits[ ibp].ctrl.setValue(data, 0);
+					progbits[ibp].value = this.chains[ curchain].data;
+					this.chains[ curchain].data = this.getValue( progbits, ibp, 255);
+		// these codes do not run if curchain == 0.
+		// two byte codes. 
+				}else if(code == 12){	// wire_split
 					arg2 = prog[bp];
 					bp++;
 					if( curchain != 0){
@@ -1348,8 +1359,8 @@ function Program()
 						}else {
 							this.chains[ curchain].data = 0;
 						}
-						progbits[ibp].snaps[1].indcolor = "#00ff00";
-						progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
+						osnap.indcolor = "#00ff00";
+						osnap.indval = this.chains[ curchain].data;
 					}
 				}else if(code == 19){	// nand
 					arg2 = prog[bp];
@@ -1364,8 +1375,8 @@ function Program()
 						}else {
 							this.chains[ curchain].data = 255;
 						}
-						progbits[ibp].snaps[1].indcolor = "#00ff00";
-						progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
+						osnap.indcolor = "#00ff00";
+						osnap.indval = this.chains[ curchain].data;
 					}
 				}else if(code == 17){	// or
 					arg2 = prog[bp];
@@ -1380,8 +1391,8 @@ function Program()
 						}else {
 							this.chains[ curchain].data = 0;
 						}
-						progbits[ibp].snaps[1].indcolor = "#00ff00";
-						progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
+						osnap.indcolor = "#00ff00";
+						osnap.indval = this.chains[ curchain].data;
 					}
 				}else if(code == 20){	// Nor
 					arg2 = prog[bp];
@@ -1397,8 +1408,8 @@ function Program()
 						}else {
 							this.chains[ curchain].data = 255;
 						}
-						progbits[ibp].snaps[1].indcolor = "#00ff00";
-						progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
+						osnap.indcolor = "#00ff00";
+						osnap.indval = this.chains[ curchain].data;
 					}
 
 				}else if(code == 42){	// Xor
@@ -1416,8 +1427,8 @@ function Program()
 						}else {
 							this.chains[ curchain].data = 255;
 						}
-						progbits[ibp].snaps[1].indcolor = "#00ff00";
-						progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
+						osnap.indcolor = "#00ff00";
+						osnap.indval = this.chains[ curchain].data;
 					}
 
 				}else if(code == 23){	// midi_gate	
@@ -1455,8 +1466,8 @@ function Program()
 						}
 						this.chains[ curchain].data = data;
 					}
-					progbits[ibp].snaps[1].indcolor = "#ffffff";
-					progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
+					osnap.indcolor = "#ffffff";
+					osnap.indval = this.chains[ curchain].data;
 
 				}else if(code == 37){	// minus
 					arg2 = prog[bp];
@@ -1474,8 +1485,8 @@ function Program()
 						}
 						this.chains[ curchain].data = data;
 					}
-					progbits[ibp].snaps[1].indcolor = "#ffffff";
-					progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
+					osnap.indcolor = "#ffffff";
+					osnap.indval = this.chains[ curchain].data;
 
 				}else if(code == 38){	// times
 					arg2 = prog[bp];
@@ -1493,8 +1504,8 @@ function Program()
 						}
 						this.chains[ curchain].data = data;
 					}
-					progbits[ibp].snaps[1].indcolor = "#ffffff";
-					progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
+					osnap.indcolor = "#ffffff";
+					osnap.indval = this.chains[ curchain].data;
 
 				}else if(code == 39){	// divide
 					arg2 = prog[bp];
@@ -1516,9 +1527,9 @@ function Program()
 							data = 255;
 						}
 						this.chains[ curchain].data = data;
-						progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
+						osnap.indval = this.chains[ curchain].data;
 					}
-					progbits[ibp].snaps[1].indcolor = "#ffffff";
+					osnap.indcolor = "#ffffff";
 
 				}else if(code == 41){	// diff
 					arg2 = prog[bp];
@@ -1540,10 +1551,10 @@ function Program()
 							data = 255;
 						}
 						this.chains[ curchain].data = data;
-						progbits[ibp].snaps[1].indcolor = "#ffffff";
-						progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
+						osnap.indcolor = "#ffffff";
+						osnap.indval = this.chains[ curchain].data;
 					}else {
-						progbits[ibp].snaps[1].indcolor = "";
+						osnap.indcolor = "";
 					}
 
 				}else if(code == 43){	// compare
@@ -1561,10 +1572,10 @@ function Program()
 							data = 0;
 						}
 						this.chains[ curchain].data = data;
-						progbits[ibp].snaps[1].indcolor = "#ffffff";
-						progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
+						osnap.indcolor = "#ffffff";
+						osnap.indval = this.chains[ curchain].data;
 					}else {
-						progbits[ibp].snaps[1].indcolor = "";
+						osnap.indcolor = "";
 					}
 
 				}else if(code == 44){	// latch
@@ -1587,10 +1598,10 @@ function Program()
 							data = 0;
 						}
 						this.chains[ curchain].data = data;
-						progbits[ibp].snaps[1].indcolor = "#00ff00";
-						progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
+						osnap.indcolor = "#00ff00";
+						osnap.indval = this.chains[ curchain].data;
 					}else {
-						progbits[ibp].snaps[1].indcolor = "";
+						osnap.indcolor = "";
 					}
 
 				}else if( code == 107){		// wire send 0x6b
@@ -1605,8 +1616,8 @@ function Program()
 						}
 						this.sendsize += 4;
 						this.needsend = 1;
-						progbits[ibp].snaps[1].indcolor = "#000000";
-						progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
+						osnap.indcolor = "#000000";
+						osnap.indval = this.chains[ curchain].data;
 					}
 					// bit.data sent to the chain on the arduino
 				}else if( code == 108){		// wire recv 0x6c
@@ -1619,8 +1630,8 @@ function Program()
 								this.needsend = 1;
 							}
 						}
-						progbits[ibp].snaps[1].indcolor = "#000000";
-						progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
+						osnap.indcolor = "#000000";
+						osnap.indval = this.chains[ curchain].data;
 					}
 
 				}else if(code == GRAPH){	// graph
@@ -1634,18 +1645,18 @@ function Program()
 							progbits[ ibp].ctrl.setValue(data2, 1);
 						}
 
-						progbits[ibp].snaps[1].indcolor = "#ffffff";
+						osnap.indcolor = "#ffffff";
 					}else {
-						progbits[ibp].snaps[1].indcolor = "";
+						osnap.indcolor = "";
 					}
-					progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
+					osnap.indval = this.chains[ curchain].data;
 
 				}else if( curchain != 0){
 					// single byte codes that do nothing when curchain is 0
 					if(code == AINVERT){
 						this.chains[ curchain].data = 255 - data;	// arith_invert
-						progbits[ibp].snaps[1].indcolor = "#ffffff";
-						progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
+						osnap.indcolor = "#ffffff";
+						osnap.indval = this.chains[ curchain].data;
 
 					}else if(code == 18){	// not 
 						if( data > 127){
@@ -1653,13 +1664,13 @@ function Program()
 						}else{
 							this.chains[ curchain].data = 255;
 						}
-						progbits[ibp].snaps[1].indcolor = "#00ff00";
-						progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
+						osnap.indcolor = "#00ff00";
+						osnap.indval = this.chains[ curchain].data;
 
 					}else if(code == DIMMER || code == ROTARY){	// dimmer or rotary
 						this.chains[ curchain].data = Math.floor( ( data * this.getValue( progbits, ibp, 255) ) / 256);	// arith_dimmer
-						progbits[ibp].snaps[1].indcolor = "#ffffff";
-						progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
+						osnap.indcolor = "#ffffff";
+						osnap.indval = this.chains[ curchain].data;
 
 					}else if(code == 15){
 						this.chains[ curchain].data = this.getValue( progbits, ibp, 255);	// arith_setvalue
@@ -1676,16 +1687,16 @@ function Program()
 						}else if(progbits[ibp].value < 0){
 							progbits[ibp].value = 255;
 						}
-						progbits[ibp].snaps[1].indcolor = "#ffffff";
-						progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
+						osnap.indcolor = "#ffffff";
+						osnap.indval = this.chains[ curchain].data;
 
 					}else if(code == 112 || code == 113){			// push switch or toggle switch
 						if( this.getValue( progbits, ibp, 0) < 127){
 							data = 0;
 						}
 						this.chains[ curchain].data = data;
-						progbits[ibp].snaps[1].indcolor = "#00ff00";
-						progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
+						osnap.indcolor = "#00ff00";
+						osnap.indval = this.chains[ curchain].data;
 
 					}else if(code == 104){
 						if( curnote != data){
@@ -1697,9 +1708,27 @@ function Program()
 								noteOn(curnote, 127);
 							}
 						}
-						progbits[ibp].snaps[1].indcolor = "#ffffff";
-						progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
+						osnap.indcolor = "#ffffff";
+						osnap.indval = this.chains[ curchain].data;
 
+					}else if(code == OSC){		// osc
+						if(curchain  == 0){
+							data = 0;			// silence osc if not linked in a chain.
+						}else {
+							progbits[ ibp].ctrl.setValue(data, 0);
+						}
+						osnap.indcolor = "#ff0000";
+						osnap.indval = this.chains[ curchain].data;
+					}else if(code == 122){		// filter
+						progbits[ibp].value = this.chains[ curchain].data;
+						this.chains[ curchain].data = this.getValue( progbits, ibp, 255);
+						osnap.indcolor = "#ff0000";
+						osnap.indval = this.chains[ curchain].data;
+					}else if(code == 123){		// seq
+						progbits[ibp].ctrl.exec(data);
+						this.chains[ curchain].data = this.getValue( progbits, ibp, 255);
+						osnap.indcolor = "#ffffff";
+						osnap.indval = this.chains[ curchain].data;
 					}else if(code == 21){
 					}else if(code == 22){
 					}else if(code == 23){
@@ -1709,31 +1738,6 @@ function Program()
 					}else if(code == 27){
 					}else if(code == 28){
 					}else if(code == 29){
-					}else if(code == OSC){		// osc
-						if(curchain  == 0){
-							data = 0;			// silence osc if not linked in a chain.
-						}else {
-							progbits[ ibp].ctrl.setValue(data, 0);
-						}
-						progbits[ibp].snaps[1].indcolor = "#ff0000";
-						progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
-					}else if(code == SPEAKER){		// speaker
-						if(curchain  == 0){
-							data = 0;			// silence osc if not linked in a chain.
-						}
-						progbits[ ibp].ctrl.setValue(data, 0);
-						progbits[ibp].value = this.chains[ curchain].data;
-						this.chains[ curchain].data = this.getValue( progbits, ibp, 255);
-					}else if(code == 122){		// filter
-						progbits[ibp].value = this.chains[ curchain].data;
-						this.chains[ curchain].data = this.getValue( progbits, ibp, 255);
-						progbits[ibp].snaps[1].indcolor = "#ff0000";
-						progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
-					}else if(code == 123){		// seq
-						progbits[ibp].ctrl.exec(data);
-						this.chains[ curchain].data = this.getValue( progbits, ibp, 255);
-						progbits[ibp].snaps[1].indcolor = "#ffffff";
-						progbits[ibp].snaps[1].indval = this.chains[ curchain].data;
 					}
 				}
 			}
@@ -2370,12 +2374,12 @@ function Bit( btype, x, y, w, h, k) {
 
 //			debugmsg("Draw "+img+" x="+this.x);
 			if( btmp == 0){
-					ctx.drawImage(bitpics[ img ], this.x, this.y);
-				}else {
-					// -v version
-					img = img+1;
-					ctx.drawImage(bitpics[ img ], this.x, this.y);
-				}
+				ctx.drawImage(bitpics[ img ], this.x, this.y);
+			}else {
+				// -v version
+				img = img+1;
+				ctx.drawImage(bitpics[ img ], this.x, this.y);
+			}
 			if( this.chain != 0){
 				// draw the power border
 				if( showchains == 1){
@@ -2412,6 +2416,9 @@ function Bit( btype, x, y, w, h, k) {
 			}
 		}else if( pass == 3){
 			if( this.ctrl != null){
+				if( this.code == SPEAKER && this.chain == 0){
+					this.ctrl.setValue(0, 0);
+				}
 				this.ctrl.Draw();
 			}
 		}
@@ -2622,6 +2629,7 @@ function Bit( btype, x, y, w, h, k) {
 				}
 			}
 		}
+//		debugmsg("Mark "+n+" "+this.name+" chain "+this.chain);
 	}
 
 	// used when drawing setxylinked relxylinked 
@@ -2763,20 +2771,23 @@ function reLabel( bl)
 }
 
 function Keyboard(){
-	var key = "";
 
 	this.KeyPress = function( code, up)
-	{	var i;
-
-		if( piano == null){
-			return;				// piano not on screen
-		}
+	{	let i;
+		let bit = null;
 
 		if( up != 0){
 			up = 127;
 		}
-		// piano is a control.
-		piano.KeyPress( code, up);
+
+		if( bitformaction != null){
+			bit = bitformaction.bit;
+			if( bit != null){
+				ctrl = bit.ctrl;
+				ctrl.keyPress(code, up);
+			}
+		}
+
 
 	}
 }

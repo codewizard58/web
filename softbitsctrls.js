@@ -9,6 +9,7 @@ function doBitFormAction()
 			bitformaction.getData();
 		}
 		bitform.innerHTML = "";
+		bitformaction = null;
 	}
 
 	bitform = null;
@@ -273,7 +274,7 @@ function control(bit)
 	this.dockto = function(from, dom)
 	{
 	}
-
+//control
 	// when undocked  this is the receiver
 	this.undock = function(from)
 	{
@@ -286,6 +287,22 @@ function control(bit)
 	this.setValue = function(data, chan)
 	{
 
+	}
+	//control
+
+	this.startProg = function()
+	{
+		debugmsg("Start Programming");
+	}
+
+	this.stopProg = function()
+	{
+		debugmsg("Stop Programming");
+	}
+
+	this.keyPress = function(code, up)
+	{	let bit = this.bit;
+		debugmsg("Keypress "+bit.name+" "+code+" "+up);
 	}
 
 }

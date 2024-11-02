@@ -1,15 +1,94 @@
 /// sound bits
 var roundknobimg = 0;
 var notetab = null;
-const notetabsize = 192;
+const notetabsize = 128;
+
+const A4 = 57;
+const B4 = 59;
+const C4 = 60;
+const D4 = 62;
+const E4 = 64;
+const F4 = 65;
+const A5 = 69;
+
+var keyboardmap = 
+[	0,0,0,0,	0,0,0,0,	0,0,0,0,	0,0,0,0,	// 00
+	0,0,0,0,	0,0,0,0,	0,0,0,0,	0,0,0,0,	// 10
+	256,0,0,0,	0,0,0,0,	0,0,0,0,	0,0,0,0,	// 20
+	0,0,73,75,	0,78,80,82,	0,85,87,0,	0,0,0,0,	// 30
+
+	0,0,67,64,	63,76,0,66,	68,84,70,0,	0,71,0,0,	// 40
+	88,72,77,61,	79,83,65,74,	62,81,60,0,	0,0,0,0,	// 50
+	0,0,0,0,	0,0,0,0,	0,0,0,0,	0,0,0,0,	
+	0,0,0,0,	0,0,0,0,	0,0,0,0,	0,0,0,0,	
+
+	0,0,0,0,	0,0,0,0,	0,0,0,0,	0,0,0,0,	
+	0,0,0,0,	0,0,0,0,	0,0,0,0,	0,0,0,0,	
+	0,0,0,0,	0,0,0,0,	0,0,0,0,	0,0,0,0,	
+	0,0,0,0,	0,0,0,0,	0,0,0,0,	0,0,0,0,	
+
+	0,0,0,0,	0,0,0,0,	0,0,0,0,	0,0,0,0,	
+	0,0,0,0,	0,0,0,0,	0,0,0,0,	0,0,0,0,	
+	0,0,0,0,	0,0,0,0,	0,0,0,0,	0,0,0,0,	
+	0,0,0,0,	0,0,0,0,	0,0,0,0,	0,0,0,0
+
+];
 
 function setupnotetab()
 {	let i = 0;
+	// A5 == 67, this.a440;
+	let semi = Math.pow(2, 1/12);
+
+	debugmsg("SEMI="+semi);
 
 	notetab = new Array(notetabsize);
-	
-	for(i=0; i < notetabsize; i++){
-			notetab[i] = 110 * Math.pow(2,(i-69)/12);
+	let x = 440 / 8;
+	for(i=A5-36; i < notetabsize; i++){
+			notetab[i] = x;
+			x = x*semi;
+	}
+	x = 440 / 8;
+	for(i=A5-36; i > 0; i--){
+		x = x/semi;
+		notetab[i] = x;
+	}
+	debugmsg("notetab C0 "+notetab[C4-48]);
+	debugmsg("notetab A1 "+notetab[A5-48]);
+	debugmsg("notetab C1 "+notetab[C4-36]);
+	debugmsg("notetab A2 "+notetab[A5-36]);
+	debugmsg("notetab C2 "+notetab[C4-24]);
+	debugmsg("notetab A3 "+notetab[A5-24]);
+	debugmsg("notetab C3 "+notetab[C4-12]);
+	debugmsg("notetab A4 "+notetab[A5-12]);
+	debugmsg("notetab C4 "+notetab[C4]);
+	debugmsg("notetab A5 "+notetab[A5]);
+
+}
+
+function UIprog()
+{	let b = document.getElementById("prog");
+	let bit = bitformaction.bit;
+	let ctrl = bit.ctrl;
+
+	if( b != null){
+		b.style.backgroundColor = "red";
+	}
+
+	if(bit != null){
+		if(ctrl != null){
+			ctrl.startProg();
+		}
+	}
+
+}
+
+function UIprognext()
+{	let bit = bitformaction.bit;
+	let ctrl = bit.ctrl;
+	if(bit != null){
+		if(ctrl != null){
+			ctrl.nextprog();
+		}
 	}
 
 }
@@ -48,12 +127,13 @@ function oscBit(bit)
 	this.osc = null;
 	this.webkitstyle = false;
 	this.val = 255;		// debug set initial volume
-	this.freq=60;
+	this.freq=60;		// middle C in Midi
 	this.nfreq=0;
 	this.infreq=0;
 	this.audioin = null;
 	this.wave = 0;		// 0 == saw
 	this.range = 12; 	// bend range
+	this.a440 = 440;
 
     let imagename = "osc";
 	this.bitimg =this.bit.findImage(imagename);
@@ -90,7 +170,6 @@ function oscBit(bit)
 		}
 		xval = this.nfreq;		// 0 - 255
 		bt = b.btype & 7;	// 0 = horiz, 1 == vert
-//		debugmsg("Draw osc "+ xval+" deg "+this.deg);
 
         ctx.fillStyle = "#ffffff";
 		if( bt == 0){
@@ -120,7 +199,7 @@ function oscBit(bit)
 					if( this.gain != null){
 						this.gain.gain.setValueAtTime( 1, 0.01);
 					}
-					this.freq = data / 2+24;
+					this.freq = data / 2;
 					this.setoscfreq(0);
 				}
 				// debugmsg("OSC "+data);
@@ -482,6 +561,49 @@ function delayBit(bit)
 	}
 }
 
+function motion(tempo, gate)
+{
+	this.tempo = tempo;
+	this.gate = gate;
+	this.counter = 0;
+	this.stepinc = 1;
+	this.perbeat = 64;
+
+	this.step = function(){
+		this.counter += this.stepinc;
+		if( this.counter >= 256){
+			this.counter = 0;
+		}
+	}
+
+	this.settempo = function(tempo, beats)
+	{
+		let len = beats;
+		this.tempo = tempo;
+		// 64 ticks = 1.0
+		// 120 = 0.5   
+		this.stepinc = ( 4 / len) * (100/ 64) * tempo / 60 ;
+		this.perbeat = Math.floor(256 / beats);
+
+	}
+
+	this.getgated = function()
+	{
+		let n = Math.floor(this.counter / this.perbeat);
+		let val = this.counter - (n * this.perbeat);
+		let g = val * 100 / this.perbeat;
+
+//		debugmsg("Gate "+this.gate+" g "+g+' n '+n);
+		if( g >this.gate){
+			return false;
+		}
+		return true;
+
+	}
+
+
+}
+
 
 seqBit.prototype = Object.create(control.prototype);
 
@@ -493,8 +615,10 @@ function seqBit(bit)
 	this.selstep = 0;	// 1-4
 	this.initx = 0;
 	this.inity = 0;
-	this.tempo = 120;
+	this.motion = new motion(120, 75);
 	this.stepinc = 1;
+	this.prog = 0;
+	this.progprev = 0;
 
 	let imagename = "seq";
 	this.bitimg =this.bit.findImage(imagename);
@@ -578,22 +702,25 @@ function seqBit(bit)
 	{	let t = 1;
 
 		if( data == 0){
+			this.bit.value = this.values[this.getstep()];
 			return;
 		}
 		if( data == 255){
 			// auto step use tempo
 			// 60 / (tempo* 100) = time 
 			// 
-
-			this.step += this.stepinc;
-			if( this.step >= 256){
-				this.step = 0;
+			this.motion.step();
+			this.step = this.motion.counter;
+			if( this.motion.getgated()){
+				this.bit.value = this.values[this.getstep()];
+			}else {
+				this.bit.value = 0;
 			}
 		}else {
 			this.step = data;
+			this.bit.value = this.values[this.getstep()];
 		}
 		// which sequencer ?
-		this.bit.value = this.values[this.getstep()]
 	}
 
 	this.getstep = function()
@@ -628,11 +755,15 @@ function seqBit(bit)
 				msg += "<td > <input type='text' id='knob_"+i+"' name='knob_"+i+"' value='"+this.values[i]+"' size='4' /></td>";
 			}
 			msg += "</tr>\n";
-			msg += "<tr><th>Tempo</th><td colspan='4'><input type='text' id='tempo' value='"+this.tempo+"'  size='4' /></td></tr>\n";
+			msg += "<tr><th>Tempo</th><td colspan='2'><input type='text' id='tempo' value='"+this.motion.tempo+"'  size='4' /></td>\n";
+			msg += "<td colspan='2' rowspan='2'><input type='button' id='prog' value='Prog' onclick='UIprog();' /></td></tr>\n";
+			msg += "<tr><th>Gate</th><td colspan='2'><input type='text' id='gate' value='"+this.motion.gate+"'  size='4' /></td></tr>";
 			msg += "</table>\n";
+			msg += "<input type='button' id='prog' value='Next' onclick='UIprognext();' />"
 
 			bitform.innerHTML = msg;
 			bitformaction = this;
+			this.prog = 0;
 		}
 	
 	}
@@ -667,6 +798,16 @@ function seqBit(bit)
 			}
 			this.settempo(val);
 		}
+		f = document.getElementById("gate");
+		if( f != null){
+			val = f.value;
+			if( val < 5){
+				val = 5;
+			}else if( val > 100){
+				val = 100;
+			}
+			this.motion.gate = val;
+		}
 
 	}
 
@@ -682,18 +823,82 @@ function seqBit(bit)
 
 	}
 
-	// seq
 	this.settempo = function(tempo)
-	{	let len = this.values.length;
-		this.tempo = tempo;
-		// 64 ticks = 1.0
-		// 120 = 0.5   
-		this.stepinc = ( 4 / len) * (100/ 64) * tempo / 60 ;
-		debugmsg("tempo "+tempo+" t="+this.stepinc);
-
+	{
+		let len = this.values.length;
+		debugmsg("Seq settempo "+tempo+" len "+len);
+		this.motion.settempo(tempo, len);
 	}
 
 	this.settempo(100);
+
+	// seq
+	this.startProg = function()
+	{
+		// start programming mode
+		this.prog = 0;
+		this.progprev = 0;
+		this.highlight();
+	}
+
+	this.nextprog = function()
+	{
+		this.progprev = this.prog;
+		this.prog++;
+		if( this.prog == this.values.length){
+			this.prog = 0;
+		}
+		this.highlight();
+	}
+
+	this.highlight = function()
+	{
+		let k = document.getElementById("knob_"+(this.progprev));
+		if( k != null){
+			k.style.borderColor = "white";
+		}
+		k = document.getElementById("knob_"+(this.prog));
+		if( k != null){
+			k.style.borderColor = "blue";
+		}
+	}
+
+	// called with key codes. 
+	this.keyPress = function(code, up)
+	{	let val = 0;
+		let note = 0;
+
+		let k = document.getElementById("knob_"+(this.prog));
+		if( code >= 0 && code < 256){
+			val = keyboardmap[code];
+		}
+		if( up == 0){
+			if( code == 13){				// cr = next
+				this.nextprog();
+				this.highlight();
+			}else if( code == 32){			// space = silence
+				this.values[this.prog] = 0;
+				k.value = 0;
+				this.nextprog();
+			}else if( code == 8){			// back
+				this.progprev = this.prog;
+				this.prog--;
+				if( this.prog < 0){
+					this.prog = this.values.length-1;
+				}
+				this.highlight();
+			}else if( code == 36){			// home
+				this.progprev = this.prog;
+				this.prog = 0;
+				this.highlight();
+			}else if( val > 0 && up == 0){
+				note = (val-60)*2+120;
+				this.values[this.prog] = note;
+				k.value = note;
+				this.nextprog();
+			}
+		}
+	}
 }
 
 
