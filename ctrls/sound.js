@@ -144,12 +144,17 @@ function oscBit(bit)
 	{	let b = this.bit;
 		let x = mx-b.x;
 		let y = my-b.y;
-		let i = 0;
+		let bt = b.btype & 7;	// 0 = horiz, 1 == vert
 
-		x = x - 39;
-		y = y - 10;
+		if( bt == 0){
+			x = x - 39;
+			y = y - 10;
+		}else {
+			x = x - 39;
+			y = y - 10;
+		}
 
-		if( x > (i * 40) && x < i*40+20 && y > 0 && y < 20 ){
+		if( x > 0 && x < 20 && y > 0 && y < 20 ){
 			this.initx = mx;
 			this.inity = my;
 			return this;
@@ -182,6 +187,11 @@ function oscBit(bit)
 			ctx.restore();
 		}else {
 			ctx.drawImage(bitpics[ osc+1 ], b.x, b.y);
+			ctx.save();
+			ctx.translate( b.x+50, b.y+30);
+			ctx.rotate( (xval-120 )*this.deg );
+			ctx.drawImage(bitpics[roundknobimg], -10, -10);
+			ctx.restore();
 		}
 	}
 
@@ -415,6 +425,34 @@ function speakerBit(bit)
 	this.webkitstyle = false;
 	this.val = 0;
 	this.audioin = null;
+	roundknobimg =this.bit.findImage("roundknob");
+	this.mix = 1.0;
+	this.deg = Math.PI/180;
+
+	this.HitTest = function(mx, my)
+	{	let b = this.bit;
+		let x = mx-b.x;
+		let y = my-b.y;
+		let bt = b.btype & 7;	// 0 = horiz, 1 == vert
+		
+		if( bt == 0){
+			x = x - 5;
+			y = y - 35;
+		}else{
+			x = x - 10;
+			y = y - 10;
+		}
+
+		if( x > 0 && x < 20 && y > 0 && y < 20 ){
+			this.initx = mx;
+			this.inity = my;
+			return this;
+		}
+		debugmsg("SPK HT "+x+" "+y);
+
+		return null;
+	}
+
 
 	// speaker
 	this.setValue = function(data, chan)
@@ -425,7 +463,7 @@ function speakerBit(bit)
 				if( data < 16){
 					this.gain.gain.setValueAtTime( 0, 0.01);
 				}else{
-					this.gain.gain.setValueAtTime( 1, 0.01);
+					this.gain.gain.setValueAtTime( this.mix, 0.01);
 				}
 			}
 		}
@@ -436,7 +474,7 @@ function speakerBit(bit)
 	this.Draw = function( )
 	{	var b = this.bit;
 		var bt;
-		var xval = b.value;		// 0 - 255
+		var xval = this.mix*255;		// 0 - 255
         let speaker = this.bitimg;
 
 		if( b == null){
@@ -447,8 +485,18 @@ function speakerBit(bit)
         ctx.fillStyle = "#ffffff";
 		if( bt == 0){
 			ctx.drawImage(bitpics[ speaker ], b.x, b.y);
+			ctx.save();
+			ctx.translate( b.x+10, b.y+40);
+			ctx.rotate( (xval-120 )*this.deg );
+			ctx.drawImage(bitpics[roundknobimg], -10, -10);
+			ctx.restore();
 		}else {
 			ctx.drawImage(bitpics[ speaker+1 ], b.x, b.y);
+			ctx.save();
+			ctx.translate( b.x+10, b.y+10);
+			ctx.rotate( (xval-120 )*this.deg );
+			ctx.drawImage(bitpics[roundknobimg], -10, -10);
+			ctx.restore();
 		}
 	}
 
@@ -466,11 +514,71 @@ function speakerBit(bit)
 				}else {
 					this.gain = actx.createGain();
 				}
-				this.gain.gain.setValueAtTime( this.val/ 255, 0.01);
+				this.gain.gain.setValueAtTime( this.mix, 0.01);
 				this.gain.connect( actx.destination); // debug
 			}
 
 			this.audioin = this.gain;
+		}
+
+	}
+
+	this.setData = function()
+	{	let msg="";
+		let val = this.mix*255;
+		if( bitform != null){
+			bitform.innerHTML="";
+		}
+		bitform = document.getElementById("bitform");
+		if( bitform != null){
+			msg = "<table>";
+			msg += "<tr><th align='right'>Mix</th><td > <input type='text' id='mix' name='mix' value='"+val+"' /></td></tr>\n";
+
+			msg += "</table>\n";
+
+			bitform.innerHTML = msg;
+			bitformaction = this;
+		}
+	
+	}
+
+	this.getData = function()
+	{	let i = 0;
+		let f = null;
+		let val = 0;
+		let t=0;
+
+		f = document.getElementById("mix");
+		if( f != null){
+			val = f.value;
+			if( val < 0){
+				val = 0;
+			}else if( val > 255){
+				val = 255;
+			}
+			this.mix = val/255;
+			this.setValue(val, 0);
+		}
+	}
+
+	this.onMove = function(x, y)
+	{	let vx = x - this.initx;
+		let vy = y - this.inity;
+		let mag = vx *vx + vy * vy;
+		let val = this.mix*255;
+		let b = this.bit;
+		let f = null;
+
+		if( mag > 100 ){
+			val = rotaryvalue(vx, vy, val);
+			this.mix = val / 255;
+			this.setValue(val, 0);
+			if( bitform != null){
+				f = document.getElementById("mix");
+				if( f != null){
+					f.value = val;
+				}
+			}
 		}
 
 	}
@@ -756,10 +864,9 @@ function seqBit(bit)
 			}
 			msg += "</tr>\n";
 			msg += "<tr><th>Tempo</th><td colspan='2'><input type='text' id='tempo' value='"+this.motion.tempo+"'  size='4' /></td>\n";
-			msg += "<td colspan='2' rowspan='2'><input type='button' id='prog' value='Prog' onclick='UIprog();' /></td></tr>\n";
+			msg += "</tr>\n";
 			msg += "<tr><th>Gate</th><td colspan='2'><input type='text' id='gate' value='"+this.motion.gate+"'  size='4' /></td></tr>";
 			msg += "</table>\n";
-			msg += "<input type='button' id='prog' value='Next' onclick='UIprognext();' />"
 
 			bitform.innerHTML = msg;
 			bitformaction = this;
