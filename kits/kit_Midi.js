@@ -124,18 +124,22 @@ kit_midi.prototype = Object.create(sbmodule.prototype);
 function kit_midi( )
 {
 	sbmodule.call(this, "Midi");
-	
+	// maps bit type to image type.
+//                                      l     r           t     b
+//  image, title, w, h, l-snap, r-snap, t-snap, b-snap
+//			 snap style, isctrl, title, description
+//					domainmask, menu, a, b
 	this.bitnames = [
-//		"defaulta", "osc_squelch", 100, 50,	"actionin", "actionout", null,  null,	// 21
-//				0,	0, "",	"",	 0x1, "Action", 0, 0,	// 7
-		"midiin", "midi_in", 100, 50,	null, "inputout" ,null,  null,	// 22
-				0,	1, "midi_in",	"",	 0x0040, "Input", 0, 0,	// 7
-//		"default", "midi_gate",  100, 50,	"actionin", "actionout" ,null, "actionout",	// 23
-//				0,	0, "",	"",	 0x1, "Action", 0, 0,	// 7
-		"control", "midi_cc",	100, 50,	"actionin", "actionout" ,"actionin",  null, // 24
-				0,	1, "midi_cc",	"",	 0x0040, "Action", 0, 0,	// 7
-		"default", "midi_cv",	100, 50,	"actionin", "actionout" ,null,  null,		// 25
-				0,	1, "midi_cv",	"",	 0x0040, "Action", 0, 0,	// 7
+		"poweron", "power_on", 50, 50,		null, "powerout", null, null,			// 0
+				0,	0, "Power On",		"Start a chain of SoftBits", 0x0010, "Power", 0, 1,	// 0
+		"poweroff", "power_off", 50, 50,	"powerin", null, null, null,			// 1
+				0,	0, "Power Off",		"End of a chain, optional.", 0x0001, "Power", 0, 1,	// 1
+		"midiin", "midi_in", 100, 50,	null, "midiout" ,null,  null,	// 22
+				0,	1, "midi_in",	"Midi Input Selector",	 0x0040, "Input", 0, 0,	// 7
+		"midicv", "midi_cc",	50, 50,	"midiin", "actionout" ,null,  null, // 24
+				0,	1, "midi_cc",	"Midi CV filter",	 0x0014, "Action", 0, 0,	// 7
+		"midicc", "midi_cv",	50, 50,	"midiin", "actionout" ,null,  null,		// 		images for cv and cc reversed.
+				0,	1, "midi_cv",	"Midi Note filter",	 0x0014, "Action", 0, 0,	// 7
 
 
 //		"defaulta", "env_attack", 100, 50,		"actionin", "actionout" ,"actionin",  null,		// 31
@@ -155,14 +159,24 @@ function kit_midi( )
 
 	this.ctrltab = [
 //  ID, len, args
-	"midi_cv", 3, 5,		// 
-	"midi_cc", 3, 6,		// 
+	"midi_in", 3, 3,		// 
+	"midi_cv", 3, 4,		// note filtewr
+	"midi_cc", 3, 5,		// control code filter
 	null, 0, 0, 0, 0	// end of table
 	];
 
 
 	this.bitimagemap = [
 		"midiin", 1, 
+		"midiin-v", 1, 
+		"midicc", 1, 
+		"midicc-v", 1, 
+		"midicv", 1, 
+		"midicv-v", 1, 
+		"midiin-l", 0, 
+		"midiin-t", 0, 
+		"midiout-r", 0, 
+		"midiout-b", 0, 
 		null, null
 	];
 
@@ -173,6 +187,37 @@ function kit_midi( )
 	];
 
 	
+	this.addCtrl = function( bit)
+	{	let i=0;
+		let ct = null;
+		let name = bit.name;
+
+		for(i=0; this.ctrltab[i] != null; i += this.ctrltab[i+1]){
+			if( this.ctrltab[i] == name){
+				// found control
+				if( this.ctrltab[i+2] == 3){		// midin
+					ct = new midiInBit( bit);
+					bit.ctrl = ct;
+					ct.setData();
+					return ct;
+				}else if( this.ctrltab[i+2] == 4){
+					// note filter
+					ct = new midiCVBit( bit);
+					bit.ctrl = ct;
+					ct.setData();
+					return ct;
+				}else if( this.ctrltab[i+2] == 5){
+					// Control Cond filter
+					ct = new midiCCBit( bit);
+					bit.ctrl = ct;
+					ct.setData();
+					return ct;
+				}
+			}
+		}
+	}
+
+
 
 
 	this.getdomain = function()

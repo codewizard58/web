@@ -184,22 +184,29 @@
     }
   ?>
 
-    <div style="display:none;">
-      <img src="background.png" id="background" />
-      <img src="up.png" id="up" />
-      <img src="down.png" id="down" />
-  </div>
-
   <div>
+    <input type="button" id="abouttab" value="About" onclick="UIshowabout();" />
+    <input type="button" id="progtab" value="Prog" onclick="UIshowprog();" style="background-Color: green;color: white;"/>
+    <input type="button" id="playtab" value="Play" onclick="UIshowplay();" />
 
-    <?php
-    if( is_file("bodytext.php") ){
-      echo ("<div id='bodydiv' >\n");
-      include "bodytext.php";
-      echo("</div>\n");
-    }
+    <div id="aboutdiv" style="display:none;" >
+
+      <?php
+      if( is_file("bodytext.php") ){
+        echo ("<div id='bodydiv' >\n");
+        include "bodytext.php";
+        echo("</div>\n");
+      }
+      ?>
+      
+      <?php
+      if( is_file("footer.php") ){
+        echo ("<div id='footerdiv' >\n");
+        include "footer.php";
+        echo ("</div>\n");
+      }
     ?>
-    
+    </div>
     <?php
     echo "<script type='text/javascript'>\n";
     echo "var initdataonLoad= [\n";
@@ -223,83 +230,83 @@
     
     echo "</script>\n";
     ?>
-    <div >
+    <div id="progdiv" >
       <table>
         <tr>
           <td valign="top">
-                <div id="canvasbox">
-                  <canvas width ="800" height="600" tabindex="1" id="canvas">
-                  </canvas>
-                </div>
-              </td>
-              <td valign="top">
-                <div style="padding:20px;">
-                  <span class="box" style="padding:10px;border-color:green;">
-                    <input type="button" id="loadbutton" value="Load" onclick="UIdoLoad()"></input>
-                    <input type="button" id="savebutton" value="Save" onclick="UIdoSave()"></input>
-                    <input type="button" value="New" onclick="UIdoNew()"></input>
-                    <input type="button" value="Reload" onclick="UIdoReload()"></input>
-                  </span>
-                </div>
-                <table>
-                  <tr>
-                    <td colspan="2">
-                      <div id="bitprops">
-                        <form id="bitform">
-                        </form>
-                      </div>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td colspan="3" id="showbittype" >Basic/Power</td>
-                  </tr>
-                  <tr>
-                    <td valign="top">
-                        <div id="addbitdiv" style="width:100px;border-color:grey; border-width:2px; border-style:solid;">
-                          Select bit type to populate list then click to add.
-                        </div>
-                        <p>&nbsp;</p>
-                    </td>
-                    <td valign="top">
-                      <div  >
-                        <div class="power" style="width:75px;height:25px;border-color:blue; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchoosePower();"> Power </div>
-                        <div class="input" style="width:75px;height:25px;border-color:purple; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseInput();"> Input </div>
-                        <div class="output" style="width:75px;height:25px;border-color:green; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseOutput();"> Output </div>
-                        <div class="wire" style="width:75px;height:25px;border-color:orange; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseWire();"> Wire </div>
-                        <div class="action" style="width:75px;height:25px;border-color:red; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseAction();"> Action </div>
-                        <div class="logic" style="width:75px;height:25px;border-color:black; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseLogic();"> Logic </div>
-                      </div>
-                      <div style="padding:5px;" id="programdiv">
-                        <div class="box" style="border-color:green;" id="program"></div>
-                      </div>
-                      <div style="padding:5px;" id="codediv">
-                        <div class="box" style="border-color:blue;" id="code">
-                          Code display in hex
-                        </div>
-                       </div>
-                    </td>
-                    <?php if( is_dir("kits")){
-                        echo('<td valign="top">');
-                        $dir = new DirectoryIterator("kits");
-                        // show Basic first
-                        echo('<div  style="width:75px;height:25px;border-color:green; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseKit(\''."Basic".'\');"> Kit '."Basic"."</div>\n");
-                        foreach ($dir as $fileinfo) {
-                          if (!$fileinfo->isDot()) {
-                            echo("<!-- filename=".$fileinfo->getPathname()." -->\n");
-                            $xid = explode(".", $fileinfo->getFilename());
-                            $kid = explode("_", $xid[0]);
-                            if( $kid[1] != "Basic"){
-                              echo('<div  style="width:75px;height:25px;border-color:green; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseKit(\''.$kid[1].'\');"> Kit '.$kid[1]."</div>\n");
-                            }
-                          }
+            <div id="canvasbox">
+              <canvas width ="800" height="600" tabindex="1" id="canvas">
+              </canvas>
+            </div>
+          </td>
+          <td valign="top">
+            <div style="padding:20px;">
+              <span class="box" style="padding:10px;border-color:green;">
+                <input type="button" id="loadbutton" value="Load" onclick="UIdoLoad()"></input>
+                <input type="button" id="savebutton" value="Save" onclick="UIdoSave()"></input>
+                <input type="button" value="New" onclick="UIdoNew()"></input>
+                <input type="button" value="Reload" onclick="UIdoReload()"></input>
+              </span>
+            </div>
+            <table>
+              <tr>
+                <td colspan="2">
+                  <div id="bitprops">
+                    <form id="bitform">
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td colspan="3" id="showbittype" >Basic/Power</td>
+              </tr>
+              <tr>
+                <td valign="top">
+                    <div id="addbitdiv" style="width:100px;border-color:grey; border-width:2px; border-style:solid;">
+                      Select bit type to populate list then click to add.
+                    </div>
+                    <p>&nbsp;</p>
+                </td>
+                <td valign="top">
+                  <div  >
+                    <div class="power" style="width:75px;height:25px;border-color:blue; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchoosePower();"> Power </div>
+                    <div class="input" style="width:75px;height:25px;border-color:purple; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseInput();"> Input </div>
+                    <div class="output" style="width:75px;height:25px;border-color:green; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseOutput();"> Output </div>
+                    <div class="wire" style="width:75px;height:25px;border-color:orange; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseWire();"> Wire </div>
+                    <div class="action" style="width:75px;height:25px;border-color:red; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseAction();"> Action </div>
+                    <div class="logic" style="width:75px;height:25px;border-color:black; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseLogic();"> Logic </div>
+                  </div>
+                  <div style="padding:5px;" id="programdiv">
+                    <div class="box" style="border-color:green;" id="program"></div>
+                  </div>
+                  <div style="padding:5px;" id="codediv">
+                    <div class="box" style="border-color:blue;" id="code">
+                      Code display in hex
+                    </div>
+                    </div>
+                </td>
+                <?php if( is_dir("kits")){
+                    echo('<td valign="top">');
+                    $dir = new DirectoryIterator("kits");
+                    // show Basic first
+                    echo('<div  style="width:75px;height:25px;border-color:green; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseKit(\''."Basic".'\');"> Kit '."Basic"."</div>\n");
+                    foreach ($dir as $fileinfo) {
+                      if (!$fileinfo->isDot()) {
+                        echo("<!-- filename=".$fileinfo->getPathname()." -->\n");
+                        $xid = explode(".", $fileinfo->getFilename());
+                        $kid = explode("_", $xid[0]);
+                        if( $kid[1] != "Basic"){
+                          echo('<div  style="width:75px;height:25px;border-color:green; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseKit(\''.$kid[1].'\');"> Kit '.$kid[1]."</div>\n");
                         }
-                        echo('</td>');
                       }
-                    ?>
-                  </tr>
-                </table>
-              </td>
-            </tr>
+                    }
+                    echo('</td>');
+                  }
+                ?>
+              </tr>
+            </table>
+          </td>
+        </tr>
       </table>
       <hr />
       <div id="options">
@@ -310,21 +317,37 @@
           <span>Show Code:</span>
           <input type="checkbox" id="showcode" onchange="UIdoShowCode()" checked="checked"/>
       </div>
+    </div> <!-- end of progdiv -->
+    <div id="playdiv" style="display:none;">
+      <p>Play area</p>
+      <table>
+          <tr>
+            <td valign="top">
+              <div id="playbox">
+                  <canvas width ="800" height="600" tabindex="2" id="playcanvas">
+                  </canvas>
+                </div>
+            </td>
+          </tr>
+      </table>
     </div>
     <div id="logger" class="box" style="padding:10px;border-color:blue;">
         Version 1.1
     </div>
-    <input type="button" value="Trace" onclick="UIsettrace();" ></input>
-    <div id="debugdiv">Debug messages</div>
+    <div id="debugdiv">
+      <input type="button" value="Debug" onclick="UIsettrace();" ></input>
+      <div id="debugmsg">Debug messages<br />
+      </div>
+    </div>
     <form id="saveform" method="post" action="softbitslive.php">
       <textarea id="savedata" name="savedata" style="display:none"></textarea>
     </form>
-    <?php
-    if( is_file("footer.php") ){
-      echo ("<div id='footerdiv' >\n");
-      include "footer.php";
-      echo ("</div>\n");
-    }
-?>
+  </div>
+  <div style="display:none;">
+      <img src="background.png" id="background" />
+      <img src="up.png" id="up" />
+      <img src="down.png" id="down" />
+  </div>
+
   </body>
 </html>

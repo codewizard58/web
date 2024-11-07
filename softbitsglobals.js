@@ -191,158 +191,6 @@ var powerColors = [
  ];
 
 
-// domaintab is a bit map for each bit.
-// bit 0 (1) is arduino
-// bit 1 (2) is web
-// bit 2 (4) 
-
- var domaintab = [
- 3,		// 0 power on
- 3,		// 1 power off
- 1,		// 2 input a0
- 1,		// 3 input a1 
- 1,		// 4 input d1
-
- 1,		// 5
- 1, 
- 1, 
- 1,		// 8
- 1,		// 9
-
- 1,		// 10  input ax
- 1,		// 11  output ax 
- 3,		// 12
- 3,		// 13 a invert	
- 2,		// 14 dimmer
- 2,		// 15 setvalue
-
- 3,		// 16 and	
- 3,		// 17 or
- 3,		// 18 invert
- 3,		// 19 nand
- 3,		// 20 nor
-
- 1,		// 21 osc squelch
- 1,		// 22 input_midi
- 1,		// 23 midi gate
- 1,		// 24 midi cc
- 1,		// 25 midi cv
- 
- 1, 
- 1,
- 1, 
- 1, 
- 1, 
- 
- 1,		// 31 env_attack
- 1,		// 32 env_decay
- 1,		// 33 env_sustain
- 1,		// 34 env_release
- 1,		// 35 env value
- 
- 3,		// 36 plus
- 3,		// 37 minus
- 3,		// 38 times
- 3,		// 39 divide
- 1,		// 40 input_dx
- 
- 3,		// 41 a_diff
- 3,		// 42 xor
- 3,		// 43 compare
- 3,		// 44 latch
- 3,
- 
- 3,
- 3,
- 3,
- 3,
- 3,
- 
- 3,		// 51
- 3,
- 3,
- 3,
- 3,
- 
- 3,
- 3,
- 3,
- 3,
- 3,
- 
- 3,		// 61 
- 3,
- 3,
- 3,
- 3,
- 
- 3,
- 3,
- 3,
- 3,
- 3,
- 
- 3,		// 71 
- 3,
- 3,
- 3,
- 3,
- 
- 3,
- 3,
- 3,
- 3,
- 3,
- 
- 3,		// 81 
- 3,
- 3,
- 3,
- 3,
- 
- 3,
- 3,
- 3,
- 3,
- 3,
- 
- 3,		// 91 
- 3,
- 3,
- 3,
- 3,
- 
- 3,
- 3,
- 3,
- 3,
- 3,
- 
- 2,		// 101 bargraph
- 2,		//	   bargraph2
- 2,		// piano
- 2,		// output note
- 2,		// output cc
-
- 1,		// 106 arduino
- 2,		// 107 0x6b wire send
- 2,		// 108 0x6c wire recv
- 3,		// 109 wire
- 3,		// 110 corner
-
- 2,		// 111 a counter
- 2,		// 112 
- 2,		// 113
- 2,		// 114
- 2,		// 115
-
- 3,		// 116 
- 3,
- 3,
- 3,
- 3,
- ];
-
  ////////////////////////// base64 conversions
  ///
 
@@ -522,13 +370,14 @@ function outBitValues()
 
 
 function UIdoSave()
-{	var msg = "";
-	var bl = sketch.blist;
-	var bit;
+{	let msg = "";
+	let bl = sketch.blist;
+	let bit;
 	var bt;
 	var idx;
 	var i;
-	var msg2="";
+	let msg2="";
+	let slen = 4;
 
 	// number the list
 	idx = 1;
@@ -541,10 +390,11 @@ function UIdoSave()
 	bl = sketch.blist;
 	while(bl != null){
 		bit = bl.bit;
+		slen = bit.snaps.length;
 		bt = bit.btype & 7;
 		idx = bit.btype - bt;
 		msg += "'bit',"+bl.num+",'"+bit.name+"',"+bit.btype+','+bit.x+","+bit.y+",";
-		for(i=0; i < 4; i++){
+		for(i=0; i < slen; i++){
 			if( bit.snaps[i] != null && bit.snaps[i].paired != null){
 				msg += bit.snaps[i].paired.bit.carrier.num;
 			}else {
@@ -969,7 +819,6 @@ postkitload.prototype = Object.create( scheduler.prototype);
 
 function postkitload(name)
 {
-	//	timerlock++;
 	scheduler.call(this);
 
 	this.name = name;
@@ -1001,7 +850,6 @@ function postkitload(name)
 		}
 	}
 
-//	timerlock--;
 }
 
 

@@ -26,7 +26,11 @@ function kit_basic()
 	
 		"split",   "wire_split", 100, 50,	"wirein",  "wireout" ,null,  "wireout",	// 2	
 				0,	0, "Wire Split",	"Split one output into two",	0x3033, "Wire", 0, 1,		// 2	"split",   "wire_split"
-		"default", "a_invert", 100, 50,		"actionin", "actionout" , null,  null,	// 3
+		"patchout",   "patch_out", 50, 50,	null,  "wireout" ,null,  null,	// 2	
+				0,	0, "Patch Out",	"Patch out",	0x0010, "Wire", 0, 1,		// 2	patch cable
+		"patchin",   "patch_in", 50, 50,	"wirein",  null ,null,  null,	// 2	
+				0,	0, "Patch In",	"Patch in",		0x0001, "Wire", 0, 1,		// 2	patch cable
+		"invert", "a_invert", 50, 50,		"actionin", "actionout" , null,  null,	// 3
 				0,	0, "Analog Invert",	"Turn value upside down",		 0x0011, "Action", 0, 1,		// 3
 		"control", "a_dimmer", 100, 50,		"actionin", "actionout" , null,  null,	// 4
 				0,	1, "Dimmer",		"",								 0x0011, "Action", 0, 1,		// 4
@@ -54,7 +58,7 @@ function kit_basic()
 				0,	0, "Divide left by top/bottom",				"", 0x0111, "Action", 0, 1,		// 22
 
 		"default", "a_diff", 100, 50,		"actionin", "actionout" ,"actionin",  null,		// 15
-				0,	0, "",				"", 0x3, "Action", 0, 1,		// 22
+				0,	0, "",				"", 0x0111, "Action", 0, 1,		// 22
 		"default", "logic_xor", 100, 50,	"logicin", "logicout" ,"logicin",  null,		// 16
 				0,	0, "Xor",				"", 0x0111, "Logic", 0, 1,		// 22
 		"default", "l_compare", 100, 50,    "actionin", "logicout" ,"actionin",  null,		// 17
@@ -67,7 +71,7 @@ function kit_basic()
 		"control", "bargraph2", 100, 50,	"outputin", "outputout" ,"outputin",  null,	// 20
 				0,	1, "Dual Bargraph",				"", 0x111,  "Output", 0, 1,		// 22
 		"control", "pianox", 100, 50,		"blankin",  "inputout" , null,  "logicout",	// 21
-				0,	1, "Pianox",			"", 0x2, "Notused", 0, 1,		// 22
+				0,	1, "Pianox",			"", 0x0010, "Notused", 0, 1,		// 22
 
 //		"defaulta", "Arduino Kit", 100, 50,  	null, null , null   ,null,              // 22
 //				0,	1, "Arduino Kit",	"Loads the Arduino Kit", 0x3, "Kits", 0, 1,		// 22
@@ -229,10 +233,10 @@ this.kitctrlcodes = [
 		"actionin-l",	0,
 		"actionout-r",	0,
 		"actionout-b",	0,
-		"wirein-l",		2,
-		"wirein-t",		2,
-		"wireout-r",	2,
-		"wireout-b",	2,
+		"wirein-l",		0,
+		"wirein-t",		0,
+		"wireout-r",	0,
+		"wireout-b",	0,
 		"split",		1,
 		"split-v",		1,
 		"logicin-l",	0,
@@ -272,6 +276,12 @@ this.kitctrlcodes = [
 
 		"knob", 		2,
 		"knob-v", 		2,
+		"invert", 		1,
+		"invert-v",		1,
+		"patchin", 		1,
+		"patchin-v",	1,
+		"patchout",		1,
+		"patchout-v",	1,
 		"arduino",		1,
 		"imagetile",	1,
 		null, null
@@ -323,7 +333,7 @@ function MidiKit( abit)
 	}
 
 	this.doSave = function()
-	{	var msg = "2,'Basic',";
+	{	var msg = "2,'Midi',";
 
 		return msg;
 	}

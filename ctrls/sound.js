@@ -39,7 +39,7 @@ function setupnotetab()
 	// A5 == 67, this.a440;
 	let semi = Math.pow(2, 1/12);
 
-	debugmsg("SEMI="+semi);
+//	debugmsg("SEMI="+semi);
 
 	notetab = new Array(notetabsize);
 	let x = 440 / 8;
@@ -52,16 +52,6 @@ function setupnotetab()
 		x = x/semi;
 		notetab[i] = x;
 	}
-	debugmsg("notetab C0 "+notetab[C4-48]);
-	debugmsg("notetab A1 "+notetab[A5-48]);
-	debugmsg("notetab C1 "+notetab[C4-36]);
-	debugmsg("notetab A2 "+notetab[A5-36]);
-	debugmsg("notetab C2 "+notetab[C4-24]);
-	debugmsg("notetab A3 "+notetab[A5-24]);
-	debugmsg("notetab C3 "+notetab[C4-12]);
-	debugmsg("notetab A4 "+notetab[A5-12]);
-	debugmsg("notetab C4 "+notetab[C4]);
-	debugmsg("notetab A5 "+notetab[A5]);
 
 }
 
@@ -94,25 +84,17 @@ function UIprognext()
 }
 
 // just use the y value for now.
-function rotaryvalue(x, y, init){
-	let mag = x*x + y*y;
-	let val = init;
+function rotaryvalue(x, y, init)
+{
+	let val = y+y;
 
-	if( mag > 100){
-		if( y > 10){
-			val = y - 10;
-		}else if( y < -10){
-			val = y + 10;
-		}
-		val += 128;
-		if( val > 255){
-			val = 255;
-		}else if(val < 0){
-			val = 0;
-		}
-		val = 255 - val;		// prefer up screen is inc value;
+	val = Math.floor(init - val);
+	if( val > 255){
+		val = 255;
+	}else if(val < 0){
+		val = 0;
 	}
-
+//	debugmsg("ROT "+val+" "+y+" "+init);
 	return val;
 }
 
@@ -134,6 +116,7 @@ function oscBit(bit)
 	this.wave = 0;		// 0 == saw
 	this.range = 12; 	// bend range
 	this.a440 = 440;
+	this.ival = 0;
 
     let imagename = "osc";
 	this.bitimg =this.bit.findImage(imagename);
@@ -148,7 +131,7 @@ function oscBit(bit)
 
 		if( bt == 0){
 			x = x - 39;
-			y = y - 10;
+			y = y - 15;
 		}else {
 			x = x - 39;
 			y = y - 10;
@@ -157,6 +140,8 @@ function oscBit(bit)
 		if( x > 0 && x < 20 && y > 0 && y < 20 ){
 			this.initx = mx;
 			this.inity = my;
+			this.ival = this.nfreq;
+//			debugmsg("OSC HT "+this.ival);
 			return this;
 		}
 
@@ -356,19 +341,16 @@ function oscBit(bit)
 	this.onMove = function(x, y)
 	{	let vx = x - this.initx;
 		let vy = y - this.inity;
-		let mag = vx *vx + vy * vy;
-		let val = this.nfreq;
 
-		if( mag > 100 ){
-			this.nfreq = rotaryvalue(vx, vy, val);
-			this.setoscfreq(0);
-		}
+		this.nfreq = rotaryvalue(vx, vy, this.ival);
+		this.setoscfreq(0);
 
 	}
 
 	this.dock = function(from)
-	{
-		debugmsg("Connect "+from.name+" to osc");
+	{	let msg="";
+		
+		debugmsg("Connect "+from.name+" to osc"+msg);
 	}
 
 	this.undock = function(from)
@@ -426,8 +408,9 @@ function speakerBit(bit)
 	this.val = 0;
 	this.audioin = null;
 	roundknobimg =this.bit.findImage("roundknob");
-	this.mix = 1.0;
+	this.mix = 0.2;
 	this.deg = Math.PI/180;
+	this.ival = 0;
 
 	this.HitTest = function(mx, my)
 	{	let b = this.bit;
@@ -436,8 +419,8 @@ function speakerBit(bit)
 		let bt = b.btype & 7;	// 0 = horiz, 1 == vert
 		
 		if( bt == 0){
-			x = x - 5;
-			y = y - 35;
+			x = x;
+			y = y - 30;
 		}else{
 			x = x - 10;
 			y = y - 10;
@@ -446,6 +429,8 @@ function speakerBit(bit)
 		if( x > 0 && x < 20 && y > 0 && y < 20 ){
 			this.initx = mx;
 			this.inity = my;
+			this.ival = this.mix * 255;
+			debugmsg("SPK HT "+this.ival);
 			return this;
 		}
 		debugmsg("SPK HT "+x+" "+y);
@@ -523,6 +508,7 @@ function speakerBit(bit)
 
 	}
 
+	// speaker
 	this.setData = function()
 	{	let msg="";
 		let val = this.mix*255;
@@ -542,6 +528,7 @@ function speakerBit(bit)
 	
 	}
 
+	// speaker
 	this.getData = function()
 	{	let i = 0;
 		let f = null;
@@ -561,6 +548,7 @@ function speakerBit(bit)
 		}
 	}
 
+	// speaker
 	this.onMove = function(x, y)
 	{	let vx = x - this.initx;
 		let vy = y - this.inity;
@@ -570,7 +558,7 @@ function speakerBit(bit)
 		let f = null;
 
 		if( mag > 100 ){
-			val = rotaryvalue(vx, vy, val);
+			val = rotaryvalue(vx, vy, this.ival);
 			this.mix = val / 255;
 			this.setValue(val, 0);
 			if( bitform != null){
@@ -727,6 +715,7 @@ function seqBit(bit)
 	this.stepinc = 1;
 	this.prog = 0;
 	this.progprev = 0;
+	this.ival = 0;
 
 	let imagename = "seq";
 	this.bitimg =this.bit.findImage(imagename);
@@ -748,12 +737,13 @@ function seqBit(bit)
 			if( i == 4 || i == 8 || i == 12){
 				y -= 50;
 				x += 160;
-				debugmsg("hit "+x+" "+y);
 			}
 			if( x > (i * 40) && x < i*40+20 && y > 0 && y < 20 ){
 				this.selstep = i+1;
 				this.initx = mx;
 				this.inity = my;
+				this.ival = this.values[this.selstep-1];
+				debugmsg("SEQ HT "+this.ival);
 				return this;
 			}
 		}
@@ -925,7 +915,7 @@ function seqBit(bit)
 		let mag = vx *vx + vy * vy;
 
 		if( mag > 100 && this.selstep > 0){
-			this.values[this.selstep-1] = rotaryvalue(vx, vy, this.values[this.selstep-1]);
+			this.values[this.selstep-1] = rotaryvalue(vx, vy, this.ival);
 		}
 
 	}

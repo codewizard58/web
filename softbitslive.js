@@ -16,6 +16,7 @@ var trace = 0;
 // 10/27/24
 var activedomains = 1;		// which domains are active  1 == basic
 var hidetouch = true;		
+var curtab = "progtab";
 
 const POWERON=0;
 const AINVERT = 13;
@@ -30,31 +31,76 @@ const SPEAKER = 121;
 const FILTER = 122;
 const SEQUENCER = 123;
 
+var divlist = [
+	"headerdiv",
+	"logger",
+	"progdiv",
+	"playdiv",
+	"aboutdiv"
+];
+
 function UIhidetouch()
+{
+	UIshowdiv("progdiv");
+}
+
+function UIshowabout()
+{
+	curtab = "abouttab";
+	UIshowtab(curtab);
+	UIshowdiv("aboutdiv");
+}
+
+function UIshowprog()
+{
+	curtab = "progtab";
+	UIshowtab(curtab);
+	UIshowdiv("progdiv");
+}
+
+function UIshowplay()
+{
+	curtab = "playtab"
+	UIshowtab(curtab);
+	UIshowdiv("playdiv");
+}
+
+var tablist = [ "abouttab", "progtab", "playtab"];
+
+function UIshowtab(tab)
+{	let f = null;
+	let i = 0;
+	for(i=0; i < tablist.length; i++){
+		f = document.getElementById(tablist[i]);
+		if( f != null){
+			if( tab == tablist[i]){
+				f.style.backgroundColor = "green";
+				f.style.color = "white";
+			}else {
+				f.style.backgroundColor = "white";
+				f.style.color = "black";
+			}
+		}
+	}
+}
+
+function UIshowdiv(div)
 {	let f = null;
 	hidetouch = false;
+	let i = 0;
 
-	f = document.getElementById("headerdiv");
-	if( f != null){
-		f.style.display = "none";
+	for(i=0; i < divlist.length; i++){
+		f = document.getElementById(divlist[i]);
+		if( divlist[i] == div){
+			if( f != null){
+				f.style.display = "block";
+			}
+		}else {
+			if( f != null){
+				f.style.display = "none";
+			}
+		}
 	}
-	f = document.getElementById("bodydiv");
-	if( f != null){
-		f.style.display = "none";
-	}
-	f = document.getElementById("logger");
-	if( f != null){
-		f.style.display = "none";
-	}
-	f = document.getElementById("debugdiv");
-	if( f != null){
-		f.style.display = "none";
-	}
-	f = document.getElementById("footerdiv");
-	if( f != null){
-		f.style.display = "none";
-	}
-
 }
 
 function UIsettrace()
@@ -73,7 +119,7 @@ var debugcnt = 0;
 function debugmsg(msg)
 {
 	if(debug == null){
-		debug = document.getElementById("debugdiv");
+		debug = document.getElementById("debugmsg");
 	}
 	if( debug != null){
 		debug.innerHTML += msg+"<br />";
@@ -88,7 +134,7 @@ function debugmsg(msg)
 function debugreset()
 {
 	if(debug == null){
-		debug = document.getElementById("debugdiv");
+		debug = document.getElementById("debugmsg");
 	}
 	if( debug != null){
 		debug.innerHTML = "";
@@ -559,53 +605,33 @@ function Program()
 
 // program getNetDomain( bit)
 	this.getNetDomain = function( bit)
-	{	var idx = bit.bcode;
+	{	let idx = bit.bcode;
 		var i;
 		var s, p;
 		var dom;
-		var pidx;
+		let pidx;
+		let slen = bit.snaps.length;
 
 		// look for flag value to see if we have been here before...
 		if( bit.domain != 0 ){
 			return bit.domain;
 		}
-		message("getnetdomain");
-		return 0;
+//		message("getnetdomain");
+//		return 0;
 
-		// wiresend and wire recv are special
-		if( idx == 0x6b ){
-			bit.domain = 2;
-			return 2;
-		}
-		if( idx == 0x6c){
-			bit.domain = 2;
-			return 2;
-		}
-		
-		if( domaintab[idx] != 3){
-			return domaintab[idx];
-		}
-
-		
 		bit.domain = 99;		// flag that we have been here.
-		for(i=0; i < 4 ; i++){
+		for(i=0; i < slen ; i++){
 			s = bit.snaps[i];
 			if( s != null){
 				p = s.paired;
 				if( p != null){
 					pidx = p.bit.bcode;
-					if( i == 1 || i == 3){	// outputs
-						if( pidx == 0x6c){
-							return 1;		// if output connected to wire_recv, we are arduino
-						}
+					if( i == 1 || i == 3 || 5 || 7){	// outputs
 						dom = this.getNetDomain( p.bit);
 						if( dom != 0 && dom != 99){
 							return dom;
 						}
 					}else {				// inputs
-						if( pidx == 0x6b ){
-							return 1;		// if input is connected to wire send, we are arduino
-						}
 						dom = this.getNetDomain( p.bit);
 						if( dom != 0 && dom != 99){
 							return dom;
@@ -619,10 +645,11 @@ function Program()
 
 // program setNetDomain(bit dom)
 	this.setNetDomain = function (bit, dom)
-	{	var idx = bit.bcode;
+	{	let idx = bit.bcode;
 		var i;
 		var s, p;
 		var pidx;
+		let slen = bit.snaps.length;
 
 		if( bit.domain == 0 || bit.domain == 99){
 			bit.domain = dom;
@@ -634,25 +661,21 @@ function Program()
 
 		// message("Setnetdomain");
 
-		for(i=0; i < 4 ; i++){
+		for(i=0; i < slen ; i++){
 			s = bit.snaps[i];
 			if( s != null){
 				p = s.paired;
 				if( p != null){
 					pidx = p.bit.bcode;
-					if( i == 0 || i == 2){	// check inputs
-						if( pidx != 0x6b ){ // if input is special then do nothing
-							if( p.bit.domain == 0 || p.bit.domain == 99){
-								this.setNetDomain( p.bit, dom);
-							}else if(  p.bit.domain != dom){
-								message("Domain missmatch input "+idx);
-							}
+					if( i == 0 || i == 2 || i == 4 || i == 6){	// check inputs
+						if( p.bit.domain == 0 || p.bit.domain == 99){
+							this.setNetDomain( p.bit, dom);
+						}else if(  p.bit.domain != dom){
+							message("Domain missmatch input "+idx);
 						}
 					}else {					// check outputs
-						if( pidx != 0x6c){
-							if( p.bit.domain == 0 || p.bit.domain == 99){
-								this.setNetDomain( p.bit, dom);
-							}
+						if( p.bit.domain == 0 || p.bit.domain == 99){
+							this.setNetDomain( p.bit, dom);
 						}
 					}
 
@@ -664,10 +687,10 @@ function Program()
 // program markDomain
 //
 	this.markDomain = function(blist)
-	{	var bl;
-		var bit;
-		var netdomain;
-		var idx;
+	{	let bl;
+		let bit;
+		let netdomain;
+		let idx;
 
 		// set all domain info to 0
 		bl = blist;
@@ -927,16 +950,16 @@ function Program()
 	}
 
 	this.drawProgram = function( )
-	{	var pon;
-		var b;
-		var tlnxt;
-		var msg="";
-		var bit;
-		var whead, wtail;
-		var ahead, atail;
-		var idx;
-		var progbox;
-		var progdiv;
+	{	let pon;
+		let b;
+		let tlnxt;
+		let msg="";
+		let bit;
+		let whead, wtail;
+		let ahead, atail;
+		let idx;
+		let progbox;
+		let progdiv;
 
 		progbox = document.getElementById("program");
 		progdiv = document.getElementById("programdiv");
@@ -968,7 +991,7 @@ function Program()
 		}
 
 		// calculate the domain of the linked bits.
-		this.markDomain( sketch.blist);
+		// this.markDomain( sketch.blist);
 
 		// find power on
 		b = sketch.blist;
@@ -986,9 +1009,7 @@ function Program()
 		// PASS 2
 		b = sketch.blist;
 		while(b != null){
-			var bit = b.bit;
-			var bt = bit.btype & 7;
-			var idx = bit.btype - bt;
+			bit = b.bit;
 			
 			if( bit.code == 0){
 				// a power_on
@@ -1269,7 +1290,7 @@ function Program()
 	this.setchaindata = function(arg, nchains, data)
 	{	if( arg > 0 && arg < nchains){
 			this.chains[ arg ].startvalue = data;
-		}else {
+		}else if( arg >= nchains){
 			debugmsg("setchaindata "+arg+" not valid "+nchains);
 		}
 }
@@ -1931,7 +1952,7 @@ function Snap(bit, side, x, srx, y, sry, w, h)
 
 		reLabel(sketch.blist);
 
-		this.bit.setDomain();
+		// this.bit.setDomain();
 
 		if(p != null &&  p.bit.net == b.net ){
 			// still connected via another route
@@ -1989,12 +2010,8 @@ function Snap(bit, side, x, srx, y, sry, w, h)
 		let j;
 		let oside;
 		let dom, odom;
-		let repel = 0;
 
 		dom = this.domain;
-		if( dom == 0){
-			dom = this.bit.domain;
-		}
 
 		repel = 0;
 
@@ -2028,9 +2045,6 @@ function Snap(bit, side, x, srx, y, sry, w, h)
 						}else {
 							// check domain
 							odom = res.domain;
-							if( odom == 0){
-								odom = res.bit.domain;
-							}
 							if(  (dom & odom) == 0){
 								repel = 1;		// do notshare a common domain.
 							}
@@ -2104,6 +2118,29 @@ function Snap(bit, side, x, srx, y, sry, w, h)
 }
 
 
+// bit setDomain
+function setDomain( bit)
+{	let msg="";
+	let i=0;
+	let n = 0;
+	let slen = bit.snaps.length;
+
+	n = bit.domain;
+
+	for(i=0; i < slen; i++){
+		if( bit.snaps[i] != null){
+			bit.snaps[i].domain = (n & 0xf);
+			msg += bit.snaps[i].domain;
+		}else {
+			msg += "x";
+		}
+		n = Math.floor(n / 16);
+	}
+	debugmsg("SETDOM "+bit.name+" "+n+" "+msg);
+
+}
+
+
 ///////////////////////////////// BIT ///////////////////////////////////////
 ///////////////////////////////// BIT ///////////////////////////////////////
 ///////////////////////////////// BIT ///////////////////////////////////////
@@ -2117,6 +2154,7 @@ function Bit( btype, x, y, w, h, k) {
 	this.btype = btype;
 	this.bcode = Math.floor( btype / 8);
 	this.snaps = [ null, null, null, null ];
+	this.snapnames = [null, null, null, null];
 	this.ctrl = null;
 	this.code = this.bcode;		// instruction code. used to be based on bitname index.
 	this.mflag = 0;				// mark for move.
@@ -2132,7 +2170,6 @@ function Bit( btype, x, y, w, h, k) {
 	this.addr = 0;				// offset of this bit in the codebyte array. 
 	this.bitimg = 0;
 	this.bitname = "";
-	this.snapnames = [null, null, null, null];
 	this.kit = k;
 	this.name = "unset";
 
@@ -2159,8 +2196,9 @@ function Bit( btype, x, y, w, h, k) {
 		let sname = "";
 		let btx = this.btype & 7;
 		let bidx = this.btype - btx;
+		let slen = 4;
 
-		for(sn=0; sn < 4; sn++){
+		for(sn=0; sn < slen; sn++){
 			sname = this.kit.bitnames[bidx+sn+4];
 			if(sname != null){
 				this.snapnames[sn] = this.findImage(sname+this.suffix[sn]);
@@ -2202,7 +2240,7 @@ function Bit( btype, x, y, w, h, k) {
 		sh = 15;
 	}
 
-	for(var i = 0; i < 4; i++){
+	for(var i = 0; i < this.snaps.length; i++){
 		snapname = this.snapnames[ i];
 		if( snapname != null){
 			if( i < 2){
@@ -2214,6 +2252,8 @@ function Bit( btype, x, y, w, h, k) {
 			}
 		}
 	}
+	setDomain(this);
+
 	debugmsg("Bit: "+ this.kit.name + " idx "+ idx + " name "+this.name+" img "+this.bitimg+" "+this.name+" domain "+this.domain.toString(16));
 
 // bit addctrl
@@ -2229,7 +2269,7 @@ function Bit( btype, x, y, w, h, k) {
 	}
 
 
-	if( this.kit.bitnames[bidx] == "control"){
+	if( this.kit.bitnames[bidx] == "control" || this.kit.bitnames[bidx+9] == 1){
 		this.addCtrl( bidx );
 	}
 
@@ -2299,14 +2339,15 @@ function Bit( btype, x, y, w, h, k) {
 
 	// is the coordinate x,y in this bit?
 	this.HitTest = function(x, y)
-	{	var res = null;
-		var i;
+	{	let res = null;
+		let i;
 
 		if( x >= this.x && x <= this.x+this.w &&
 			y >= this.y && y <= this.y+this.h){
 			res = this;
 		}
-		for(i=0; res == null && i < 4; i++){
+		let slen = this.snaps.length;
+		for(i=0; res == null && i < slen; i++){
 			if(  this.snaps[i] != null){
 				res = this.snaps[i].HitTest(x, y);
 			}
@@ -2448,8 +2489,23 @@ function Bit( btype, x, y, w, h, k) {
 
 	// input / output
 	this.dock = function(partner)
-	{
-		debugmsg("Docked "+this.name+" to "+partner.name);
+	{	let i = 0;
+		let msg = "";
+
+		for(i=0; i < 4 ; i++){
+			if( this.snaps[i] != null){
+				msg += this.snaps[i].domain;
+				if( this.snaps[i].paired != null){
+					msg += "-"+this.snaps[i].paired.domain;
+				}else {
+					msg += " ";
+				}
+			}else {
+				msg += " x ";
+			}
+		}
+
+		debugmsg("Docked "+this.name+" to "+partner.name+" "+msg);
 		if( this.ctrl != null){
 			this.ctrl.dock(partner);
 		}
@@ -2656,17 +2712,8 @@ function Bit( btype, x, y, w, h, k) {
 
 // bit setDomain
 	this.setDomain = function(){
-		let i=0;
-		let n = 0;
 
-		n = this.domain;
-
-		for(i=0; i < 4; i++){
-			if( this.snaps[i] != null){
-				this.snaps[i].domain = (n & 0xf);
-			}
-			n = Math.floor(n / 16);
-		}
+		setDomain(this);
 
 	}
 
