@@ -2,6 +2,7 @@
 var roundknobimg = 0;
 var notetab = null;
 const notetabsize = 128;
+var degree = Math.PI/180;
 
 const A4 = 57;
 const B4 = 59;
@@ -55,6 +56,24 @@ function setupnotetab()
 
 }
 
+function notefreq( note ) {
+	let n = Math.floor( note);
+	let f = note - n;
+	let m;
+	let ret = 0;
+
+	if( n < 0){
+		n = 0;
+	}else if( n >= notetabsize-1){
+		n = notetabsize-2;
+	}
+	m = notetab[n];
+
+	ret = m + (notetab[n+1] - m)*f;
+	return ret;
+}
+
+
 function UIprog()
 {	let b = document.getElementById("prog");
 	let bit = bitformaction.bit;
@@ -103,7 +122,7 @@ oscBit.prototype = Object.create(control.prototype);
 
 function oscBit(bit)
 {	control.call(this, bit);
-	this.deg = Math.PI/180;
+	this.deg = degree;
 	this.bit = bit;
 	this.gain = null;
 	this.osc = null;
@@ -240,22 +259,9 @@ function oscBit(bit)
 	}
 
 
-	this.notefreq = function( note ) {
-		let n = Math.floor( note);
-		let f = note - n;
-		let m;
-		let ret = 0;
-
-		if( n < 0){
-			n = 0;
-		}else if( n >= notetabsize-1){
-			n = notetabsize-2;
-		}
-		m = notetab[n];
-
-		ret = m + (notetab[n+1] - m)*f;
-		return ret;
-//			return 440 * Math.pow(2,(note-69)/12);
+	this.notefreq = function( note ) 
+	{
+		return notefreq(note);
 	}
 
 	this.setoscfreq = function( glide)
@@ -266,9 +272,9 @@ function oscBit(bit)
 //		debugmsg("Set osc freq "+freq);
 		this.osc.frequency.cancelScheduledValues(0);
 		if( this.webkitstyle){
-			this.osc.frequency.setTargetValueAtTime( this.notefreq(freq), 0, 0.01);
+			this.osc.frequency.setTargetValueAtTime( notefreq(freq), 0, 0.01);
 		}else {
-			this.osc.frequency.setTargetAtTime( this.notefreq(freq ), 0, 0.01);
+			this.osc.frequency.setTargetAtTime( notefreq(freq ), 0, 0.01);
 		}
 	}
 
@@ -369,7 +375,7 @@ function oscBit(bit)
 
 		if( from.ctrl != null){
 			if( from.ctrl.audioin != null){
-				debugmsg("link gain to next module");
+				debugmsg("link osc gain to next module");
 				this.gain.connect( from.ctrl.audioin);
 			}
 		}
@@ -381,7 +387,7 @@ function oscBit(bit)
 		if( dom == 2){
 			if( b != null){
 				if( from.ctrl.audioin != null){
-					debugmsg("unlink gain from next module");
+					debugmsg("unlink osc gain from next module");
 					this.gain.disconnect( from.ctrl.audioin);
 				}
 			}
@@ -499,7 +505,7 @@ function speakerBit(bit)
 				}else {
 					this.gain = actx.createGain();
 				}
-				this.gain.gain.setValueAtTime( this.mix, 0.01);
+				this.gain.gain.setValueAtTime( 0, 0.01);
 				this.gain.connect( actx.destination); // debug
 			}
 
@@ -535,6 +541,10 @@ function speakerBit(bit)
 		let val = 0;
 		let t=0;
 
+		if(bitformaction != this){
+			return;
+		}
+
 		f = document.getElementById("mix");
 		if( f != null){
 			val = f.value;
@@ -552,21 +562,21 @@ function speakerBit(bit)
 	this.onMove = function(x, y)
 	{	let vx = x - this.initx;
 		let vy = y - this.inity;
-		let mag = vx *vx + vy * vy;
-		let val = this.mix*255;
+		let val = 0;
 		let b = this.bit;
 		let f = null;
 
-		if( mag > 100 ){
-			val = rotaryvalue(vx, vy, this.ival);
-			this.mix = val / 255;
-			this.setValue(val, 0);
-			if( bitform != null){
-				f = document.getElementById("mix");
-				if( f != null){
-					f.value = val;
-				}
-			}
+		val = rotaryvalue(vx, vy, this.ival);
+		this.mix = val / 255;
+		this.setValue(val, 0);
+
+		if( bitformaction != this){
+			return;
+		}
+
+		f = document.getElementById("mix");
+		if( f != null){
+			f.value = val;
 		}
 
 	}
@@ -600,30 +610,236 @@ filterBit.prototype = Object.create(control.prototype);
 
 function filterBit(bit)
 {	control.call(this, bit);
+	this.bit = bit;
+	this.filter = null;
+	this.webkitstyle = false;
+	this.freq=64;
+	this.infreq=0;
+	this.vcffreq = 60;
+	this.vcfq = 0.9;
+	this.vcfmodfreq = 0;
+	this.knobs = [25, 30, 75, 30];
+	this.values = [128, 250];
+	this.selknob = 0;
+	this.prevfreq = 0;
+	let i;
 
     let imagename = "filter";
 	this.bitimg =this.bit.findImage(imagename);
 	this.bitname = imagename;
+	roundknobimg =this.bit.findImage("roundknob");
+
+	// filter 25,30  75,30
+	this.HitTest = function(mx, my)
+	{	let b = this.bit;
+		let x = mx-b.x;
+		let y = my-b.y;
+		let i = 0;
+		let len = this.values.length;
+
+//		debugmsg("FIlter  "+x+" "+y);
+		for(i=0; i < len; i++){
+			x = mx - b.x - this.knobs[i+i]+5;
+			y = my - b.y - this.knobs[i+i+1]+5;
+//			debugmsg("FIlter HT "+x+" "+y);
+			if( x > 0 && x < 20 && y > 0 && y < 20 ){
+				this.initx = mx;
+				this.inity = my;
+				this.ival = this.values[i];
+				debugmsg("FILT HT "+i);
+				this.selknob = i+1;
+				return this;
+			}
+		}
+
+		return null;
+	}
+
 
 	this.Draw = function( )
-	{	var b = this.bit;
-		var bt;
-		var xval = b.value;		// 0 - 255
-        let filter = this.bitimg;
+	{	let b = this.bit;
+		let bt;
+		let xval = this.values[0];
+		let i = 0;
 
 		if( b == null){
 			return;
 		}
 		bt = b.btype & 7;	// 0 = horiz, 1 == vert
-//		message("Draw slider "+ xval);
 
         ctx.fillStyle = "#ffffff";
 		if( bt == 0){
-			ctx.drawImage(bitpics[ filter ], b.x, b.y);
+			ctx.drawImage(bitpics[ this.bitimg ], b.x, b.y);
+			for(i=0; i < 4; i+= 2){
+				ctx.save();
+				ctx.translate( b.x+this.knobs[i], b.y+this.knobs[i+1]);
+				ctx.rotate( (xval-120 )*degree );
+				ctx.drawImage(bitpics[roundknobimg], -10, -10);
+				ctx.restore();
+				// Q
+				xval = this.values[1];
+			}
 		}else {
-			ctx.drawImage(bitpics[ filter+1 ], b.x, b.y);
+			ctx.drawImage(bitpics[ this.bitimg+1 ], b.x, b.y);
 		}
 	}
+	//////////////////////
+	// filter
+	this.setup = function ()
+	{
+		if( notetab == null){
+			setupnotetab();
+		}
+		if( this.vcf == null){
+			// create a new node
+			if( actx != null){
+				this.vcf = actx.createBiquadFilter();
+				this.vcf.type="lowpass";
+			}
+			this.setvcf();
+
+			this.audioin = this.vcf;
+			debugmsg("Setup filter");
+		}
+	}
+
+	this.setvcf = function()
+	{	let note = notefreq(this.vcffreq);
+
+		this.vcf.frequency.cancelScheduledValues(0);
+		this.vcf.frequency.setTargetAtTime( note, 0, 0.01); 
+		this.vcf.Q.cancelScheduledValues(0);
+		this.vcf.Q.setTargetAtTime( this.vcfq, 0, 0.01); 
+
+	}
+
+	this.setValue = function(val, chan)
+	{
+		if( chan == 0){		// cutoff
+			this.vcffreq = (val+ this.values[0])/2;
+			message("F "+val);
+
+			this.setvcf();
+		}else if( chan == 1){
+			this.vcfq = (val + this.values[1])/2048;
+			this.setvcf();
+		}
+	}
+
+
+	// filter bitform
+	this.setData = function()
+	{	let msg="";
+		let val = this.values[0];
+		if( bitform != null){
+			bitform.innerHTML="";
+		}
+		bitform = document.getElementById("bitform");
+		if( bitform != null){
+			msg = "<table>";
+			msg += "<tr><th align='right'>Cutoff</th><td > <input type='text' id='freq' value='"+val+"' /></td></tr>\n";
+			msg += "<tr><th align='right'>Resonance</th><td > <input type='text' id='q' value='"+this.values[1]+"' /></td></tr>\n";
+			msg += "<tr><td>"+this.vcffreq+"</td><td>"+this.vcfq+"</td></tr>\n";
+
+			msg += "</table>\n";
+
+			bitform.innerHTML = msg;
+			bitformaction = this;
+		}
+	
+	}
+
+	// filter
+	this.getData = function()
+	{	let i = 0;
+		let f = null;
+		let val = 0;
+		let t=0;
+
+		if( bitformaction != this){
+			return;
+		}
+		f = document.getElementById("freq");
+		if( f != null){
+			val = checkRange(f.value);
+			this.values[0] = val;
+		}
+		f = document.getElementById("q");
+		if( f != null){
+			val = checkRange(f.value);
+			this.values[1] = val;
+		}
+	}
+
+	this.onMove = function(x, y)
+	{	let vx = x - this.initx;
+		let vy = y - this.inity;
+		let mag = vx *vx + vy * vy;
+		let f = null;
+
+		if( this.selknob > 0){
+			this.values[this.selknob-1] = rotaryvalue(vx, vy, this.ival);
+		}
+
+		// update bitform
+		if( bitformaction != this){
+			return;
+		}
+		if(this.selknob-1 == 0){
+			f = document.getElementById( "freq");
+		}else if(this.selknob-1 == 1){
+			f = document.getElementById("q");
+		}
+		if( f != null){
+			f.value = this.values[this.selknob-1];
+		}
+	}
+
+	this.dock = function(from)
+	{	let msg="";
+		
+		debugmsg("Connect "+from.name+" to filter"+msg);
+		this.setup();
+		from.dockto(this.bit, 2);
+	}
+
+	this.undock = function(from)
+	{
+		debugmsg("Disonnect "+from.name+" from filter");
+		this.setValue(0, 0);
+	}
+
+	// from is bit
+	this.dockto = function(from, dom)
+	{
+		debugmsg("Connect FILTER to "+from.name+" dom "+dom);
+		if( dom == 2){
+			this.setup();
+		}
+
+		if( from.ctrl != null){
+			if( from.ctrl.audioin != null){
+				debugmsg("link vcf to next module");
+				this.vcf.connect( from.ctrl.audioin);
+			}
+		}
+	}
+
+	this.undockfrom = function(from, dom)
+	{	let b = from.ctrl;
+
+		if( dom == 2){
+			if( b != null){
+				if( from.ctrl.audioin != null){
+					debugmsg("unlink vcf from next module");
+					this.vcf.disconnect( from.ctrl.audioin);
+				}
+			}
+
+		}
+
+	}
+
 }
 
 
@@ -873,6 +1089,9 @@ function seqBit(bit)
 		let t=0;
 		let len = this.values.length;
 
+		if( bitformaction != this){
+			return;
+		}
 		for(i=0; i < len; i++){
 			f = document.getElementById("knob_"+i);
 			if( f != null){

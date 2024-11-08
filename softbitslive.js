@@ -19,6 +19,7 @@ var hidetouch = true;
 var curtab = "progtab";
 
 const POWERON=0;
+const POWEROFF=1;
 const AINVERT = 13;
 const DIMMER = 14;
 const ENDPROG=255;
@@ -154,6 +155,17 @@ function getNumber( val, def)
 		return def;
 	}
 	return parseInt(val);
+}
+
+function checkRange(x){
+	if( x < 0){
+		x = 0;
+	}else if( x > 255){
+		x = 255;
+	}else if( isNaN(x)){
+		x = 0;
+	}
+	return x;
 }
 
 function bitFlip()
@@ -442,6 +454,7 @@ function Chain()
 	}
 }
 
+// byte codes
 function Source()
 {	this.msg = "";
 	this.chain = 0;
@@ -481,14 +494,11 @@ function Source()
 			this.code.debug();
 			return;
 		}
-		if( code < 0){
-			code = 0;
-		}else if( code > 255){
-			code = 255;
-		}
+		code = checkRange(code);
 
 		this.code[ this.codeptr] = code;
 		this.codeptr++;
+		this.codebits[this.codeptr] = null;
 		if( this.codeptr > limit-10){
 			message("Addcode limit "+codeptr);
 			this.codeptr = limit-10;
@@ -511,7 +521,6 @@ function Source()
 		this.codebits[this.codeptr] = bit;
 		bit.addr = this.codeptr;
 		this.addCode( code);
-		this.codebits[this.codeptr] = null;
 
 	}
 
@@ -530,9 +539,7 @@ function Source()
 		this.codebits[this.codeptr] = bit;
 		bit.addr = this.codeptr;
 		this.addCode( code);	
-		this.codebits[this.codeptr] = null;
 		this.addCode( arg1);	
-		this.codebits[this.codeptr] = null;
 	}
 
 	this.codeBit2 = function(bit, arg1, arg2)
@@ -550,11 +557,8 @@ function Source()
 		this.codebits[this.codeptr] = bit;
 		bit.addr = this.codeptr;
 		this.addCode( code);	
-		this.codebits[this.codeptr] = null;
 		this.addCode( arg1);	
-		this.codebits[this.codeptr] = null;
 		this.addCode( arg2);	
-		this.codebits[this.codeptr] = null;
 	}
 
 	this.Init = function()
@@ -603,123 +607,6 @@ function Program()
 		}
 	}
 
-// program getNetDomain( bit)
-	this.getNetDomain = function( bit)
-	{	let idx = bit.bcode;
-		var i;
-		var s, p;
-		var dom;
-		let pidx;
-		let slen = bit.snaps.length;
-
-		// look for flag value to see if we have been here before...
-		if( bit.domain != 0 ){
-			return bit.domain;
-		}
-//		message("getnetdomain");
-//		return 0;
-
-		bit.domain = 99;		// flag that we have been here.
-		for(i=0; i < slen ; i++){
-			s = bit.snaps[i];
-			if( s != null){
-				p = s.paired;
-				if( p != null){
-					pidx = p.bit.bcode;
-					if( i == 1 || i == 3 || 5 || 7){	// outputs
-						dom = this.getNetDomain( p.bit);
-						if( dom != 0 && dom != 99){
-							return dom;
-						}
-					}else {				// inputs
-						dom = this.getNetDomain( p.bit);
-						if( dom != 0 && dom != 99){
-							return dom;
-						}
-					}
-				}
-			}
-		}
-		return 0;
-	}
-
-// program setNetDomain(bit dom)
-	this.setNetDomain = function (bit, dom)
-	{	let idx = bit.bcode;
-		var i;
-		var s, p;
-		var pidx;
-		let slen = bit.snaps.length;
-
-		if( bit.domain == 0 || bit.domain == 99){
-			bit.domain = dom;
-		}
-
-		if( bit.code == WIRE || bit.code == CORNER){
-			return;
-		}
-
-		// message("Setnetdomain");
-
-		for(i=0; i < slen ; i++){
-			s = bit.snaps[i];
-			if( s != null){
-				p = s.paired;
-				if( p != null){
-					pidx = p.bit.bcode;
-					if( i == 0 || i == 2 || i == 4 || i == 6){	// check inputs
-						if( p.bit.domain == 0 || p.bit.domain == 99){
-							this.setNetDomain( p.bit, dom);
-						}else if(  p.bit.domain != dom){
-							message("Domain missmatch input "+idx);
-						}
-					}else {					// check outputs
-						if( p.bit.domain == 0 || p.bit.domain == 99){
-							this.setNetDomain( p.bit, dom);
-						}
-					}
-
-				}
-			}
-		}
-	}
-
-// program markDomain
-//
-	this.markDomain = function(blist)
-	{	let bl;
-		let bit;
-		let netdomain;
-		let idx;
-
-		// set all domain info to 0
-		bl = blist;
-		while(bl != null){
-			bit = bl.bit;
-			idx = bit.bcode;
-			if( bit.isDocked()==0 || idx == 0x6b || idx == 0x6c){
-				bit.setDomain();
-			}else {
-				bit.domain = 0;
-			}
-			bl = bl.next;
-		}
-		
-		// find domain for a connected net.
-		bl = blist;
-		while(bl != null){
-			bit = bl.bit;
-			if( bit.domain == 0 || bit.domain == 99){
-				netdomain = this.getNetDomain( bit);
-				if( netdomain == 0 || netdomain == 99){
-					netdomain = 3;
-				}
-				this.setNetDomain( bit, netdomain);
-			}
-			bl = bl.next;
-		}
-		// message("markdomain");
-	}
 
 	// program insertTempPowerOn
 	this.insertTempPowerOn = function(snxt)
@@ -862,8 +749,8 @@ function Program()
 	// and second pass outputs the code.
 
 	this.prevNonWChain = function(bit, marker)
-	{	var shead;
-		var b, p;
+	{	let shead;
+		let b, p;
 
 		shead = null;
 		b = bit;
@@ -885,8 +772,8 @@ function Program()
 	}
 
 	this.nextNonWChain = function(bit)
-	{	var stail;
-		var b,p;
+	{	let stail;
+		let b,p;
 
 		stail = null;
 		b = bit;
@@ -999,7 +886,7 @@ function Program()
 		while(b != null){
 			bit = b.bit;
 			
-			if( bit.code == 0){
+			if( bit.code == POWERON){
 				// a power_on
 				this.markChain(bit);
 			}
@@ -1011,7 +898,7 @@ function Program()
 		while(b != null){
 			bit = b.bit;
 			
-			if( bit.code == 0){
+			if( bit.code == POWERON){
 				// a power_on
 				this.drawMesh(bit );
 			}
@@ -1023,7 +910,7 @@ function Program()
 		while(b != null){
 			bit = b.bit;
 			
-			if( bit.code == 0){
+			if( bit.code == POWERON){
 				// a power_on
 				// this.drawMesh(bit );
 
@@ -1137,31 +1024,13 @@ function Program()
 			if( trace > 0){
 				debugmsg("Trace: "+b.name+" "+idx+" "+code+" dom "+cd);
 			}
-			if( code == 0){		// power on
+			if( code == POWERON){		// power on
 				this.source[cd].msg += drawFunction1( idx, b.chain);
 				this.source[cd].codeBit1(b, b.chain);
 
-			}else if( code == 1){	// power off
+			}else if( code == POWEROFF){	// power off
 				this.source[cd].msg += drawFunction(idx);
 				this.source[cd].codeBit(b);
-
-			}else if( code == 14){	// dimmer
-				this.source[cd].msg += drawFunction( idx);
-				this.source[cd].codeBit(b);
-
-			}else if( code == 107){	// 0x6b wire send
-					// find chain of mext bit
-					if( bpair == null ){
-						this.source[cd].msg += drawFunction1( idx, 0);
-						this.source[cd].codeBit1(b, 0);
-					}else {
-						this.source[cd].msg += drawFunction1( idx, bpair.chain);
-						this.source[cd].codeBit1(b, bpair.chain);
-					}
-			}else if( code == 108){	// 0x6c wire recv	
-				// receive from chain should be in the value field.
-				this.source[cd].msg += drawFunction1( idx, b.value);
-				this.source[cd].codeBit1(b, b.value);
 
 			}else if( b.snaps[0] != null && b.snaps[2] != null){
 				// two input snaps
@@ -1169,9 +1038,6 @@ function Program()
 				if( bnxt != null){
 					this.source[cd].msg += drawFunction1( idx, bnxt.chain);
 					this.source[cd].codeBit1(b, bnxt.chain);
-//					msg = bnxt.print();
-//					msg += b.print();
-//					message( msg);
 				}else {
 					this.source[cd].msg += drawFunction1( idx, 0);
 					this.source[cd].codeBit1(b, 0);
@@ -1237,13 +1103,6 @@ function Program()
 			this.newprogram = null;
 			this.current = prog;
 			this.currentbits = progbits;
-//			debugmsg("New program");
-//			for(i=0; i < prog.length; i++){
-//				debugmsg(" "+i+" "+prog[i]);
-//				if( prog[i] == 255){
-//					break;
-//				}
-//			}
 		}			
 
 		if( prog == null){
@@ -1340,12 +1199,14 @@ function Program()
 				prog = null;		// end of program
 			}else {
 				if(code == SPEAKER){		// speaker
+					arg2 = prog[bp];
+					bp++;
 					if(curchain  == 0){
 						data = 0;			// silence osc if not linked in a chain.
 					}
 					progbits[ ibp].ctrl.setValue(data, 0);
 					progbits[ibp].value = this.chains[ curchain].data;
-					this.chains[ curchain].data = this.getValue( progbits, ibp, 255);
+		//			this.chains[ curchain].data = this.getValue( progbits, ibp, 255);
 		// these codes do not run if curchain == 0.
 		// two byte codes. 
 				}else if(code == 12){	// wire_split
@@ -1480,11 +1341,7 @@ function Program()
 					if( curchain != 0){
 						data2 =  this.getchaindata(arg2, nchains);
 						data = data+data2;
-						if( data < 0){
-							data = 0;
-						}else if( data > 255){
-							data = 255;
-						}
+						data = checkRange(data);
 						this.chains[ curchain].data = data;
 					}
 					osnap.indcolor = "#ffffff";
@@ -1499,11 +1356,7 @@ function Program()
 					if( curchain != 0){
 						data2 =  this.getchaindata(arg2, nchains);
 						data = data-data2;
-						if( data < 0){
-							data = 0;
-						}else if( data > 255){
-							data = 255;
-						}
+						data = checkRange(data);
 						this.chains[ curchain].data = data;
 					}
 					osnap.indcolor = "#ffffff";
@@ -1518,11 +1371,7 @@ function Program()
 					if( curchain != 0){
 						data2 =  this.getchaindata(arg2, nchains);
 						data = data * data2;
-						if( data < 0){
-							data = 0;
-						}else if( data > 255){
-							data = 255;
-						}
+						data = checkRange(data);
 						this.chains[ curchain].data = data;
 					}
 					osnap.indcolor = "#ffffff";
@@ -1542,11 +1391,7 @@ function Program()
 						}else {
 							data = 255;
 						}
-						if( data < 0){
-							data = 0;
-						}else if( data > 255){
-							data = 255;
-						}
+						data = checkRange(data);
 						this.chains[ curchain].data = data;
 						osnap.indval = this.chains[ curchain].data;
 					}
@@ -1566,11 +1411,7 @@ function Program()
 							data = data2 - data;
 						}
 
-						if( data < 0){
-							data = 0;
-						}else if( data > 255){
-							data = 255;
-						}
+						data = checkRange(data);
 						this.chains[ curchain].data = data;
 						osnap.indcolor = "#ffffff";
 						osnap.indval = this.chains[ curchain].data;
@@ -1672,7 +1513,36 @@ function Program()
 					}
 					osnap.indval = this.chains[ curchain].data;
 
-				}else if( curchain != 0){
+				}else if(code == OSC){		// osc
+					arg2 = prog[bp];
+					bp++;
+					data2 = data;
+//						progbits[ ibp].ctrl.setValue(data, 0);
+					if( arg2 > 0 && arg2 < 20){
+						data2 = this.chains[ arg2].data;
+						progbits[ ibp].ctrl.setValue(data2, 1);
+					}
+					if(curchain  == 0){
+						data = 0;			// silence osc if not linked in a chain.
+					}else {
+						progbits[ ibp].ctrl.setValue(data, 0);
+					}
+					osnap.indcolor = "#ff0000";
+					osnap.indval = this.chains[ curchain].data;
+				}else if(code == FILTER){		// filter
+					arg2 = prog[bp];
+					bp++;
+					data2 = data;
+//						progbits[ ibp].ctrl.setValue(data, 0);
+					if( arg2 > 0 && arg2 < nchains){
+						data2 = this.chains[ arg2].data;
+					}
+					progbits[ ibp].ctrl.setValue(data2, 0);
+					progbits[ibp].value = this.chains[ curchain].data;
+//						this.chains[ curchain].data = this.getValue( progbits, ibp, 255);
+					osnap.indcolor = "#ff0000";
+					osnap.indval = this.chains[ curchain].data;
+			}else if( curchain != 0){
 					// single byte codes that do nothing when curchain is 0
 					if(code == AINVERT){
 						this.chains[ curchain].data = 255 - data;	// arith_invert
@@ -1732,19 +1602,6 @@ function Program()
 						osnap.indcolor = "#ffffff";
 						osnap.indval = this.chains[ curchain].data;
 
-					}else if(code == OSC){		// osc
-						if(curchain  == 0){
-							data = 0;			// silence osc if not linked in a chain.
-						}else {
-							progbits[ ibp].ctrl.setValue(data, 0);
-						}
-						osnap.indcolor = "#ff0000";
-						osnap.indval = this.chains[ curchain].data;
-					}else if(code == 122){		// filter
-						progbits[ibp].value = this.chains[ curchain].data;
-						this.chains[ curchain].data = this.getValue( progbits, ibp, 255);
-						osnap.indcolor = "#ff0000";
-						osnap.indval = this.chains[ curchain].data;
 					}else if(code == 123){		// seq
 						progbits[ibp].ctrl.exec(data);
 						this.chains[ curchain].data = this.getValue( progbits, ibp, 255);

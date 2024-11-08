@@ -37,9 +37,9 @@ function kit_sound()
 		"poweroff", "power_off", 50, 50,	"powerin", null, null, null,			// 1
 				0,	0, "Power Off",		"End of a chain, optional.", 0x0001, "Power", 0, 1,	// 1
 		"control", "speaker", 100, 50,	"audioin", null ,"actionin",  null,		// 0
-				0,	1, "Speaker",	"Sound output",	 0x2, "Output", 0, 1,	// 0
+				0,	1, "Speaker",	"Sound output",	 0x102, "Output", 0, 1,	// 0
 		"control", "osc", 100, 50,	"actionin", "audioout" ,"actionin",  null,		// 0
-				0,	1, "Oscillator",	"Make sound",	 0x0021, "Action", 0, 1,	// 0
+				0,	1, "Oscillator",	"Make sound",	 0x0121, "Action", 0, 1,	// 0
 
 		"control", "filter", 100, 50,	"audioin", "audioout" ,"actionin",  null,		// 0
 				0,	1, "Filter",	"Change sound",	 0x0122, "Action", 0, 1,	// 0
