@@ -639,8 +639,8 @@ function filterBit(bit)
 
 //		debugmsg("FIlter  "+x+" "+y);
 		for(i=0; i < len; i++){
-			x = mx - b.x - this.knobs[i+i]+5;
-			y = my - b.y - this.knobs[i+i+1]+5;
+			x = mx - b.x - this.knobs[i+i]+10;
+			y = my - b.y - this.knobs[i+i+1]+10;
 //			debugmsg("FIlter HT "+x+" "+y);
 			if( x > 0 && x < 20 && y > 0 && y < 20 ){
 				this.initx = mx;
@@ -704,12 +704,19 @@ function filterBit(bit)
 	}
 
 	this.setvcf = function()
-	{	let note = notefreq(this.vcffreq);
+	{	let note;
+		
+		if( notetab == null){
+			setupnotetab();
+		}
+		note = notefreq(this.vcffreq);
 
-		this.vcf.frequency.cancelScheduledValues(0);
-		this.vcf.frequency.setTargetAtTime( note, 0, 0.01); 
-		this.vcf.Q.cancelScheduledValues(0);
-		this.vcf.Q.setTargetAtTime( this.vcfq, 0, 0.01); 
+		if( this.vcf != null){
+			this.vcf.frequency.cancelScheduledValues(0);
+			this.vcf.frequency.setTargetAtTime( note, 0, 0.01); 
+			this.vcf.Q.cancelScheduledValues(0);
+			this.vcf.Q.setTargetAtTime( this.vcfq, 0, 0.01); 
+		}
 
 	}
 
@@ -717,11 +724,11 @@ function filterBit(bit)
 	{
 		if( chan == 0){		// cutoff
 			this.vcffreq = (val+ this.values[0])/2;
-			message("F "+val);
+//			message("F "+val);
 
 			this.setvcf();
 		}else if( chan == 1){
-			this.vcfq = (val + this.values[1])/2048;
+			this.vcfq = (val + this.values[1]) / 16;
 			this.setvcf();
 		}
 	}
@@ -768,6 +775,7 @@ function filterBit(bit)
 		if( f != null){
 			val = checkRange(f.value);
 			this.values[1] = val;
+			this.setValue(0, 1);
 		}
 	}
 
@@ -779,6 +787,9 @@ function filterBit(bit)
 
 		if( this.selknob > 0){
 			this.values[this.selknob-1] = rotaryvalue(vx, vy, this.ival);
+			if( this.selknob == 2){
+				this.setValue(0,1);
+			}
 		}
 
 		// update bitform
