@@ -378,11 +378,12 @@ function UIdoSave()
 	var i;
 	let msg2="";
 	let slen = 4;
+	let ckit = "";
 
 	// number the list
 	idx = 1;
+	bl = sketch.blist;
 	while(bl != null){
-
 		bl.num = idx++;
 		bl = bl.next;
 	}
@@ -390,6 +391,10 @@ function UIdoSave()
 	bl = sketch.blist;
 	while(bl != null){
 		bit = bl.bit;
+		if( bit.kit.name != ckit){
+			msg += "'kit','"+bit.kit.name+"',\n";
+			ckit = bit.kit.name;
+		}
 		slen = bit.snaps.length;
 		bt = bit.btype & 7;
 		idx = bit.btype - bt;
@@ -440,7 +445,7 @@ function UIdoLoad()
 
 		msg = "<div style='padding:10px;border-style:solid;border-width:2px;border-color:blue;'>\n";
 		msg += "<table><tr><td>\n";
-		msg += "<input type='file' name='loadfilename' id='loadfilename' /><br />\n";
+		msg += "<input type='file' name='loadfilename' id='loadfilename' accept='.sbl'/><br />\n";
 		msg += "</td></tr>\n<tr><td>\n";
 		msg += "<input type='submit' name='action' value='Load'  />\n";
 		msg += "</td></tr>\n";

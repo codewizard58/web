@@ -257,6 +257,7 @@ function control(bit)
 		return msg;
 	}
 		
+//control
 	this.doLoad = function(initdata, idx)
 	{	var i = initdata[idx];
 	}		
@@ -266,8 +267,9 @@ function control(bit)
 	{
 	}
 
+//control
 	// when docked this is receiver
-	this.dock = function(from)
+	this.dock = function(from, dom)
 	{
 	}
 

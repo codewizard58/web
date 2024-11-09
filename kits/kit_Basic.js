@@ -314,7 +314,7 @@ function ArduinoKit( abit)
 	}
 
 	this.doSave = function()
-	{	var msg = "2,'Basic',";
+	{	var msg = "2,'Arduino',";
 
 		return msg;
 	}

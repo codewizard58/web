@@ -117,6 +117,19 @@ function rotaryvalue(x, y, init)
 	return val;
 }
 
+// simple has it changed function.
+function delta()
+{	this.value = 0;
+
+	this.changed = function(x)
+	{
+		if( this.value != x){
+			this.value = x;
+			return true;
+		}
+		return false;
+	}
+}
 
 oscBit.prototype = Object.create(control.prototype);
 
@@ -128,14 +141,18 @@ function oscBit(bit)
 	this.osc = null;
 	this.webkitstyle = false;
 	this.val = 255;		// debug set initial volume
-	this.freq=60;		// middle C in Midi
+	this.freq= 60;		// middle C in Midi
+	this.prevfreq = new delta();
 	this.nfreq=0;
-	this.infreq=0;
 	this.audioin = null;
 	this.wave = 0;		// 0 == saw
+	this.prevwave = new delta();
 	this.range = 12; 	// bend range
 	this.a440 = 440;
 	this.ival = 0;
+	this.mod = 0;		// modulation routing
+	this.modgain = 128;	// modulation gain
+	this.modfreq = 128;	// modulation freq
 
     let imagename = "osc";
 	this.bitimg =this.bit.findImage(imagename);
@@ -206,10 +223,12 @@ function oscBit(bit)
 				this.val = data;
 				if( data <= 16){
 					// silence OSC
+					this.vol = 0;
 					if( this.gain != null){
 						this.gain.gain.setValueAtTime( 0, 0.01);
 					}
 				}else {
+					this.vol = 255;
 					if( this.gain != null){
 						this.gain.gain.setValueAtTime( 1, 0.01);
 					}
@@ -218,8 +237,18 @@ function oscBit(bit)
 				}
 				// debugmsg("OSC "+data);
 			}
-		}else {
-			debugmsg("Osc chan "+chan+" data "+data);
+		}else if(chan == 1){
+			// rel 128
+			if(this.mod == 0){
+				this.modfreq = data;
+			}else if( this.mod == 1){
+				this.modgain = data;
+			}else if( this.mod == 2){
+				this.wave = data;
+				if( this.prevwave.changed(data)){
+					this.setoscwave(data);
+				}
+			}
 		}
 	}
 
@@ -230,32 +259,28 @@ function oscBit(bit)
 		if( notetab == null){
 			setupnotetab();
 		}
-		if( actx != null){
-			debugmsg("Create osc");
-			this.osc = actx.createOscillator();
-	
-			this.setoscfreq(0);
-			if( typeof( actx.createGainNode) != "undefined"){
-		//		alert ("use gain node");
-				this.webkitstyle = true;
-				this.gain = actx.createGainNode();
-			}else {
-				this.gain = actx.createGain();
+		if( this.osc == null){
+			if( actx != null ){
+				debugmsg("Create osc");
+				this.osc = actx.createOscillator();
+		
+				this.setoscfreq(0);
+				if( typeof( actx.createGainNode) != "undefined"){
+					this.webkitstyle = true;
+					this.gain = actx.createGainNode();
+				}else {
+					this.gain = actx.createGain();
+				}
+				this.gain.gain.setValueAtTime( this.val/ 255, 0.01);
+				this.osc.connect( this.gain);
+				this.setoscwave(this.wave);
+		
+				if( !this.webkitstyle){
+					this.osc.start(0);
+				}
 			}
-			this.gain.gain.setValueAtTime( this.val/ 255, 0.01);
-//				this.parent.audio = this.gain;
-//				this.gain.connect( actx.destination); // debug
-			this.osc.connect( this.gain);
+		}
 
-			this.audioin = this.osc;
-		}
-	
-		this.setoscwave(this.wave);
-	
-		if( !this.webkitstyle){
-			this.osc.start(0);
-		}
-	
 	}
 
 
@@ -265,16 +290,17 @@ function oscBit(bit)
 	}
 
 	this.setoscfreq = function( glide)
-	{	let freq = this.freq+(this.nfreq-128)/this.range+this.infreq ;
+	{	let freq = this.freq+((this.nfreq+this.modfreq)-128)/this.range;
 		if( this.osc == null){
 			return;
 		}
-//		debugmsg("Set osc freq "+freq);
-		this.osc.frequency.cancelScheduledValues(0);
-		if( this.webkitstyle){
-			this.osc.frequency.setTargetValueAtTime( notefreq(freq), 0, 0.01);
-		}else {
-			this.osc.frequency.setTargetAtTime( notefreq(freq ), 0, 0.01);
+		if( this.prevfreq.changed(freq) ){
+			this.osc.frequency.cancelScheduledValues(0);
+			if( this.webkitstyle){
+				this.osc.frequency.setTargetValueAtTime( notefreq(freq), 0, 0.01);
+			}else {
+				this.osc.frequency.setTargetAtTime( notefreq(freq ), 0, 0.01);
+			}
 		}
 	}
 
@@ -285,14 +311,14 @@ function oscBit(bit)
 		if( this.osc == null){
 			return;
 		}
-			if( val != 0){
-				this.osc.type = "square";
-			}else {
-				this.osc.type = "sawtooth";
-			}
+		if( val < 192){
+			this.osc.type = "sawtooth";
+		}else {
+			this.osc.type = "square";
+		}
 	}
 
-
+// osc
 	this.setData = function()
 	{	let msg="";
 		let sqwave = "";
@@ -314,6 +340,7 @@ function oscBit(bit)
 			msg += "<option value='1' "+sqwave+">Square</option>\n";
 			msg += "<option value='0' "+sawwave+">Saw</option>\n";
 			msg += "</select></td></tr>\n";
+			msg += "<tr><th align='right'>Modulation</th><td > <input type='text' id='mod' value='"+this.mod+"' /></td></tr>\n";
 
 			msg += "</table>\n";
 
@@ -338,11 +365,37 @@ function oscBit(bit)
 		f = document.getElementById("wave");
 		if( f != null){
 			val = f.value;
+			this.wave = val;
 			this.setoscwave(val);
 			debugmsg("Osc wave "+val);
 		}
+		f = document.getElementById("mod");
+		if( f != null){
+			val = f.value;
+			this.mod = val;
+		}
 
 	}
+		// osc
+		this.doSave = function()
+		{	let msg = "";
+			// save osc state.
+			let n = 1+2;
+	
+			msg += ""+n+", ";
+			msg+= ""+this.nfreq+", "+this.wave+", ";
+			return msg;
+		}
+
+		// osc
+		this.doLoad = function(initdata, idx)
+		{	var i = initdata[idx];
+	
+	
+		}		
+	
+	
+	
 
 	this.onMove = function(x, y)
 	{	let vx = x - this.initx;
@@ -353,10 +406,11 @@ function oscBit(bit)
 
 	}
 
-	this.dock = function(from)
+	//osc
+	this.dock = function(from, dom)
 	{	let msg="";
 		
-		debugmsg("Connect "+from.name+" to osc"+msg);
+		debugmsg("Connect "+from.name+" to osc"+msg+" dom="+dom);
 	}
 
 	this.undock = function(from)
@@ -366,6 +420,7 @@ function oscBit(bit)
 	}
 
 	// from is bit
+	// osc
 	this.dockto = function(from, dom)
 	{
 		debugmsg("Connect OSC to "+from.name+" dom "+dom);
@@ -377,7 +432,11 @@ function oscBit(bit)
 			if( from.ctrl.audioin != null){
 				debugmsg("link osc gain to next module");
 				this.gain.connect( from.ctrl.audioin);
+			}else {
+				debugmsg("audioin is null");
 			}
+		}else {
+			debugmsg("from.ctrl is null");
 		}
 	}
 
@@ -386,12 +445,16 @@ function oscBit(bit)
 
 		if( dom == 2){
 			if( b != null){
-				if( from.ctrl.audioin != null){
+				if( b.audioin != null){
 					debugmsg("unlink osc gain from next module");
 					this.gain.disconnect( from.ctrl.audioin);
 				}
+			}else{
+				debugmsg("osc undockfrom b is null");
 			}
 
+		}else {
+			debugmsg("osc undockfrom dom "+dom);
 		}
 
 	}
@@ -413,10 +476,12 @@ function speakerBit(bit)
 	this.webkitstyle = false;
 	this.val = 0;
 	this.audioin = null;
-	roundknobimg =this.bit.findImage("roundknob");
 	this.mix = 0.2;
+	this.modmix = 128;
+	this.prevmix = new delta();
 	this.deg = Math.PI/180;
 	this.ival = 0;
+	roundknobimg =this.bit.findImage("roundknob");
 
 	this.HitTest = function(mx, my)
 	{	let b = this.bit;
@@ -436,10 +501,8 @@ function speakerBit(bit)
 			this.initx = mx;
 			this.inity = my;
 			this.ival = this.mix * 255;
-			debugmsg("SPK HT "+this.ival);
 			return this;
 		}
-		debugmsg("SPK HT "+x+" "+y);
 
 		return null;
 	}
@@ -448,17 +511,30 @@ function speakerBit(bit)
 	// speaker
 	this.setValue = function(data, chan)
 	{
-		if( data != this.val){
+		let sound = true;
+		let mix = 0.0;
+		
+		if( chan == 0){		// muting
 			this.val = data;
-			if( this.gain != null){
-				if( data < 16){
-					this.gain.gain.setValueAtTime( 0, 0.01);
-				}else{
-					this.gain.gain.setValueAtTime( this.mix, 0.01);
-				}
+			if( data < 16){
+				sound = false;
+			}
+		}else if(chan == 2){ // mix
+			this.mix = checkRange(data) / 255;
+		}else if(chan == 1){ // modmix
+			this.modmix = checkRange(data);
+		}
+		if( sound){
+			mix = this.mix + (this.modmix-128) / 255;
+			if( mix < 0){
+				mix = 0;
 			}
 		}
-
+		if( this.prevmix.changed(mix)){
+			if(this.gain != null){
+				this.gain.gain.setValueAtTime( mix, 0.01);
+			}
+		}
 	}
 
 	// speaker
@@ -508,6 +584,7 @@ function speakerBit(bit)
 				this.gain.gain.setValueAtTime( 0, 0.01);
 				this.gain.connect( actx.destination); // debug
 			}
+			debugmsg("Setup speaker");
 
 			this.audioin = this.gain;
 		}
@@ -547,14 +624,7 @@ function speakerBit(bit)
 
 		f = document.getElementById("mix");
 		if( f != null){
-			val = f.value;
-			if( val < 0){
-				val = 0;
-			}else if( val > 255){
-				val = 255;
-			}
-			this.mix = val/255;
-			this.setValue(val, 0);
+			this.setValue(f.value, 2);		// 0 muting, 2 mix (knob), 1 modmix
 		}
 	}
 
@@ -582,11 +652,13 @@ function speakerBit(bit)
 	}
 
 	// speaker
-	this.dock = function(from)
+	this.dock = function(from, dom)
 	{
 		debugmsg("Connect "+from.name+" to speaker");
-		this.setup();
-		from.dockto(this.bit, 2);
+		if( dom == 2){
+			this.setup();
+			from.dockto(this.bit, 2);
+		}
 	}
 
 	// control
@@ -597,10 +669,7 @@ function speakerBit(bit)
 		debugmsg("Disconnect "+from.name+" from speaker");
 
 		from.undockfrom(this.bit, 2);
-		this.val = 0;
-		if( this.gain != null){
-			this.gain.gain.setValueAtTime( this.val/ 255, 0.01);
-		}
+		this.setValue(0, 0);
 	}
 
 }
@@ -621,7 +690,6 @@ function filterBit(bit)
 	this.knobs = [25, 30, 75, 30];
 	this.values = [128, 250];
 	this.selknob = 0;
-	this.prevfreq = 0;
 	let i;
 
     let imagename = "filter";
@@ -695,11 +763,17 @@ function filterBit(bit)
 			if( actx != null){
 				this.vcf = actx.createBiquadFilter();
 				this.vcf.type="lowpass";
+			}else {
+				debugmsg("SF actx is null");
 			}
+		}
+		if( this.vcf != null){
 			this.setvcf();
 
 			this.audioin = this.vcf;
 			debugmsg("Setup filter");
+		}else {
+			debugmsg("Setup filter null");
 		}
 	}
 
@@ -779,6 +853,31 @@ function filterBit(bit)
 		}
 	}
 
+	//filter
+	this.doSave = function()
+	{	let msg = "";
+		// save filter state.
+		let n = 1+2;
+
+		msg += ""+n+", ";
+		msg+= ""+this.values[0]+", "+this.values[1]+", ";
+		return msg;
+	}
+		
+	//filter
+	this.doLoad = function(initdata, idx)
+	{	var i = initdata[idx];
+
+		if( i > 2){
+			this.values[0] = initdata[idx+1];
+			this.values[1] = initdata[idx+2];
+			this.setValue(0, 1);
+		}
+
+	}		
+
+
+	//filter
 	this.onMove = function(x, y)
 	{	let vx = x - this.initx;
 		let vy = y - this.inity;
@@ -806,17 +905,22 @@ function filterBit(bit)
 		}
 	}
 
-	this.dock = function(from)
+	//filter
+	this.dock = function(from, dom)
 	{	let msg="";
 		
-		debugmsg("Connect "+from.name+" to filter"+msg);
-		this.setup();
-		from.dockto(this.bit, 2);
+		debugmsg("Connect "+from.name+" to filter"+msg+" dom="+dom);
+		if( dom == 2){
+			this.setup();
+			from.dockto(this.bit, 2);
+		}
 	}
 
+	//filter
 	this.undock = function(from)
 	{
 		debugmsg("Disonnect "+from.name+" from filter");
+		from.undockfrom(this.bit, 2);
 		this.setValue(0, 0);
 	}
 
@@ -836,6 +940,7 @@ function filterBit(bit)
 		}
 	}
 
+	//filter
 	this.undockfrom = function(from, dom)
 	{	let b = from.ctrl;
 
@@ -1138,6 +1243,24 @@ function seqBit(bit)
 
 	}
 
+	this.doSave = function()
+	{	let msg = "";
+		// save sequencer state.
+		let n = 1+this.values.length+2;
+
+		msg += ""+n+", ";
+		for(i=0; i < this.values.length; i++){
+			msg += ""+this.values[i]+", ";
+		}
+		msg+= ""+this.motion.tempo+", "+this.motion.gate+", ";
+		return msg;
+	}
+		
+	this.doLoad = function(initdata, idx)
+	{	var i = initdata[idx];
+	}		
+		
+
 	// seq
 	this.onMove = function(x, y)
 	{	let vx = x - this.initx;
@@ -1224,6 +1347,183 @@ function seqBit(bit)
 				k.value = note;
 				this.nextprog();
 			}
+		}
+	}
+}
+
+scopeBit.prototype = Object.create(control.prototype);
+
+function scopeBit( bit )
+{	control.call(this, bit);
+	this.bit = bit;
+	this.analyser = null;
+	this.buffer = null;
+	this.bufferlength = 0;
+	this.h = 100;
+	this.h2 = Math.floor( this.h/2);
+	this.af = null;
+	this.min = 1;
+	this.audioin = null;
+	this.ctx = ctx;
+	this.bgcolor = "#404040";
+	this.color = "#ff0000";
+
+// scope
+	this.Draw = function()
+	{	let idx, n;
+		let x,w;
+		let v, f, prev;
+		let len;
+		let b = this.bit;
+
+		this.l = b.x;
+		this.t = b.y;
+		this.w = 200;
+		this.h = 100;
+		this.r = this.l+this.w;
+		this.b = this.t+this.h;
+
+		if( this.analyser == null){
+			return;
+		}
+		this.bufferlength = this.analyser.frequencyBinCount;
+		this.analyser.getByteTimeDomainData(this.buffer);
+
+		this.ctx.save();
+
+		this.ctx.fillStyle = this.bgcolor;
+		this.ctx.fillRect( this.l, this.t, this.w, this.h);
+
+		this.ctx.lineWidth = 2;
+		this.ctx.strokeStyle = this.color;
+		this.ctx.strokeRect( this.l, this.t, this.w, this.h);
+
+		len = this.bufferlength/ 2;
+
+		w = this.w * 1.0 / (len);
+		v = (this.buffer[idx] / 350.0) * this.h+this.t+5;
+		x = this.l;
+
+		f = 0;
+		prev = this.buffer[0];
+		while( prev >= this.buffer[f] && f < this.bufferlength){
+			prev = this.buffer[f];
+			f += 10;
+		}
+		while( prev <= this.buffer[f] && f < this.bufferlength){
+			prev = this.buffer[f];
+			f += 10;
+		}
+
+		this.ctx.beginPath();
+
+ 		this.ctx.moveTo(x, v);
+
+		n = f;
+		for(idx = 0; idx < len; idx++) {
+			if( n == this.bufferlength){
+				n = 0;
+			}
+			v = ( (this.buffer[n]-128) / 512.0) * this.h+this.t+this.h2;
+			this.ctx.lineTo(x, v);
+
+			x += w;
+			n++;
+		}
+
+//		this.ctx.lineTo(this.r, this.h2);
+
+		this.ctx.stroke();
+
+		this.ctx.restore();
+
+	}
+
+	//scope
+	this.setup = function ()
+	{
+		if( this.analyser == null){
+			if( actx != null){
+				this.analyser = actx.createAnalyser();
+				this.analyser.fftSize = 2048;
+				this.bufferlength = this.analyser.frequencyBinCount;
+				this.buffer = new Uint8Array(this.bufferlength);
+				this.analyser.getByteTimeDomainData(this.buffer);
+				this.audioin = this.analyser;
+				debugmsg("Create Analyzer");
+			}
+		}
+	}
+
+	//scope
+	this.setValue = function(data, chan)
+	{
+		if( chan == 0){
+			this.setup();
+			this.timer();
+		}
+	}
+
+	//scope
+	this.timer = function()
+	{
+		this.Draw();
+		return true;
+	}
+
+	// scope
+	this.dock = function(from, dom)
+	{	let msg="";
+		
+		debugmsg("Connect "+from.name+" to scope"+msg+" dom="+dom);
+		if( dom == 2){
+			this.setup();
+			from.dockto(this.bit, 2);
+		}
+	}
+
+	// scope
+	this.undock = function(from)
+	{
+		debugmsg("Disonnect "+from.name+" from scope");
+
+		from.undockfrom(this.bit, 2);
+	}
+
+	// from is bit
+	this.dockto = function(from, dom)
+	{
+		debugmsg("Connect SCOPE to "+from.name+" dom "+dom);
+		if( dom == 2){
+			this.setup();
+		}
+
+		if( from.ctrl != null){
+			if( from.ctrl.audioin != null){
+				debugmsg("link scope to next module");
+				this.analyser.connect( from.ctrl.audioin);
+			}
+		}
+	}
+
+	// scope
+	this.undockfrom = function(from, dom)
+	{	let b = from.ctrl;
+
+		if( dom == 2){
+			if( b != null){
+				if( from.ctrl.audioin != null){
+					debugmsg("unlink scope from next module");
+					this.analyser.disconnect( from.ctrl.audioin);
+				}else{
+					debugmsg("from.ctrl.audioin  is null");
+				}
+			}else {
+				debugmsg("from.ctrl  is null "+dom);
+			}
+
+		}else {
+			debugmsg("scope undockfom dom "+dom);
 		}
 	}
 }

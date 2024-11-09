@@ -56,6 +56,9 @@ function kit_sound()
 		"control", "seq16", 200, 200,	"actionin", "actionout" ,null,  null,		// 0
 		0,	1, "Seq16",	"16 step sequencer",	 0x0011, "Action", 0, 1,	// 0
 
+		"control", "analyzer", 200, 100, "audioin", "audioout" ,null,  null,		// 0
+				0,	1, "Analyzer",	"Display sound",	 0x0022, "Output", 0, 1,	// 0
+
 		null, null, null, null,				null, null, null, null
 		];
 
@@ -93,6 +96,7 @@ function kit_sound()
 	"seq", 3, 7,		// sequencer
 	"seq8", 3, 8,		// sequencer 8 step
 	"seq16", 3, 9,		// sequencer 16 step
+	"analyzer", 3, 10,	// scope
 	null, 0, 0, 0, 0	// end of table
 	];
 
@@ -105,6 +109,7 @@ function kit_sound()
 		"seq", 123,
 		"seq8", 123,	// generic sequencer 8 step
 		"seq16", 123,	// generic sequencer 16 step
+		"analyzer", 124,	// audio display
 		null, 254
 	];
 
@@ -136,7 +141,7 @@ function kit_sound()
 					ct.setData();
 					return ct;
 				}else if( this.ctrltab[i+2] == 4){
-					// filter
+					// delay
 					ct = new delayBit( bit);
 					bit.ctrl = ct;
 					ct.setData();
@@ -168,6 +173,12 @@ function kit_sound()
 					ct.values = [100,104,60,112, 64, 68, 72, 74, 100,104,60,112, 64, 68, 72, 74];
 					ct.bitimg =ct.bit.findImage("seq16");
 					ct.bitname = "seq16";
+					bit.ctrl = ct;
+					ct.setData();
+					return ct;
+				}else if( this.ctrltab[i+2] == 10){
+					// scope
+					ct = new scopeBit( bit);
 					bit.ctrl = ct;
 					ct.setData();
 					return ct;

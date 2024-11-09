@@ -31,6 +31,7 @@ const OSC = 120;
 const SPEAKER = 121;
 const FILTER = 122;
 const SEQUENCER = 123;
+const SCOPE = 124;
 
 var divlist = [
 	"headerdiv",
@@ -1203,10 +1204,16 @@ function Program()
 					bp++;
 					if(curchain  == 0){
 						data = 0;			// silence osc if not linked in a chain.
+					}else if(  arg2 > 0 && arg2 < nchains){		// modmix ?
+						data2 = this.getchaindata(arg2, nchains);
+						progbits[ ibp].ctrl.setValue(data2, 1);
+					}else {
+						progbits[ ibp].ctrl.setValue(128, 1);
 					}
-					progbits[ ibp].ctrl.setValue(data, 0);
+					progbits[ ibp].ctrl.setValue(data, 0);		// mute ?
 					progbits[ibp].value = this.chains[ curchain].data;
-		//			this.chains[ curchain].data = this.getValue( progbits, ibp, 255);
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////
 		// these codes do not run if curchain == 0.
 		// two byte codes. 
 				}else if(code == 12){	// wire_split
@@ -1520,7 +1527,9 @@ function Program()
 //						progbits[ ibp].ctrl.setValue(data, 0);
 					if( arg2 > 0 && arg2 < 20){
 						data2 = this.chains[ arg2].data;
-						progbits[ ibp].ctrl.setValue(data2, 1);
+						progbits[ ibp].ctrl.setValue(data2, 1);	// modfreq
+					}else{
+						progbits[ ibp].ctrl.setValue(data2, 1);	// modfreq
 					}
 					if(curchain  == 0){
 						data = 0;			// silence osc if not linked in a chain.
@@ -1606,6 +1615,11 @@ function Program()
 						progbits[ibp].ctrl.exec(data);
 						this.chains[ curchain].data = this.getValue( progbits, ibp, 255);
 						osnap.indcolor = "#ffffff";
+						osnap.indval = this.chains[ curchain].data;
+					}else if(code == SCOPE){		// scope
+						progbits[ibp].ctrl.setValue(data, 0);		// use setValue to animate
+						progbits[ibp].value = this.chains[ curchain].data;
+						osnap.indcolor = "#ff0000";
 						osnap.indval = this.chains[ curchain].data;
 					}else if(code == 21){
 					}else if(code == 22){
@@ -1783,8 +1797,6 @@ function Snap(bit, side, x, srx, y, sry, w, h)
 			}else {
 				other.bit.dock(b);
 			}
-
-
 		}
 
 		this.findLinkedTarget();
@@ -1793,6 +1805,7 @@ function Snap(bit, side, x, srx, y, sry, w, h)
 		reLabel(sketch.blist);
 	}
 
+	//snap
 	this.unDock = function()
 	{	const p = this.paired;
 		let i;
@@ -1808,8 +1821,6 @@ function Snap(bit, side, x, srx, y, sry, w, h)
 		this.unConnect();
 
 		reLabel(sketch.blist);
-
-		// this.bit.setDomain();
 
 		if(p != null &&  p.bit.net == b.net ){
 			// still connected via another route
@@ -2029,6 +2040,7 @@ function Bit( btype, x, y, w, h, k) {
 	this.bitname = "";
 	this.kit = k;
 	this.name = "unset";
+	this.connected = 0;			// count of  connections.
 
 	let bt = (btype & 7);
 	let bidx = btype-bt;
@@ -2348,12 +2360,19 @@ function Bit( btype, x, y, w, h, k) {
 	this.dock = function(partner)
 	{	let i = 0;
 		let msg = "";
+		let slen = this.snaps.length;
+		let p = null;
+		let pdom = 0;
 
-		for(i=0; i < 4 ; i++){
+		for(i=0; i < slen ; i++){
 			if( this.snaps[i] != null){
 				msg += this.snaps[i].domain;
-				if( this.snaps[i].paired != null){
-					msg += "-"+this.snaps[i].paired.domain;
+				p = this.snaps[i].paired;
+				if( p != null){
+					msg += "-"+p.domain;
+					if( p.bit == partner){
+						pdom = p.domain;
+					}
 				}else {
 					msg += " ";
 				}
@@ -2362,9 +2381,10 @@ function Bit( btype, x, y, w, h, k) {
 			}
 		}
 
-		debugmsg("Docked "+this.name+" to "+partner.name+" "+msg);
+		debugmsg("Docked "+this.name+" to "+partner.name+" "+msg+" con="+this.connected+" pdom="+pdom);
+		this.connected++;
 		if( this.ctrl != null){
-			this.ctrl.dock(partner);
+			this.ctrl.dock(partner, pdom);
 		}
 	}
 
@@ -2380,8 +2400,11 @@ function Bit( btype, x, y, w, h, k) {
 	// bit input / output
 	this.undock = function(partner)
 	{
-		debugmsg("Undock "+this.name+" from "+partner.name);
-		if( this.ctrl != null){
+		if( this.connected > 0){
+			this.connected--;
+		}
+		debugmsg("Undock "+this.name+" from "+partner.name+" con="+this.connected);
+		if( this.ctrl != null && this.connected == 0){
 			this.ctrl.undock(partner);
 		}
 	}
@@ -3486,8 +3509,11 @@ function initFindTab(initdata, i, n)
 {	var idx = i;
 
 	while( initdata[idx+1] != n){
-
-		idx += 10 + initdata[idx+10];
+		if( initdata[idx] == "bit" ){
+			idx += 10 + initdata[idx+10];
+		}else if( initdata[idx] == "kit"){
+			idx += 2;
+		}
 	}
 	return idx;
 }
@@ -3515,8 +3541,11 @@ function loadInitData( initdata)
 		curkit = findkit("Basic");
 	}
 
-	while(initdata[i] == "bit"){
-		 if( initdata[i] == "bit"){
+	while(initdata[i] == "bit" || initdata[i] == "kit" ){
+		if( initdata[i] == "kit"){
+			UIchooseKit(initdata[i+1]);
+			i += 2;
+		}else if( initdata[i] == "bit"){
 			idx = initdata[i+3];
 			bt = idx & 7;
 			idx = idx - bt;
@@ -3545,7 +3574,12 @@ function loadInitData( initdata)
 				bitform = null;
 				bitformaction = 0;
 			}
-			i += 10 + initdata[i+10];
+			ctrllen = initdata[i+10];
+			if( ctrllen > 1){
+				// decode control
+				debugmsg("Load control "+ctrllen);
+			}
+			i += 10 + ctrllen;
 			num++;
 		}else {
 			message("Bad load data, expected 'bit' got "+initdata[i] );
@@ -3555,36 +3589,45 @@ function loadInitData( initdata)
 
 	// pass 2 link the bits.
 	i = 0;
-	while(initdata[i] == "bit"){
-		num = initdata[i+1];
-		bit = initFindBit( initdata[i+1]);
-		if( initdata[i+6] != 0){
-			bit2 = initFindBit( initdata[i+6]);
-			idx = initFindTab( initdata, 0, initdata[i+6]);
-			for(j=0; j < 4; j++){
-				if( initdata[idx+6+j] == num){
-					// snap j is linked to bit.snaps[0]
-					bit.snaps[0].paired = bit2.snaps[j];
-					bit2.snaps[j].paired = bit.snaps[0];
+	while(initdata[i] == "bit" || initdata[i] == "kit"){
+		if( initdata[i] == "kit"){
+			curkit = findkit(initdata[i+1]);
+			i += 2;
+		}else {
+			num = initdata[i+1];
+			bit = initFindBit( initdata[i+1]);
+			if( initdata[i+6] != 0){
+				bit2 = initFindBit( initdata[i+6]);
+				idx = initFindTab( initdata, 0, initdata[i+6]);
+				for(j=0; j < 4; j++){
+					if( initdata[idx+6+j] == num){
+						// snap j is linked to bit.snaps[0]
+						bit.snaps[0].paired = bit2.snaps[j];
+						bit2.snaps[j].paired = bit.snaps[0];
+					}
 				}
 			}
-		}
-		if( initdata[i+8] != 0){
-			bit2 = initFindBit( initdata[i+8]);
-			idx = initFindTab( initdata, 0, initdata[i+8]);
-			for(j=0; j < 4; j++){
-				if( initdata[idx+6+j] == num){
-					// snap j is linked to bit.snaps[2]
-					bit.snaps[2].paired = bit2.snaps[j];
-					bit2.snaps[j].paired = bit.snaps[2];
+			if( initdata[i+8] != 0){
+				bit2 = initFindBit( initdata[i+8]);
+				idx = initFindTab( initdata, 0, initdata[i+8]);
+				for(j=0; j < 4; j++){
+					if( initdata[idx+6+j] == num){
+						// snap j is linked to bit.snaps[2]
+						bit.snaps[2].paired = bit2.snaps[j];
+						bit2.snaps[j].paired = bit.snaps[2];
+					}
 				}
 			}
-		}
 
-		if( bit.ctrl != null){
-			bit.ctrl.doLoad( initdata, i+10);
+			if( bit.ctrl != null){
+				bit.ctrl.doLoad( initdata, i+10);
+				// do dock logic.
+				if( bit.snaps[0] != null){
+					bit.snaps[0].doDock(bit.snaps[0].paired);
+				}
+			}
+			i += 10 + initdata[i+10];
 		}
-		i += 10 + initdata[i+10];
 	}
 	if( initdata[i] == "options"){
 		showchains = initdata[i+1];

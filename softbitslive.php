@@ -261,7 +261,7 @@
                 <td colspan="3" id="showbittype" >Basic/Power</td>
               </tr>
               <tr>
-                <td valign="top">
+                <td valign="top" rowspan="2">
                     <div id="addbitdiv" style="width:100px;border-color:grey; border-width:2px; border-style:solid;">
                       Select bit type to populate list then click to add.
                     </div>
@@ -276,14 +276,6 @@
                     <div class="action" style="width:75px;height:25px;border-color:red; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseAction();"> Action </div>
                     <div class="logic" style="width:75px;height:25px;border-color:black; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseLogic();"> Logic </div>
                   </div>
-                  <div style="padding:5px;" id="programdiv">
-                    <div class="box" style="border-color:green;" id="program"></div>
-                  </div>
-                  <div style="padding:5px;" id="codediv">
-                    <div class="box" style="border-color:blue;" id="code">
-                      Code display in hex
-                    </div>
-                    </div>
                 </td>
                 <?php if( is_dir("kits")){
                     echo('<td valign="top">');
@@ -304,6 +296,18 @@
                   }
                 ?>
               </tr>
+              <tr><td colspan="2">
+                  <div style="padding:5px;" id="programdiv">
+                    <div class="box" style="border-color:green;" id="program"></div>
+                  </div>
+                  <div style="padding:5px;" id="codediv">
+                    <div class="box" style="border-color:blue;" id="code">
+                      Code display in hex
+                    </div>
+                  </div>
+
+                </td>
+                </tr>
             </table>
           </td>
         </tr>
