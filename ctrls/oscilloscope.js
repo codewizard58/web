@@ -1,9 +1,12 @@
 //////////////////////////////////////////////////////////////////////
 // oscilloscope
 //
+graphBit.prototype = Object.create(control.prototype);
+
 
 function graphBit(bit)
-{	this.bit = bit;
+{	control.call(this, bit);
+	this.bit = bit;
 	this.hdata = new Array(180);
 	this.hdata2= null;
 	this.speed=1;

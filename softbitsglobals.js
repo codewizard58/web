@@ -105,10 +105,29 @@ function objlist()
 		return o;
 	}
 
+	this.adduniq = function( ob, data)
+	{	let t = this.head;
+		let o;
+		
+		if( t == null){
+			return this.addobj(ob, data);
+		}
+
+		while( t != null){
+			if( t.ob == ob){
+				return t;		// found it
+			}
+			t = t.next;
+		}
+
+		return this.addobj(ob, data);
+	}
+
 	this.removeobj = function( ob)
-	{
+	{	let xdebugmsg="";
 		if( ob.list != this){
-		xdebugmsg = "REMOVE list not this";
+			xdebugmsg = "REMOVE list not this";
+			debugmsg(xdebugmsg);
 			return;
 		}
 
@@ -126,7 +145,7 @@ function objlist()
 	}
 
 	this.reverse = function()
-	{	var t,t2;
+	{	let t,t2;
 
 		if( this.head == null){
 			return;

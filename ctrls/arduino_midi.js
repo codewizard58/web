@@ -1,11 +1,15 @@
 // MIDI
-function ArduinoBit_midi( abit)
-{	this.midi = "";
+ArduinoBit_midi.prototype = Object.create(control.prototype);
+
+function ArduinoBit_midi(abit)
+{	control.call(this, abit);
+	this.midi = "";
 	this.bit = abit;
 	this.remdata = null;
 	this.maxchain = 0;
 	this.sendcnt = 0;
 	this.senddata = null;
+	this.iscontrol = false;
 
 
 	this.Init = function()

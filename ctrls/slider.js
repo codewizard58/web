@@ -2,9 +2,12 @@
 // define some controls.
 // slider.js
 // 10/19/24
+sliderBit.prototype = Object.create(control.prototype);
+
 
 function sliderBit(bit)
-{	this.bit = bit;
+{	control.call(this, bit);
+	this.bit = bit;
 	this.l = 0;
 	this.r = 0;
 	this.t = 0;
@@ -165,16 +168,5 @@ function sliderBit(bit)
 		}
 	}	
 	
-	this.dock = function(from)
-	{
-		debugmsg("Connect "+from.name+" to slider");
-	}
-
-	// control
-	// from is a bit
-	this.undock = function(from)
-	{
-		debugmsg("Disconnect "+from.name+" from sliderr");
-	}
 	
 }

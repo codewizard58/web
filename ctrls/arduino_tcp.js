@@ -1,9 +1,11 @@
 //////////////////////////////////////////////////////////////////
 /// ARDUINO CONTROL 
 //////////////////////////////////////////////////////////////////
+ArduinoBit_tcp.prototype = Object.create(control.prototype);
 
 function ArduinoBit_tcp( abit)
-{	this.host = "";
+{	control.call(this, abit);
+	this.host = "";
 	this.port = "";
 	this.comport = "";
 	this.bit = abit;

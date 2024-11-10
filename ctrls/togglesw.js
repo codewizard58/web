@@ -1,7 +1,10 @@
 // togglesw
 //
+toggleSw.prototype = Object.create(control.prototype);
+
 function toggleSw(bit)
-{	this.bit = bit;
+{	control.call(this, bit);
+	this.bit = bit;
 	this.l = 0;
 	this.r = 0;
 	this.t = 0;

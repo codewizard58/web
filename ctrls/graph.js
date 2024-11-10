@@ -1,6 +1,9 @@
+// bar graph stereo
+barGraph2Bit.prototype = Object.create(control.prototype);
 
 function barGraph2Bit(bit)
-{	this.bit = bit;
+{	control.call(this, bit);
+	this.bit = bit;
 
 	this.getDockedBit = function(s)
 	{	var b = this.bit;
@@ -70,45 +73,6 @@ function barGraph2Bit(bit)
 		return res;
 	}
 
-	this.getData = function()
-	{
-	}
-
-	this.setData = function()
-	{
-	}
-
-	this.onMove = function()
-	{
-	}
-
-
-	this.startMove = function()
-	{
-	}
-
-
-	this.stopMove = function()
-	{
-	}
-
-	this.doSave = function()
-	{	var msg = "1,";
-
-		return msg;
-	}
-		
-	this.doLoad = function(initdata,  idx)
-	{	var i = initdata[idx];
-	}		
-		
-	this.dock = function(from)
-	{
-	}
-
-	this.undock = function(from)
-	{
-	}
 
 }
 

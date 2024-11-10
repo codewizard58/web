@@ -133,6 +133,9 @@ function control(bit)
 	this.sx = 0;
 	this.sy = 0;
 	this.sval = 0;
+	this.audioin = null;
+	this.audioout = null;
+	this.connected = false;	// audio connected?
 
 	this.setBounds = function()
 	{	var b = this.bit;
@@ -224,16 +227,38 @@ function control(bit)
 		return res;
 	}
 
+	// control basic placeholders
+	this.setup = function()
+	{
+		debugmsg("CTRL setup");
+
+	}
+
 // control.getdata
 	this.getData = function()
 	{
 	}
 
+	// setup the bitform.
 	this.setData = function()
 	{
 	}
 
+	// control
+	this.onRemove = function()
+	{
+		
+	}
 
+	this.selected = function(x, y)
+	{
+		if( x == y){
+			return " selected ";
+		}
+		return "";
+	}
+
+	// control
 	this.onMove = function()
 	{
 	}
@@ -267,24 +292,59 @@ function control(bit)
 	{
 	}
 
-//control
-	// when docked this is receiver
-	this.dock = function(from, dom)
-	{
+// control
+this.dock = function(from, dom)
+{	let msg="";
+	
+	if( dom == 2){
+		debugmsg("Connect "+from.name+" to "+this.name+" "+msg+" dom="+dom);
+		this.setup();
+		from.dockto(this.bit, dom);
+	}
+}
+
+// control from is a bit
+this.undock = function(from)
+{	let d = 0;
+
+	if( this.audioin != null ||
+		this.audioout != null){
+		d = 2;
+	}
+	from.undockfrom(this.bit, d);
+}
+
+// from is bit
+this.dockto = function(from, dom)
+{
+	if( dom == 2){
+		this.setup();
 	}
 
-	this.dockto = function(from, dom)
-	{
-	}
-//control
-	// when undocked  this is the receiver
-	this.undock = function(from)
-	{
-	}
+	if( from.ctrl != null ){
 
-	this.undockfrom = function(from, dom)
-	{
+		if( from.ctrl.audioin != null){
+			debugmsg("link "+this.name+" to next module");
+			this.audioout.connect( from.ctrl.audioin);
+			this.connected = true;
+		}
 	}
+}
+
+// scope
+this.undockfrom = function(from, dom)
+{	let b = from.ctrl;
+
+	if( dom == 2){
+		if( b != null){
+			if( from.ctrl.audioin != null && this.connected){
+				debugmsg("unlink "+this.name+" from next module");
+				this.connected = false;
+				this.audioout.disconnect( from.ctrl.audioin);
+			}
+		}
+	}
+}
 
 	this.setValue = function(data, chan)
 	{

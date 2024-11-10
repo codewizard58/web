@@ -79,19 +79,17 @@ function UIselMIDIoutdev(){
 
 }
 
-function showMIDIinterfaces()
-{	var mdiv;
-	var msg="";
-	var m;
-	var l;
-	var cnt = 1;
+function showMIDIinterfaces(inout)
+{
+	let msg="";
+	let m;
+	let l;
+	let cnt = 1;
 
-	// setup the UI
-	mdiv = document.getElementById("midiindiv");
-	if( mdiv != null ){
+	if( inout == 1){	// inputs
 		l = MIDIindev_list.head;
 
-		msg += "<select id='midiinsel' onchange='UIselMIDIindev()' >\n";
+		msg += "<select id='midiinsel' onchange='UIselMIDIindev();' >\n";
 		msg += "<option value='0'>Keyboard</option>\n";
 
 		while(l != null){
@@ -101,11 +99,10 @@ function showMIDIinterfaces()
 			l = l.next;
 		}
 		msg += "</select>\n";
-		mdiv.innerHTML = msg;
+		return msg;
 	}
 
-	mdiv = document.getElementById("midioutdiv");
-	if( mdiv != null){
+	if( inout == 0){
 		msg = "";
 
 		msg += "<select id='midioutsel' onchange='UIselMIDIoutdev();' >\n";
@@ -126,8 +123,9 @@ function showMIDIinterfaces()
 		}
 		msg += "</select>\n";
 
-		mdiv.innerHTML = msg;
+		return msg;
 	}
+	return "Error";
 
 }
 
@@ -140,9 +138,9 @@ function MIDIobj(m)
 }
 
 function onMIDIInit(midi){
-	var indev, odev;
-	var inputs;
-	var outputs;
+	let indev, odev;
+	let inputs;
+	let outputs;
 
 	midiAccess = midi;
 	inputs = midiAccess.inputs.values();
@@ -157,7 +155,7 @@ function onMIDIInit(midi){
 		MIDIoutdev_list.addobj(new MIDIobj(odev), null);
 	}
 
-	showMIDIinterfaces();
+//	showMIDIinterfaces();
 
 }
 

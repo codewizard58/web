@@ -169,6 +169,17 @@ function checkRange(x){
 	return x;
 }
 
+function checkRange128(x){
+	if( x < -128){
+		x = -128;
+	}else if( x > 127){
+		x = 127;
+	}else if( isNaN(x)){
+		x = 0;
+	}
+	return x;
+}
+
 function bitFlip()
 {	var flipit;
 
@@ -214,6 +225,7 @@ function bitRemove()
 	rem = selected.getDrag();		// drag is always the bit.
 	if( rem != null && rem.ctrl != null){
 		rem.ctrl.getData();
+		rem.ctrl.onRemove();
 	}
 
 	if( sketch.delBit( rem ) != 0){
@@ -1203,7 +1215,7 @@ function Program()
 					arg2 = prog[bp];
 					bp++;
 					if(curchain  == 0){
-						data = 0;			// silence osc if not linked in a chain.
+						data = 0;			// silence speaker if not linked in a chain.
 					}else if(  arg2 > 0 && arg2 < nchains){		// modmix ?
 						data2 = this.getchaindata(arg2, nchains);
 						progbits[ ibp].ctrl.setValue(data2, 1);
@@ -1529,7 +1541,7 @@ function Program()
 						data2 = this.chains[ arg2].data;
 						progbits[ ibp].ctrl.setValue(data2, 1);	// modfreq
 					}else{
-						progbits[ ibp].ctrl.setValue(data2, 1);	// modfreq
+						progbits[ ibp].ctrl.setValue(128, 1);	// modfreq
 					}
 					if(curchain  == 0){
 						data = 0;			// silence osc if not linked in a chain.
@@ -2381,8 +2393,7 @@ function Bit( btype, x, y, w, h, k) {
 			}
 		}
 
-		debugmsg("Docked "+this.name+" to "+partner.name+" "+msg+" con="+this.connected+" pdom="+pdom);
-		this.connected++;
+		debugmsg("BIT Docked "+this.name+" to "+partner.name+" "+msg+" pdom="+pdom);
 		if( this.ctrl != null){
 			this.ctrl.dock(partner, pdom);
 		}
@@ -2390,7 +2401,7 @@ function Bit( btype, x, y, w, h, k) {
 
 	this.dockto = function(partner, dom)
 	{
-		debugmsg("dockto "+this.name+" -> "+partner.name);
+		debugmsg("BIT dockto "+this.name+" -> "+partner.name);
 		if( this.ctrl != null){
 			this.ctrl.dockto(partner, dom);
 		}
@@ -2400,18 +2411,15 @@ function Bit( btype, x, y, w, h, k) {
 	// bit input / output
 	this.undock = function(partner)
 	{
-		if( this.connected > 0){
-			this.connected--;
-		}
-		debugmsg("Undock "+this.name+" from "+partner.name+" con="+this.connected);
-		if( this.ctrl != null && this.connected == 0){
+		debugmsg("BIT Undock "+this.name+" from "+partner.name);
+		if( this.ctrl != null ){
 			this.ctrl.undock(partner);
 		}
 	}
 
 	this.undockfrom = function(partner, dom)
 	{
-		debugmsg("Undock from "+this.name+" <- "+partner.name);
+		debugmsg("BIT Undock from "+this.name+" <- "+partner.name);
 		if( this.ctrl != null){
 			this.ctrl.undockfrom(partner, dom);
 		}
