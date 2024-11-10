@@ -294,6 +294,8 @@ function kit_midi( )
 	// defines the op codes for the program. softbitslivs:execProgram
 	this.kitctrlcodes = [
 		"power_on", 0,
+		"midi_cv", 4,
+		"midi_cc", 5,
 		null, 253
 	];
 

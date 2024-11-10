@@ -298,7 +298,7 @@ function oscBit(bit)
 			return;
 		}
 		if( this.prevfreq.changed(freq) ){
-			debugmsg("OSC fr="+freq+" "+this.nfreq+" "+this.modfreq);
+//			debugmsg("OSC fr="+freq+" "+this.nfreq+" "+this.modfreq);
 			this.osc.frequency.cancelScheduledValues(0);
 			if( this.webkitstyle){
 				this.osc.frequency.setTargetValueAtTime( notefreq(freq), 0, 0.01);

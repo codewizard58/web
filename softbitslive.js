@@ -20,6 +20,8 @@ var curtab = "progtab";
 
 const POWERON=0;
 const POWEROFF=1;
+const MIDICV=4;
+const MIDICC=5;
 const AINVERT = 13;
 const DIMMER = 14;
 const ENDPROG=255;
@@ -657,14 +659,14 @@ function Program()
 
 // program.markchain
 	this.markChain = function( bit)
-	{	var bpair, bpair2;
-		var nbit;
-		var tl;
-		var chain;
-		var dom = bit.domain;
+	{	let bpair, bpair2;
+		let nbit;
+		let tl;
+		let chain;
+		let dom = bit.domain;
 		let code;
-		var xsnap;
-		var p;
+		let xsnap;
+		let p;
 		let msg="";
 
 		if( dom != 1){
@@ -899,7 +901,7 @@ function Program()
 		while(b != null){
 			bit = b.bit;
 			
-			if( bit.code == POWERON){
+			if( bit.code == POWERON || bit.code == MIDICV || bit.code == MIDICC){
 				// a power_on
 				this.markChain(bit);
 			}
@@ -911,7 +913,7 @@ function Program()
 		while(b != null){
 			bit = b.bit;
 			
-			if( bit.code == POWERON){
+			if( bit.code == POWERON || bit.code == MIDICV || bit.code == MIDICC){
 				// a power_on
 				this.drawMesh(bit );
 			}
@@ -923,7 +925,7 @@ function Program()
 		while(b != null){
 			bit = b.bit;
 			
-			if( bit.code == POWERON){
+			if( bit.code == POWERON ){
 				// a power_on
 				// this.drawMesh(bit );
 
@@ -1037,7 +1039,7 @@ function Program()
 			if( trace > 0){
 				debugmsg("Trace: "+b.name+" "+idx+" "+code+" dom "+cd);
 			}
-			if( code == POWERON){		// power on
+			if( code == POWERON || code == MIDICV || code == MIDICC){		// power on
 				this.source[cd].msg += drawFunction1( idx, b.chain);
 				this.source[cd].codeBit1(b, b.chain);
 
@@ -1210,6 +1212,19 @@ function Program()
 				}
 			}else if(code == ENDPROG){
 				prog = null;		// end of program
+			}else if( code == MIDICV || code == MIDICC){			// midicv is power on
+					chain = prog[bp];
+					bp++;
+					if( chain < 0 || chain >= nchains){
+						prog = null;
+					}else {
+						curchain = chain;
+						data = this.chains[curchain].startvalue;
+						this.chains[ curchain].data = data;
+					}
+					if( curchain != 0){
+						this.chains[ curchain].data = this.getValue( progbits, ibp, 255);
+					}
 			}else {
 				if(code == SPEAKER){		// speaker
 					arg2 = prog[bp];
@@ -1635,8 +1650,6 @@ function Program()
 						osnap.indval = this.chains[ curchain].data;
 					}else if(code == 21){
 					}else if(code == 22){
-					}else if(code == 23){
-					}else if(code == 24){
 					}else if(code == 25){
 					}else if(code == 26){
 					}else if(code == 27){

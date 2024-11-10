@@ -190,8 +190,13 @@ function midiCVBit(bit)
 
 	// midicv
 	this.filter = function(name, arg1, arg2)
-	{
-		debugmsg("CV filter "+name+" "+arg1+" "+arg2);
+	{	let b = this.bit;
+		if( name == "key-on"){
+			b.value = arg2[1]+arg2[1];
+		}else if( name == "key-off"	){
+			b.value = 0;
+		}
+		debugmsg("CV filter "+name+" "+arg1+" "+arg2[0]+" "+arg2[1]);
 	}
 	midicv_list.adduniq( this, null);
 
