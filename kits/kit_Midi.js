@@ -75,6 +75,7 @@ function midi_process()
 function MIDIobj(m)
 {	this.midi = m;
 	this.count = 0;
+	this.portid = m.id;
 
 }
 
@@ -149,7 +150,7 @@ function MIDIMessageEventHandler( e, dev){
 			msg3[2] = 127;
 
 //	xdebugmsg = "midiout handler("+msg3[0]+","+msg3[2]+")";
-			midiinsetvalues("key-on", e.data[0]&0xf, msg3);
+			midiinsetvalues(1, e.data[0]&0xf, msg3[1], dev);
 			return;
 		}
 		// note on with vel ==0 is a noteoff.
@@ -157,7 +158,7 @@ function MIDIMessageEventHandler( e, dev){
 		msg3[1] = e.data[1];
 		msg3[2] = 0;
 //	xdebugmsg = "midiout handler("+msg3[0]+","+msg3[2]+")";
-		midiinsetvalues("key-off", e.data[0]&0xf, msg3);
+		midiinsetvalues(0, e.data[0]&0xf, msg3[1]);
 		return;
 
 	case 0x80:
@@ -165,7 +166,7 @@ function MIDIMessageEventHandler( e, dev){
 		msg3[1] = e.data[1];
 		msg3[2] = e.data[2];
 //	xdebugmsg = "midiout handler("+msg3[0]+","+msg3[2]+")";
-		midiinsetvalues("key-off", e.data[0]&0xf, msg3);
+		midiinsetvalues(0, e.data[0]&0xf, msg3[1]);
 		return;
 
 	case 0xb0:		// control change
@@ -180,7 +181,7 @@ function MIDIMessageEventHandler( e, dev){
 			msg2[0] = 0xc0 | (e.data[0] & 0xf);
 			msg2[1] = prognum;
 			if( e.data[2] == 127){
-				midiinsetvalues("programchange", e.data[0]&0xf, msg2);
+				midiinsetvalues(3, e.data[0]&0xf, msg2, dev);
 			}
 			return;
 		}else if( e.data[1] == 107 ){
@@ -188,12 +189,12 @@ function MIDIMessageEventHandler( e, dev){
 			msg2[0] = 0xc0 | (e.data[0] & 0xf);
 			msg2[1] = prognum;
 			if( e.data[2] == 127){
-				midiinsetvalues("programchange", e.data[0]&0xf, msg2);
+				midiinsetvalues(4, e.data[0]&0xf, msg2, dev);
 			}
 			return;
 		}
 // xdebugmsg = "MidiIN "+msg+"["+(e.data[0]&0x0f)+"] "+e.data[1]+" "+e.data[2];
-		midiinsetvalues(msg, e.data[0]&0xf, msg3);
+		midiinsetvalues(2, e.data[0]&0xf, msg3[1], dev);
 
 		return;
 
@@ -201,27 +202,24 @@ function MIDIMessageEventHandler( e, dev){
 	 // xdebugmsg = "MidiIN "+(e.data[0] & 0xf0)+"["+(e.data[0]&0x0f)+"] "+e.data[1]+" "+e.data[2];
 }
 
-function midiinsetvalues(name, arg1, arg2)
-{	let n = name;
+function midiinsetvalues( op, chan, arg, dev)
+{	let n = op;
 	let f;
 
-	if( name == "key-on" || name == "key-off"){
-		f = midicv_list.head;
-		while(f != null){
-			f.ob.filter(name, arg1, arg2);
-			f = f.next;
-		}
-	}else if( name == "programchange"){
+	chan++;		// midi channels are 1 origin.
 
-	}else {
-		f = midicc_list.head;
-		while(f != null){
-			f.ob.filter(name, arg1, arg2);
-			f = f.next;
+	f = midicv_list.head;
+	while(f != null){
+		if( f.ob.filter(op, chan, arg, dev)){
+			break;	// processed it.
 		}
+		f = f.next;
 	}
-
-	debugmsg("MIDI IN "+name+" "+arg1+" "+arg2);
+	if( f != null){
+		debugmsg("MIDI IN "+op+" "+chan+" "+arg);
+	}else {
+		debugmsg("MIDI IN ignored "+op+" "+chan+" "+arg);
+	}
 }
 
 
@@ -248,9 +246,13 @@ function kit_midi( )
 //		"midiin", "midi_in", 100, 50,	null, "midiout" ,null,  null,	// 22
 //				0,	1, "midi_in",	"Midi Input Selector",	 0x0040, "Input", 0, 0,	// 7
 		"midicv", "midi_cc",	50, 50,	null, "actionout" ,null,  null, // 24
-				0,	1, "midi_cc",	"Midi CV filter",	 0x0010, "Action", 0, 0,	// 7
+				0,	1, "midi_cc",	"Midi CV filter",	 0x0010, "Input", 0, 0,	// 7
 		"midicc", "midi_cv",	50, 50,	null, "actionout" ,null,  null,		// 		images for cv and cc reversed.
-				0,	1, "midi_cv",	"Midi Note filter",	 0x0010, "Action", 0, 0,	// 7
+				0,	1, "midi_cv",	"Midi Note filter",	 0x0010, "Input", 0, 0,	// 7
+		"midicv", "midi_ccout",	50, 50,	"actionin" ,null, null,  null, // 24
+				0,	1, "midi_ccout",	"Midi CV output",	 0x0001, "Output", 0, 0,	// 7
+		"midicc", "midi_cvout",	50, 50,	"actionin" ,null, null,  null,		// 		images for cv and cc reversed.
+				0,	1, "midi_cvout",	"Midi Note output",	 0x0001, "Output", 0, 0,	// 7
 
 
 //		"defaulta", "env_attack", 100, 50,		"actionin", "actionout" ,"actionin",  null,		// 31
@@ -271,8 +273,10 @@ function kit_midi( )
 	this.ctrltab = [
 //  ID, len, args
 	"midi_in", 3, 3,		// 
-	"midi_cv", 3, 4,		// note filtewr
+	"midi_cv", 3, 4,		// note filter
 	"midi_cc", 3, 5,		// control code filter
+	"midi_cvout", 3, 6,		// note filter
+	"midi_ccout", 3, 7,		// control code filter
 	null, 0, 0, 0, 0	// end of table
 	];
 
@@ -296,6 +300,8 @@ function kit_midi( )
 		"power_on", 0,
 		"midi_cv", 4,
 		"midi_cc", 5,
+		"midi_cvout", 6,
+		"midi_ccout", 7,
 		null, 253
 	];
 
@@ -322,6 +328,18 @@ function kit_midi( )
 				}else if( this.ctrltab[i+2] == 5){
 					// Control Cond filter
 					ct = new midiCCBit( bit);
+					bit.ctrl = ct;
+					ct.setData();
+					return ct;
+				}else if( this.ctrltab[i+2] == 6){
+					// note output
+					ct = new midiCVOutBit( bit);
+					bit.ctrl = ct;
+					ct.setData();
+					return ct;
+				}else if( this.ctrltab[i+2] == 7){
+					// Control Cond output
+					ct = new midiCCOutBit( bit);
 					bit.ctrl = ct;
 					ct.setData();
 					return ct;

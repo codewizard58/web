@@ -22,6 +22,8 @@ const POWERON=0;
 const POWEROFF=1;
 const MIDICV=4;
 const MIDICC=5;
+const MIDICVOUT=6;
+const MIDICCOUT=7;
 const AINVERT = 13;
 const DIMMER = 14;
 const ENDPROG=255;
@@ -673,6 +675,8 @@ function Program()
 			dom = 0;
 		}
 
+		dom = 0;	// debug
+
 		this.source[dom].chain++;
 		chain = this.source[dom].chain;
 
@@ -1031,6 +1035,7 @@ function Program()
 			if( cd != 1){
 				cd = 0;
 			}
+			cd = 0;		//debug
 			if(trace == 1){
 				debugreset();
 				trace++;
@@ -1236,6 +1241,12 @@ function Program()
 						progbits[ ibp].ctrl.setValue(data2, 1);
 					}else {
 						progbits[ ibp].ctrl.setValue(128, 1);
+					}
+					progbits[ ibp].ctrl.setValue(data, 0);		// mute ?
+					progbits[ibp].value = this.chains[ curchain].data;
+				}else if(code == MIDICVOUT){		// speaker
+					if(curchain  == 0){
+						data = 0;			// note off when disconnected.
 					}
 					progbits[ ibp].ctrl.setValue(data, 0);		// mute ?
 					progbits[ibp].value = this.chains[ curchain].data;

@@ -110,16 +110,19 @@ function objlist()
 		let o;
 		
 		if( t == null){
+			debugmsg("Uniq head=null");
 			return this.addobj(ob, data);
 		}
 
 		while( t != null){
 			if( t.ob == ob){
+				debugmsg("Uniq found");
 				return t;		// found it
 			}
 			t = t.next;
 		}
 
+		debugmsg("Uniq not found");
 		return this.addobj(ob, data);
 	}
 
