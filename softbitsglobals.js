@@ -664,6 +664,7 @@ function sbmodule( name )
 	}
 
 
+	
 	this.loadimages = function()
 	{	let i,n;
 		let imagedir="";
@@ -678,9 +679,9 @@ function sbmodule( name )
 			name = this.bitimagemap[i];
 			if( findimage(name) == null){
 				if( this.bitimagemap[i+1] == 0){
-					imagedir="snaps/";
+					imagedir="resources/snaps/";
 				}else if(this.bitimagemap[i+1] == 1) {
-					imagedir="bits/";
+					imagedir="resources/bits/";
 				}else if(this.bitimagemap[i+1] == 2) {
 					imagedir="resources/images/";
 				}else {

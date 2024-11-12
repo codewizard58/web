@@ -61,6 +61,161 @@ function showMIDIinterfaces(inout, cur)
 
 }
 
+function showMidiInOut(t)
+{
+	let msg = "";
+	msg += "<select id='grouptype' onchange='UImidiInOut();' >\n";
+	msg += "<option value='1' "+isSelected(1, t)+" >Input</option>\n";
+	msg += "<option value='0' "+isSelected(0, t)+" >Output</option>\n";
+	msg += "</select>\n";
+
+	return msg;
+}
+
+function UImidiInOut()
+{
+	if( bitformaction != null)
+	{
+		debugmsg("UImidiInOut()");
+		bitformaction.getData();
+		bitformaction.setData();
+	}
+}
+
+var midiGroups_list = new objlist();
+var nextgroup = 0;
+
+// called with the next group number
+//	1 Default in, 2 default out 
+function midiGroup(n)
+{
+	this.index = n;
+
+	this.grouptype = 1;		// input default
+	if(n==1 ){
+		this.name = "Default Input";
+	}else if( n == 2){
+		this.name = "Default Output";
+		this.grouptype = 0;	// output default.
+	}else {
+		this.name = "group_"+n;
+	}
+	this.channel = 0;
+	this.midi = null;
+}
+
+function getMidiGroup(val)
+{	let g = midiGroups_list.head;
+	let gn = null;
+
+	if( val > 0){
+		while(g != null){
+			if( g.ob.index == val){
+				return g.ob;
+			}
+			g = g.next;
+		}
+	}
+
+	nextgroup++;
+	gn = new midiGroup(nextgroup);
+	midiGroups_list.addobj( gn, null);
+	return gn;
+}
+
+function listMidiGroups(dir, arg)
+{
+	let msg = "";
+	let g = midiGroups_list.head;
+	let gn = null;
+	let dirmsg = "";
+	if( dir == 0){
+		dirmsg=" (OUT)";
+	}else if(dir == 1){
+		dirmsg=" (IN)";
+	}
+	while(g != null){
+		if( g.ob.grouptype == dir){
+			msg += "<option value='"+g.ob.index+"' "+isSelected(g.ob.name, arg)+" >"+g.ob.name+dirmsg+"</option>\n";
+		}
+		g = g.next;
+	}
+	return msg;
+}
+
+function findGroupDefault(dir)
+{
+	let g = midiGroups_list.head;
+	let name;
+
+	if( dir == 1){
+		name = "Default Input";
+	}else {
+		name = "Default Output";
+	}
+
+	while(g != null){
+		if( g.ob.grouptype == dir){
+			if( g.ob.name == name){
+				return g.ob;
+			}
+		}
+		g = g.next;
+	}
+	return null;
+}
+
+function showMidiGroups(dir, arg, cannew)
+{
+	let msg = "";
+
+	msg += "<select id='groupname' onchange='UImidiGroups();' >\n";
+	if( dir == 1 || dir == 2){
+		msg += listMidiGroups(1, arg);
+	}
+	if( dir == 0 || dir == 2){
+		msg += listMidiGroups(0, arg);
+	}
+	if( cannew){
+		msg += "<option value='"+0+"' >New Group</option>\n";
+	}
+	msg += "</select>\n";
+
+	return msg;
+}
+
+function midiInitGroups()
+{
+	let gn = null;
+	// bootstrap
+	if( midiGroups_list.head == null){
+		gn = getMidiGroup(0);
+		gn = getMidiGroup(0);
+	}
+	
+}
+
+function UImidiGroups()
+{
+	if( bitformaction != null)
+	{
+		bitformaction.getData();
+		bitformaction.setData();
+	}
+}
+
+function getMidiGroupByName(name)
+{
+	let g = midiGroups_list.head;
+
+	while(g != null){
+		if( g.ob.name == name){
+			return g.ob;
+		}
+		g = g.next;
+	}
+	return null;
+}
 
 function midi_process()
 {
@@ -138,8 +293,15 @@ function MIDIMessageEventHandler( e, dev){
 	let msg3=[0, 0, 0];
 	let msg2= [0, 0];
 
-	xdebugmsg = "Min("+dev+")"+ashex(e.data[0])+" "+ashex(e.data[1])+" "+ashex(e.data[2]);
-	debugmsg( xdebugmsg);
+	if( e.data.length > 2){
+		xdebugmsg = "Min("+dev+")"+ashex(e.data[0])+" "+ashex(e.data[1])+" "+ashex(e.data[2]);
+	}else if( e.data.length > 1){
+		xdebugmsg = "Min("+dev+")"+ashex(e.data[0])+" "+ashex(e.data[1]);
+	}else {
+		xdebugmsg = "Min("+dev+")"+ashex(e.data[0]);
+	}
+
+//	debugmsg( xdebugmsg);
 
 	switch( code){
 	case 0x90:
@@ -150,7 +312,7 @@ function MIDIMessageEventHandler( e, dev){
 			msg3[2] = 127;
 
 //	xdebugmsg = "midiout handler("+msg3[0]+","+msg3[2]+")";
-			midiinsetvalues(1, e.data[0]&0xf, msg3[1], dev);
+			midiinsetvalues(1, e.data[0]&0xf, msg3[1], msg3[2], dev);
 			return;
 		}
 		// note on with vel ==0 is a noteoff.
@@ -158,7 +320,7 @@ function MIDIMessageEventHandler( e, dev){
 		msg3[1] = e.data[1];
 		msg3[2] = 0;
 //	xdebugmsg = "midiout handler("+msg3[0]+","+msg3[2]+")";
-		midiinsetvalues(0, e.data[0]&0xf, msg3[1]);
+		midiinsetvalues(0, e.data[0]&0xf, msg3[1], msg3[2], dev);
 		return;
 
 	case 0x80:
@@ -166,7 +328,7 @@ function MIDIMessageEventHandler( e, dev){
 		msg3[1] = e.data[1];
 		msg3[2] = e.data[2];
 //	xdebugmsg = "midiout handler("+msg3[0]+","+msg3[2]+")";
-		midiinsetvalues(0, e.data[0]&0xf, msg3[1]);
+		midiinsetvalues(0, e.data[0]&0xf, msg3[1], msg3[2], dev);
 		return;
 
 	case 0xb0:		// control change
@@ -181,7 +343,7 @@ function MIDIMessageEventHandler( e, dev){
 			msg2[0] = 0xc0 | (e.data[0] & 0xf);
 			msg2[1] = prognum;
 			if( e.data[2] == 127){
-				midiinsetvalues(3, e.data[0]&0xf, msg2, dev);
+				midiinsetvalues(3, e.data[0]&0xf, msg2[0], msg2[1], dev);
 			}
 			return;
 		}else if( e.data[1] == 107 ){
@@ -189,12 +351,12 @@ function MIDIMessageEventHandler( e, dev){
 			msg2[0] = 0xc0 | (e.data[0] & 0xf);
 			msg2[1] = prognum;
 			if( e.data[2] == 127){
-				midiinsetvalues(4, e.data[0]&0xf, msg2, dev);
+				midiinsetvalues(4, e.data[0]&0xf, msg2[0], msg2[1], 0, dev);
 			}
 			return;
 		}
 // xdebugmsg = "MidiIN "+msg+"["+(e.data[0]&0x0f)+"] "+e.data[1]+" "+e.data[2];
-		midiinsetvalues(2, e.data[0]&0xf, msg3[1], dev);
+		midiinsetvalues(2, e.data[0]&0xf, msg3[1], msg3[2], dev);
 
 		return;
 
@@ -202,23 +364,27 @@ function MIDIMessageEventHandler( e, dev){
 	 // xdebugmsg = "MidiIN "+(e.data[0] & 0xf0)+"["+(e.data[0]&0x0f)+"] "+e.data[1]+" "+e.data[2];
 }
 
-function midiinsetvalues( op, chan, arg, dev)
+function midiinsetvalues( op, chan, arg, arg2, dev)
 {	let n = op;
 	let f;
 
 	chan++;		// midi channels are 1 origin.
 
-	f = midicv_list.head;
+	if(op ==2){
+		f = midicc_list.head;
+	}else {
+		f = midicv_list.head;
+	}
+	// run through the filter list
 	while(f != null){
-		if( f.ob.filter(op, chan, arg, dev)){
+		if( f.ob.filter(op, chan, arg, arg2, dev)){
 			break;	// processed it.
 		}
 		f = f.next;
 	}
-	if( f != null){
-		debugmsg("MIDI IN "+op+" "+chan+" "+arg);
-	}else {
-		debugmsg("MIDI IN ignored "+op+" "+chan+" "+arg);
+	
+	if( f == null){
+		debugmsg("MIDI IN ignored "+op+" "+chan+" "+arg+" "+arg2);
 	}
 }
 
@@ -245,6 +411,10 @@ function kit_midi( )
 				0,	0, "Power Off",		"End of a chain, optional.", 0x0001, "Power", 0, 1,	// 1
 //		"midiin", "midi_in", 100, 50,	null, "midiout" ,null,  null,	// 22
 //				0,	1, "midi_in",	"Midi Input Selector",	 0x0040, "Input", 0, 0,	// 7
+		"midigroup", "midi_group_in",	50, 50,	null, null ,null,  null, // 24
+			0,	1, "midi_group_in",	"Midi Group Input filter",	 0x0000, "Action", 0, 0,	// 7
+		"midigroup", "midi_group_out",	50, 50,	null, null ,null,  null, // 24
+			0,	1, "midi_group_out",	"Midi Group Output filter",	 0x0000, "Action", 0, 0,	// 7
 		"midicv", "midi_cc",	50, 50,	null, "actionout" ,null,  null, // 24
 				0,	1, "midi_cc",	"Midi CV filter",	 0x0010, "Input", 0, 0,	// 7
 		"midicc", "midi_cv",	50, 50,	null, "actionout" ,null,  null,		// 		images for cv and cc reversed.
@@ -277,6 +447,8 @@ function kit_midi( )
 	"midi_cc", 3, 5,		// control code filter
 	"midi_cvout", 3, 6,		// note filter
 	"midi_ccout", 3, 7,		// control code filter
+	"midi_group_in", 3, 8,		// Midi group filter
+	"midi_group_out", 3, 9,		// Midi group outputfilter
 	null, 0, 0, 0, 0	// end of table
 	];
 
@@ -284,6 +456,8 @@ function kit_midi( )
 	this.bitimagemap = [
 		"midiin", 1, 
 		"midiin-v", 1, 
+		"midigroup", 1, 
+		"midigroup-v", 1, 
 		"midicc", 1, 
 		"midicc-v", 1, 
 		"midicv", 1, 
@@ -314,12 +488,7 @@ function kit_midi( )
 		for(i=0; this.ctrltab[i] != null; i += this.ctrltab[i+1]){
 			if( this.ctrltab[i] == name){
 				// found control
-				if( this.ctrltab[i+2] == 3){		// midin
-					ct = new midiInBit( bit);
-					bit.ctrl = ct;
-					ct.setData();
-					return ct;
-				}else if( this.ctrltab[i+2] == 4){
+				if( this.ctrltab[i+2] == 4){
 					// note filter
 					ct = new midiCVBit( bit);
 					bit.ctrl = ct;
@@ -343,6 +512,20 @@ function kit_midi( )
 					bit.ctrl = ct;
 					ct.setData();
 					return ct;
+				}else if( this.ctrltab[i+2] == 8){
+					// Group filter
+					ct = new midiGroupBit( bit);
+					bit.ctrl = ct;
+					ct.grouptype = 1;
+					ct.setData();
+					return ct;
+				}else if( this.ctrltab[i+2] == 9){
+					// Group filter
+					ct = new midiGroupBit( bit);
+					bit.ctrl = ct;
+					ct.grouptype = 0;
+					ct.setData();
+					return ct;
 				}
 			}
 		}
@@ -362,6 +545,7 @@ function kit_midi( )
 	{	let msg = "";
 
 		midi_process();
+		midiInitGroups();
 	}
 
 
