@@ -125,12 +125,11 @@ function selMIDIoutdev(dev)
 	while(dev != 0 && l != null){
 		if( l.ob.count == dev){
 			useMIDIout = l.ob;
-			l = null;
-		}else {
-			l = l.next;
+			return useMIDIout;
 		}
+		l = l.next;
 	}
-	return useMIDIout;
+	return null;
 }
 
 
@@ -158,27 +157,62 @@ function MidiChannelSelector(chan, omni)
     return msg;
 }
 
-// common group / interface update
-// groupobj points to the group being used.
-//
-function setGroupData(obj, name, dir)
-{	let gn = null;
+var cc_code_tab = [
+  0, "Bank Select", 1,
+  1, "Modulation Wheel", 0,
+  2, "Breath controller", 0,
+  4, "Foot Pedal", 1,
+  5, "Portamento Time", 1,
+  6, "Data Entry", 1,
+  7, "Volume", 1,
+  8, "Balance", 1,
+ 10, "Pan position", 1,
+ 11, "Expression", 0,
+ 12, "Effect Control 1", 1,
+ 13, "Effect Control 2", 1,
+ 16, "Ribbon Controller or General Purpose Slider 1", 0,
+ 17, "Knob 1 or General Purpose Slider 2", 0,
+ 18, "General Purpose Slider 3", 0,
+ 19, "Knob 2 General Purpose Slider 4", 0,
+ 20, "Knob 3 or Undefined", 0,
+ 21, "Knob 4 or Undefined", 0,
+ 64, "Hold Pedal (on/off)", 0,
+ 65, "Portamento (on/off)", 0,
+ 66, "Sostenuto Pedal (on/off)", 0,
+ 67, "Soft Pedal (on/off)", 0,
+ 68, "Legato Pedal (on/off)", 0,
+ 69, "Hold 2 Pedal (on/off)", 0,
+ 70, "Sound Variation", 0,
+ 71, "Resonance (Timbre)", 0,
+ 72, "Sound Release Time", 0,
+ 74, "Frequency Cutoff (Brightness)", 0,
+ 75, "Sound Control 6", 0,
+ 76, "Sound Control 7", 0,
+ 77, "Sound Control 8", 0,
+ 78, "Sound Control 9", 0,
+ 79, "Sound Control 10", 0,
+ 80, "Decay", 0,
+ 81, "Hi Pass Filter Frequency", 0,
+ 82, "General Purpose Button 3", 0,
+ 83, "General Purpose Button 4", 0,
+ 84, "Portamento Amount", 0
+];
 
-
-	if( gn != null){
-		obj.channel = gn.channel;
-	}else {
-		debugmsg("setGroup cannot find '"+obj.groupname+"'");
-	}
-	return gn;
-}
 
 //////////////////////////////////////////////////////////////////////////////////////
 function showMidiControlCodes(cc)
 {
 	let msg = "";
+	let n = 0;
+	let ccx = 0;
 
-	msg += "Code("+cc+")";
+	msg += "<select id='control' >\n";
+	for(n=0; n < cc_code_tab.length; n += 3){
+		ccx = (cc_code_tab[n]);
+		msg += "<option value='"+ccx+"' "+isSelected(cc, ccx)+" >"+ccx+" - "+(cc_code_tab[n+1])+"</option>\n";
+	}
+	msg += "</select>\n";
+	msg += "<br /><input type='text' value='' id='usercontrol' /> "
 	return msg;
 }
 
@@ -331,7 +365,7 @@ function midiCCBit(bit)
 			msg = "<table>";
 			msg += "<tr><th>Group</th><td>"+showMidiGroups(1, grp.name, false)+"</td></tr>\n";
 			msg += "<tr><th>Channel</th><td>"+grp.channel+"</td></tr>\n";
-			msg += "<tr><th>Control</th><td><input type='text' value='"+this.cc+"' id='control' /></td></tr>\n";
+			msg += "<tr><th>Control Code</th><td>"+showMidiControlCodes(this.cc)+"</td></tr>";
 			msg += "</table>\n";
 
 			bitform.innerHTML = msg;
@@ -355,6 +389,13 @@ function midiCCBit(bit)
 		if( f != null){
 			this.cc = f.value;
 			debugmsg("CC control "+this.cc);
+		}
+		f = document.getElementById("usercontrol");
+		if( f != null){
+			if( f.value != ""){
+				this.cc = f.value;
+				debugmsg("CC USER control "+this.cc);
+			}
 		}
 
 	}
@@ -430,7 +471,8 @@ function midiCVOutBit(bit)
 		let mid = null;
 		let send=null;
 		let output = null;
-		let chanx = this.channel-1;
+		const grp = this.groupobj;
+		let chanx = grp.channel-1;
 
 		if( chan != 0){
 			return;
@@ -439,11 +481,12 @@ function midiCVOutBit(bit)
 		if( data < 16){
 			note = 0;		// muted
 		}
-		if( this.outdev == null){
+		if( grp.outdev == null){
+			debugmsg("OUTDEV null "+grp.name+" type"+grp.grouptype);
 			return;
 		}
 
-		mid = this.outdev.midi.value.id;
+		mid = grp.outdev.midi.value.id;
 		output = midiAccess.outputs.get(mid);
 
 		if( this.note != note){
@@ -476,7 +519,7 @@ function midiCVOutBit(bit)
 // midi cv output ( note on/off)
 	this.setData = function()
 	{	let msg="";
-		let g = null;
+		const grp = this.groupobj;
 
 		if( bitform != null){
 			bitform.innerHTML="";
@@ -484,14 +527,13 @@ function midiCVOutBit(bit)
 		bitform = document.getElementById("bitform");
 		if( bitform != null){
 			msg = "<table>";
-			msg += "<tr><th>Group</th><td>"+showMidiGroups(0, this.groupname, false)+"</td></tr>\n";
+			msg += "<tr><th>Group</th><td>"+showMidiGroups(0, grp.name, false)+"</td></tr>\n";
+			msg += "<tr><th>Channel</th><td>"+grp.channel+"</td></tr>\n";
 			msg += "</table>\n";
-			g = setGroupData(this, this.groupname, 0);
 
 			bitform.innerHTML = msg;
 			bitformaction = this;
 		}
-	
 	}
 
 // midi cv output ( note on/off)
@@ -502,13 +544,13 @@ function midiCVOutBit(bit)
 		let t=0;
 		let g = null;
 
+	
 		f = document.getElementById("groupname");
 		if( f != null){
-			val = getMidiGroup(f.value).name;
-			g = setGroupData(this, val, 0);
-
-			debugmsg("CV Out "+this.groupname+" "+this.channel);
+			this.groupobj = getMidiGroup(f.value);
+			debugmsg("CV Out "+this.groupobj.name+" "+this.groupobj.channel);
 		}
+
 	}
 
 
@@ -551,17 +593,18 @@ function midiCCOutBit(bit)
 		let mid = null;
 		let send=null;
 		let output = null;
-		let chanx = this.channel-1;
+		const grp = this.groupobj;
+		let chanx = grp.channel-1;
 
 		if( chan != 0){
 			return;
 		}
 
-		if( this.outdev == null){
+		if( grp.outdev == null){
 			return;
 		}
 
-		mid = this.outdev.midi.value.id;
+		mid = grp.outdev.midi.value.id;
 		output = midiAccess.outputs.get(mid);
 
 		// output.send(msg);
@@ -572,7 +615,7 @@ function midiCCOutBit(bit)
 	// midi cc output 
 	this.setData = function()
 	{	let msg="";
-		let g = null;
+		const grp = this.groupobj;
 
 		if( bitform != null){
 			bitform.innerHTML="";
@@ -580,11 +623,10 @@ function midiCCOutBit(bit)
 		bitform = document.getElementById("bitform");
 		if( bitform != null){
 			msg = "<table>";
-			msg += "<tr><th>Group</th><td>"+showMidiGroups(0, this.groupname, false)+"</td></tr>\n";
+			msg += "<tr><th>Group</th><td>"+showMidiGroups(0, grp.name, false)+"</td></tr>\n";
+			msg += "<tr><th>Channel</th><td>"+grp.channel+"</td></tr>\n";
 			msg += "<tr><th>Control Code</th><td>"+showMidiControlCodes(this.cc)+"</td></tr>";
 			msg += "</table>\n";
-
-			g = setGroupData(this, this.groupname, 0);
 
 			bitform.innerHTML = msg;
 			bitformaction = this;
@@ -602,9 +644,20 @@ function midiCCOutBit(bit)
 		f = document.getElementById("groupname");
 		if( f != null){
 			val = getMidiGroup(f.value).name;
-			g = setGroupData(this, val, 0);
 
-			debugmsg("CC Out "+this.groupname+" "+this.channel);
+			debugmsg("CC Out "+this.groupobj.groupname+" "+this.groupobj.channel);
+		}
+		f = document.getElementById("control");
+		if( f != null){
+			this.cc = f.value;
+			debugmsg("CC OUT control "+this.cc);
+		}
+		f = document.getElementById("usercontrol");
+		if( f != null){
+			if( f.value != ""){
+				this.cc = f.value;
+				debugmsg("CC USER control "+this.cc);
+			}
 		}
 
 	}
@@ -668,14 +721,7 @@ function midiGroupBit(bit)
 			msg += "<h2>Midi Group</h2>\n";
 			msg = "<table>";
 			if( g != null){
-				g.grouptype = this.grouptype;
-				if( this.grouptype == 1){
-					gtmsg = "Input";
-				}else {
-					gtmsg = "Output";
-				}
 				msg += "<tr><th>Name</th><td>"+showMidiGroups(this.grouptype, this.groupname,true)+"</td></tr>\n";
-				msg += "<tr><th>Type</th><td>"+gtmsg+"</td></tr>\n";
 				if( this.grouptype == 1){
 					// input
 					msg += "<tr><th>Interface</th><td>"+showMIDIinterfaces(1, this.midi)+"</td></tr>\n";
@@ -711,6 +757,7 @@ function midiGroupBit(bit)
 				debugmsg("New group");
 			}
 			gn = getMidiGroup(val);
+			gn.grouptype = this.grouptype;	// also inits the new group type.
 			this.group = val;
 
 			if( this.groupname != gn.name){
@@ -739,6 +786,8 @@ function midiGroupBit(bit)
 				val = f.value;
 				this.midi = val;
 				gn.midi = val;
+				this.outdev = selMIDIoutdev(val);
+				gn.outdev = this.outdev;
 			}
 		}
 		f = document.getElementById("midichannel");

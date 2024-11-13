@@ -98,10 +98,11 @@ function midiGroup(n)
 		this.name = "Default Output";
 		this.grouptype = 0;	// output default.
 	}else {
-		this.name = "group_"+n;
+		this.name = "Group_"+n;
 	}
 	this.channel = 0;
 	this.midi = null;
+	this.outdev = null;
 }
 
 function getMidiGroup(val)
