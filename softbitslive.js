@@ -1244,7 +1244,7 @@ function Program()
 					}
 					progbits[ ibp].ctrl.setValue(data, 0);		// mute ?
 					progbits[ibp].value = this.chains[ curchain].data;
-				}else if(code == MIDICVOUT){		// speaker
+				}else if(code == MIDICVOUT){		// midi note out
 					if(curchain  == 0){
 						data = 0;			// note off when disconnected.
 					}
@@ -1649,7 +1649,7 @@ function Program()
 						osnap.indcolor = "#ffffff";
 						osnap.indval = this.chains[ curchain].data;
 
-					}else if(code == 123){		// seq
+					}else if(code == SEQUENCER){		// seq
 						progbits[ibp].ctrl.exec(data);
 						this.chains[ curchain].data = this.getValue( progbits, ibp, 255);
 						osnap.indcolor = "#ffffff";
@@ -1659,6 +1659,12 @@ function Program()
 						progbits[ibp].value = this.chains[ curchain].data;
 						osnap.indcolor = "#ff0000";
 						osnap.indval = this.chains[ curchain].data;
+					}else if(code == MIDICCOUT){		// midi control code
+						if(curchain  == 0){
+							data = 0;			// note off when disconnected.
+						}
+						progbits[ ibp].ctrl.setValue(data, 0);		// mute ?
+						progbits[ibp].value = this.chains[ curchain].data;
 					}else if(code == 21){
 					}else if(code == 22){
 					}else if(code == 25){

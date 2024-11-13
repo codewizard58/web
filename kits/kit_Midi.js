@@ -10,6 +10,8 @@ var chosenOutput = 0;
 var midiintarget = null;
 var midiavail = false;
 var midiinit = true;
+var midilearning = false;
+var midilearndir = 1;		// input channels
 
 MIDIoutdev_list = new objlist();
 MIDIindev_list = new objlist();
@@ -80,6 +82,47 @@ function UImidiInOut()
 		bitformaction.getData();
 		bitformaction.setData();
 	}
+}
+
+
+// learn mode
+function UIlearn(mode, dir)
+{	let f = null;
+	if( bitformaction == null){
+		return;
+	}
+	f = document.getElementById("learn");
+	if( f != null){
+		if( midilearning){
+			f.style="background-color: green;";
+			midilearning = false;
+		}else {
+			f.style="background-color: red;";
+			midilearning = true;
+			midilearndir = dir;		// i = in, 0 = out
+		}
+	}
+
+}
+
+function learn(obj, op, chan, arg2, arg3)
+{	let f = null;
+	const grp = obj.groupobj;
+	if( bitformaction == null){
+		return false;
+	}
+
+	f = document.getElementById("usercontrol");
+	if( f != null){
+		f.value = arg2;
+	}
+	f = document.getElementById("learn");
+	if( f != null){
+		f.style="background-color: green;";
+		midilearning = false;
+		return true;		// processed it.
+	}
+	return false;
 }
 
 var midiGroups_list = new objlist();
@@ -382,6 +425,33 @@ function midiinsetvalues( op, chan, arg, arg2, dev)
 			break;	// processed it.
 		}
 		f = f.next;
+	}
+	
+	if( midilearning){
+		if( midilearndir == 1){
+			if(op ==2){
+				f = midicc_list.head;
+			}else {
+				f = midicv_list.head;
+			}
+		}else {
+			if(op ==2){
+				f = midiccout_list.head;
+			}else {
+				f = midicvout_list.head;
+			}
+		}
+		if( f == null){
+			debugmsg("NO FILTERS dir="+midilearndir);
+			midilearning = false;
+		}
+	// run through the filter list
+		while(f != null){
+			f.ob.filter(op, chan, arg, arg2, dev);
+			f = f.next;
+		}
+		debugmsg("MIDI LEARN "+op+" "+chan+" "+arg+" "+arg2);
+		return;
 	}
 	
 	if( f == null){

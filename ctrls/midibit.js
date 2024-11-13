@@ -85,6 +85,10 @@ function findNoteGroup( group, ng, poly)
 var midicv_list = new objlist();
 var midicc_list = new objlist();
 
+// used by learn function.
+var midicvout_list = new objlist();
+var midiccout_list = new objlist();
+
 
 function selMIDIindev(dev)
 {	var l = MIDIindev_list.head;
@@ -205,14 +209,23 @@ function showMidiControlCodes(cc)
 	let msg = "";
 	let n = 0;
 	let ccx = 0;
+	let selcnt = 0;
 
 	msg += "<select id='control' >\n";
+	msg += "<option value=''></option>\n";
 	for(n=0; n < cc_code_tab.length; n += 3){
 		ccx = (cc_code_tab[n]);
+		if( cc == ccx){
+			selcnt++;
+		}
 		msg += "<option value='"+ccx+"' "+isSelected(cc, ccx)+" >"+ccx+" - "+(cc_code_tab[n+1])+"</option>\n";
 	}
 	msg += "</select>\n";
-	msg += "<br /><input type='text' value='' id='usercontrol' /> "
+	if( selcnt == 0){
+		msg += "<br /><input type='text' value='"+cc+"' id='usercontrol' size='4' /> ";
+	}else {
+		msg += "<br /><input type='text' value='' id='usercontrol' size='4' /> ";
+	}
 	return msg;
 }
 
@@ -255,6 +268,8 @@ function midiCVBit(bit)
 		if( bitform != null){
 			bitform.innerHTML="";
 		}
+		midilearning = false;	// clear learning mode
+
 		bitform = document.getElementById("bitform");
 		if( bitform != null){
 			msg = "<table>";
@@ -360,12 +375,16 @@ function midiCCBit(bit)
 		if( bitform != null){
 			bitform.innerHTML="";
 		}
+		midilearning = false;	// clear learning mode
+
 		bitform = document.getElementById("bitform");
 		if( bitform != null){
 			msg = "<table>";
 			msg += "<tr><th>Group</th><td>"+showMidiGroups(1, grp.name, false)+"</td></tr>\n";
 			msg += "<tr><th>Channel</th><td>"+grp.channel+"</td></tr>\n";
-			msg += "<tr><th>Control Code</th><td>"+showMidiControlCodes(this.cc)+"</td></tr>";
+			msg += "<tr><th>Control Code</th><td>"+showMidiControlCodes(this.cc);
+			msg += "<input type='button' value='Learn' id='learn' onclick='UIlearn(0, "+grp.grouptype+");'";
+			msg += "/></td></tr>";
 			msg += "</table>\n";
 
 			bitform.innerHTML = msg;
@@ -416,6 +435,9 @@ function midiCCBit(bit)
 			// if not OMNI and not this channel
 			if( channel != 0 && channel != chan){
 				return false;
+			}
+			if( midilearning && bitformaction == this){
+				return learn(this, op, chan, arg2, arg3);
 			}
 			if( this.cc != arg2){
 				// code mismatch
@@ -524,6 +546,8 @@ function midiCVOutBit(bit)
 		if( bitform != null){
 			bitform.innerHTML="";
 		}
+		midilearning = false;	// clear learning mode
+
 		bitform = document.getElementById("bitform");
 		if( bitform != null){
 			msg = "<table>";
@@ -553,6 +577,26 @@ function midiCVOutBit(bit)
 
 	}
 
+	// midi cv out used by learn.
+	this.filter = function(op, chan, arg2, arg3, dev)
+	{	const b = this.bit;
+		const channel = this.groupobj.channel;
+
+		if( op == 2){
+			debugmsg("FILT CV OUT");
+			// if not OMNI and not this channel
+			if( channel != 0 && channel != chan){
+				return false;
+			}
+			if( midilearning && bitformaction == this){
+				return learn(this, op, chan, arg2, arg3);
+			}
+		}
+		return true;
+	}
+	
+	// finish init.
+	midicvout_list.adduniq( this, null);
 
 }
 
@@ -588,7 +632,7 @@ function midiCCOutBit(bit)
 	//ccout
 	// midi cc output 
 	this.setValue = function(data, chan)
-	{	let msg = [ 0x90, 60, 127];
+	{	let msg = [ 0xb0, 60, 127];
 		let note = Math.floor(data/ 2);
 		let mid = null;
 		let send=null;
@@ -596,7 +640,7 @@ function midiCCOutBit(bit)
 		const grp = this.groupobj;
 		let chanx = grp.channel-1;
 
-		if( chan != 0){
+		if( chan != 0){		// use input snap 0 only
 			return;
 		}
 
@@ -607,7 +651,11 @@ function midiCCOutBit(bit)
 		mid = grp.outdev.midi.value.id;
 		output = midiAccess.outputs.get(mid);
 
-		// output.send(msg);
+		msg[0] = 0xb0 | (chanx & 0xf);
+		msg[1] = this.cc & 0x7f;
+		msg[2] = note & 0x7f;
+
+		output.send(msg);
 	}
 
 
@@ -620,12 +668,16 @@ function midiCCOutBit(bit)
 		if( bitform != null){
 			bitform.innerHTML="";
 		}
+		midilearning = false;	// clear learning mode
+
 		bitform = document.getElementById("bitform");
 		if( bitform != null){
 			msg = "<table>";
 			msg += "<tr><th>Group</th><td>"+showMidiGroups(0, grp.name, false)+"</td></tr>\n";
 			msg += "<tr><th>Channel</th><td>"+grp.channel+"</td></tr>\n";
-			msg += "<tr><th>Control Code</th><td>"+showMidiControlCodes(this.cc)+"</td></tr>";
+			msg += "<tr><th>Control Code</th><td>"+showMidiControlCodes(this.cc);
+			msg += "<input type='button' value='Learn' id='learn' onclick='UIlearn(0, "+grp.grouptype+");'";
+			msg += "</td></tr>";
 			msg += "</table>\n";
 
 			bitform.innerHTML = msg;
@@ -662,6 +714,25 @@ function midiCCOutBit(bit)
 
 	}
 
+	// midi cc out used by learn.
+	this.filter = function(op, chan, arg2, arg3, dev)
+	{	const b = this.bit;
+		const channel = this.groupobj.channel;
+
+		if( op == 2){
+			// if not OMNI and not this channel
+			if( channel != 0 && channel != chan){
+				return false;
+			}
+			if( midilearning && bitformaction == this){
+				return learn(this, op, chan, arg2, arg3);
+			}
+		}
+		return false;
+	}
+
+	// finish init.
+	midiccout_list.adduniq( this, null);
 
 }
 
@@ -715,6 +786,9 @@ function midiGroupBit(bit)
 		if( bitform != null){
 			bitform.innerHTML="";
 		}
+		midilearning = false;	// clear learning mode
+
+		midilearning = false;	// clear learning mode
 		bitform = document.getElementById("bitform");
 		if( bitform != null){
 			g = getMidiGroupByName(this.groupname);
