@@ -84,11 +84,11 @@ function kit_basic()
 		"corner", "wire_corner", 100, 50,	"wirein", null ,null ,"wireout",	// 26
 				0,	0, "Corner","Join output to input", 0x1001, "Wire", 0, 1,		// 22
 
-		"default", "a_counter", 100, 50,	"blankin", "actionout" , null,  null,	// 27
+		"default", "a_counter", 100, 50,	"actionin", "actionout" , null,  null,	// 27
 				0,	0, "Counter",		"", 0x0011, "Action", 0, 1,		// 22
-		"control", "push_switch", 100, 50,	"blankin",  "inputout" , null,  null,	// 28
+		"control", "push_switch", 100, 50,	"actionin",  "inputout" , null,  null,	// 28
 				0,	1, "Push switch",	"", 0x0011, "Input", 0, 1,		// 22
-		"control", "toggle_switch", 100, 50,"blankin",  "inputout" , null,  null,	// 29
+		"control", "toggle_switch", 100, 50,"actionin",  "inputout" , null,  null,	// 29
 				0,	1, "Toggle switch",	"", 0x0011, "Input", 0, 1,		// 22
 		"control", "a_rotary",  100, 50,    "actionin", "actionout" , null,  null,	// 30
 				0,	1, "",				"", 0x0011, "Action", 0, 1,		// 22
@@ -215,16 +215,13 @@ this.kitctrlcodes = [
 
 // name, type 0=snap, 1=bit, 2=resources/images
 	this.bitimagemap = [
-		"powerin-l",	2,
-		"powerin-t",	2,
-		"powerout-r",	2,
-		"powerout-b",	2,
+		"powerin",	6,		// 4 == -l -t
+		"powerout",	0xa,	// 8 == -r -b
 		"flip",			2,
 		"flip-v",		2,
 		"remove",		0,
-		"inputin-l",	0,
-		"inputin-t",	0,
-		"inputout-r",	0,
+		"inputin",	4,		// 4 == -l -t
+		"inputout",	8,		// -r -b
 		"outputin-l",	0,
 		"outputin-t",	0,
 		"outputout-r",	0,

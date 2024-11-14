@@ -663,6 +663,19 @@ function sbmodule( name )
 		return 0;
 	}
 
+	this.imagefetch = function(name, dst, folder)
+	{	let imagedir="";
+
+		if( folder == 0){
+			imagedir="resources/snaps/";
+		}else if(folder == 1) {
+			imagedir="resources/bits/";
+		}else if(folder == 2) {
+			imagedir="resources/images/";
+		}
+
+		loadimage(name, dst, imagedir);
+	}
 
 	
 	this.loadimages = function()
@@ -671,24 +684,35 @@ function sbmodule( name )
 		let dst = bitpics.length;
 		this.bitstart = dst;
 		let name="";
+		let folder=0;
+		let mode = 0;
 
 		i = 0;
 //		debugmsg("Load images "+this.name);
 
 		while( this.bitimagemap[i] != null){
+			folder = this.bitimagemap[i+1] & 3;
+			mode = this.bitimagemap[i+1] & 0xc;
 			name = this.bitimagemap[i];
-			if( findimage(name) == null){
-				if( this.bitimagemap[i+1] == 0){
-					imagedir="resources/snaps/";
-				}else if(this.bitimagemap[i+1] == 1) {
-					imagedir="resources/bits/";
-				}else if(this.bitimagemap[i+1] == 2) {
-					imagedir="resources/images/";
-				}else {
-					imagedir= "";
+
+			if( mode == 4){
+				name += "-l";
+				if( findimage(name) == null){
+					this.imagefetch(name, dst, folder);
+					dst = dst+1;
 				}
-			
-				loadimage(name, dst, imagedir);
+				name = this.bitimagemap[i]+"-t";
+			}else if( mode == 8){		// -r -b
+				name += "-r";
+				if( findimage(name) == null){
+					this.imagefetch(name, dst, folder);
+					dst = dst+1;
+				}
+				name = this.bitimagemap[i]+"-b";
+			}
+
+			if( findimage(name) == null){
+				this.imagefetch(name, dst, folder);
 				dst = dst+1;
 			}
 			i += 2;

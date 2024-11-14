@@ -331,7 +331,7 @@ this.dockto = function(from, dom)
 	}
 }
 
-// scope
+// control
 this.undockfrom = function(from, dom)
 {	let b = from.ctrl;
 
@@ -346,10 +346,12 @@ this.undockfrom = function(from, dom)
 	}
 }
 
+	// control
 	this.setValue = function(data, chan)
 	{
 
 	}
+
 	//control
 
 	this.startProg = function()

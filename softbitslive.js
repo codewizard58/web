@@ -1245,10 +1245,15 @@ function Program()
 					progbits[ ibp].ctrl.setValue(data, 0);		// mute ?
 					progbits[ibp].value = this.chains[ curchain].data;
 				}else if(code == MIDICVOUT){		// midi note out
+					arg2 = prog[bp];
+					bp++;
 					if(curchain  == 0){
 						data = 0;			// note off when disconnected.
+					}else if(  arg2 > 0 && arg2 < nchains){		// modmix ?
+						data2 = this.getchaindata(arg2, nchains);
+						progbits[ ibp].ctrl.setValue(data2, 1);	// mute
 					}
-					progbits[ ibp].ctrl.setValue(data, 0);		// mute ?
+					progbits[ ibp].ctrl.setValue(data, 0);		
 					progbits[ibp].value = this.chains[ curchain].data;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1557,6 +1562,17 @@ function Program()
 						osnap.indcolor = "";
 					}
 					osnap.indval = this.chains[ curchain].data;
+				}else if(code == MIDICCOUT){		// midi control code
+					arg2 = prog[bp];
+					bp++;
+					if(curchain  == 0){
+						data = 0;			// note off when disconnected.
+					}else if(  arg2 > 0 && arg2 < nchains){		
+						data2 = this.getchaindata(arg2, nchains);
+						progbits[ ibp].ctrl.setValue(data2, 1);	// mute
+					}
+					progbits[ ibp].ctrl.setValue(data, 0);	
+					progbits[ibp].value = this.chains[ curchain].data;
 
 				}else if(code == OSC){		// osc
 					arg2 = prog[bp];
@@ -1650,7 +1666,7 @@ function Program()
 						osnap.indval = this.chains[ curchain].data;
 
 					}else if(code == SEQUENCER){		// seq
-						progbits[ibp].ctrl.exec(data);
+						progbits[ibp].ctrl.setValue(data, 0);
 						this.chains[ curchain].data = this.getValue( progbits, ibp, 255);
 						osnap.indcolor = "#ffffff";
 						osnap.indval = this.chains[ curchain].data;
@@ -1659,12 +1675,6 @@ function Program()
 						progbits[ibp].value = this.chains[ curchain].data;
 						osnap.indcolor = "#ff0000";
 						osnap.indval = this.chains[ curchain].data;
-					}else if(code == MIDICCOUT){		// midi control code
-						if(curchain  == 0){
-							data = 0;			// note off when disconnected.
-						}
-						progbits[ ibp].ctrl.setValue(data, 0);		// mute ?
-						progbits[ibp].value = this.chains[ curchain].data;
 					}else if(code == 21){
 					}else if(code == 22){
 					}else if(code == 25){

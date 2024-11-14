@@ -125,6 +125,44 @@ function learn(obj, op, chan, arg2, arg3)
 	return false;
 }
 
+function showMute(muted){
+	let msg = "";
+
+	msg += "<input type='button' value='Mute' onclick='UImute();' id='mute' ";
+	if( muted){
+		msg += "style='background-color: red;' ";
+	}else {
+		msg += "style='background-color: green;' ";
+	}
+	msg += "/>";
+
+	return msg;
+}
+
+function UImute()
+{
+	let f = null;
+	const grp = obj.groupobj;
+
+	if( bitformaction == null){
+		debugmsg("Mute not bit");
+		return false;
+	}
+
+	f = document.getElementById("mute");
+	if( f != null){
+		if( bitformaction.mute){
+			bitformaction.mute = false;
+			f.style='background-color: green;';
+		}else {
+			bitformaction.mute = true;
+			f.style='background-color: red;';
+		}
+	}else {
+		debugmsg("UImute mute not found");
+	}
+}
+
 var midiGroups_list = new objlist();
 var nextgroup = 0;
 
@@ -490,10 +528,10 @@ function kit_midi( )
 				0,	1, "midi_cc",	"Midi CV filter",	 0x0010, "Input", 0, 0,	// 7
 		"midicc", "midi_cv",	50, 50,	null, "actionout" ,null,  null,		// 		images for cv and cc reversed.
 				0,	1, "midi_cv",	"Midi Note filter",	 0x0010, "Input", 0, 0,	// 7
-		"midicv", "midi_ccout",	50, 50,	"actionin" ,null, null,  null, // 24
-				0,	1, "midi_ccout",	"Midi CV output",	 0x0001, "Output", 0, 0,	// 7
-		"midicc", "midi_cvout",	50, 50,	"actionin" ,null, null,  null,		// 		images for cv and cc reversed.
-				0,	1, "midi_cvout",	"Midi Note output",	 0x0001, "Output", 0, 0,	// 7
+		"midicv", "midi_ccout",	50, 50,	"actionin" ,"actionout","logicin",  null, // 24
+				0,	1, "midi_ccout",	"Midi CV output",	 0x0111, "Output", 0, 0,	// 7
+		"midicc", "midi_cvout",	50, 50,	"actionin" ,"actionout", "logicin",  null,		// 		images for cv and cc reversed.
+				0,	1, "midi_cvout",	"Midi Note output",	 0x0111, "Output", 0, 0,	// 7
 
 
 //		"defaulta", "env_attack", 100, 50,		"actionin", "actionout" ,"actionin",  null,		// 31

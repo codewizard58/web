@@ -4,6 +4,20 @@
 var actx = null;	// audio context
 var audioOK = false;
 
+function showModulation(mod, names)
+{	let msg = "";
+	let n = 0;
+
+	msg="<select id='mod'>";
+	for(n=0; n < names.length; n++){
+		msg += "<option value='"+n+"' "+isSelected(n, mod)+" >"+names[n]+"</option>\n";
+	}
+
+	msg += "</select>\n";
+
+	return msg;
+}
+
 function noAudio()
 {
 
@@ -47,18 +61,20 @@ function kit_sound()
 		"control", "delay", 100, 50,	"audioin", "audioout" ,"actionin",  null,		// 0
 				0,	1, "Delay",	"change sound",	 0x0122, "Action", 0, 1,	// 0
 
-		"control", "seq", 200, 50,	"actionin", "actionout" ,null,  null,		// 0
-				0,	1, "Sequencer",	"sequencer",	 0x0011, "Action", 0, 1,	// 0
+		"control", "seq", 200, 50,	"inputin", "inputout" ,null,  null,		// 0
+				0,	1, "Sequencer",	"sequencer",	 0x0011, "Input", 0, 1,	// 0
 
-		"control", "seq8", 200, 100,	"actionin", "actionout" ,null,  null,		// 0
-		0,	1, "Seq8",	"8 step sequencer",	 0x0011, "Action", 0, 1,	// 0
+		"control", "seq8", 200, 100,	"inputin", "inputout" ,null,  null,		// 0
+		0,	1, "Seq8",	"8 step sequencer",	 0x0011, "Input", 0, 1,	// 0
 
-		"control", "seq16", 200, 200,	"actionin", "actionout" ,null,  null,		// 0
-		0,	1, "Seq16",	"16 step sequencer",	 0x0011, "Action", 0, 1,	// 0
+		"control", "seq16", 200, 200,	"inputin", "inputout" ,null,  null,		// 0
+		0,	1, "Seq16",	"16 step sequencer",	 0x0011, "Input", 0, 1,	// 0
 
 		"control", "analyzer", 200, 100, "audioin", "audioout" ,null,  null,		// 0
 				0,	1, "Analyzer",	"Display sound",	 0x0022, "Output", 0, 1,	// 0
 
+		"control", "spectrum", 200, 100, "audioin", "audioout" ,null,  null,		// 0
+				0,	1, "Spectrum",	"Display sound",	 0x0022, "Output", 0, 1,	// 0
 		null, null, null, null,				null, null, null, null
 		];
 
@@ -97,6 +113,7 @@ function kit_sound()
 	"seq8", 3, 8,		// sequencer 8 step
 	"seq16", 3, 9,		// sequencer 16 step
 	"analyzer", 3, 10,	// scope
+	"spectrum", 3, 11,	// spectrum
 	null, 0, 0, 0, 0	// end of table
 	];
 
@@ -110,6 +127,7 @@ function kit_sound()
 		"seq8", 123,	// generic sequencer 8 step
 		"seq16", 123,	// generic sequencer 16 step
 		"analyzer", 124,	// audio display
+		"spectrum", 124,	// audio display
 		null, 254
 	];
 
@@ -179,6 +197,13 @@ function kit_sound()
 				}else if( this.ctrltab[i+2] == 10){
 					// scope
 					ct = new scopeBit( bit);
+					bit.ctrl = ct;
+					ct.setData();
+					return ct;
+				}else if( this.ctrltab[i+2] == 11){
+					// scope
+					ct = new scopeBit( bit);
+					ct.mode = 1;
 					bit.ctrl = ct;
 					ct.setData();
 					return ct;

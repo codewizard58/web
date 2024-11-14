@@ -133,6 +133,23 @@ function delta()
 	}
 }
 
+/// sound bits
+// https://developer.mozilla.org/en-US/docs/Web/API/OscillatorNode
+//
+// HitTest() - check what was clicked on.
+// Draw() - draw it.
+// setValue() - called by the "program" to set the value(s)
+// setData() - Generate the form area that has manual settings
+// getData() - Read the form area and update the settings
+// onMove() - allow adjustment by mouse movement.
+//
+// control are self draw objects that need more state than simple "bits".
+// see softbitsctrls.js
+//
+// bit - defines something that can be drawn on the canvas and dragged around.
+// snap - a bit can have up to 4 snaps and these handle the docking logic
+//       that allows bits to be connected.
+
 oscBit.prototype = Object.create(control.prototype);
 
 function oscBit(bit)
@@ -219,6 +236,8 @@ function oscBit(bit)
 			ctx.restore();
 		}
 	}
+
+	this.modnames = ["freq", 'gain', 'wave'];
 
 	// osc setValue - data biased by 128 on chan 1
 	this.setValue = function(data, chan)
@@ -361,7 +380,7 @@ function oscBit(bit)
 			msg += "<option value='128' "+this.selected(this.wave, 0)+">Sine</option>\n";
 			msg += "<option value='64' "+this.selected(this.wave, -64)+">Triangle</option>\n";
 			msg += "</select></td></tr>\n";
-			msg += "<tr><th align='right'>Modulation</th><td > <input type='text' id='mod' value='"+this.mod+"' /></td></tr>\n";
+			msg += "<tr><th align='right'>Modulation</th><td >"+showModulation(this.mod, this.modnames)+"</td></tr>\n";
 
 			msg += "</table>\n";
 
@@ -435,7 +454,6 @@ function oscBit(bit)
 }
 
 
-/// sound bits
 speakerBit.prototype = Object.create(control.prototype);
 
 // speaker is a gain node connected to the destination.
@@ -649,6 +667,8 @@ function filterBit(bit)
     let imagename = "filter";
 	this.bitimg =this.bit.findImage(imagename);
 	this.bitname = imagename;
+	this.name = "Filter";
+
 	roundknobimg =this.bit.findImage("roundknob");
 
 	// filter 25,30  75,30
@@ -870,6 +890,7 @@ function delayBit(bit)
     let imagename = "delay";
 	this.bitimg =this.bit.findImage(imagename);
 	this.bitname = imagename;
+	this.name = "Delay";
 
 	this.Draw = function( )
 	{	var b = this.bit;
@@ -955,6 +976,7 @@ function seqBit(bit)
 	let imagename = "seq";
 	this.bitimg =this.bit.findImage(imagename);
 	this.bitname = imagename;
+	this.name = "Sequencer";
 	roundknobimg =this.bit.findImage("roundknob");
 
 	this.HitTest = function(mx, my)
@@ -967,7 +989,7 @@ function seqBit(bit)
 		x = x - 42;
 		y = y - 5;
 
-		debugmsg("hitstart "+x+" "+y);
+//		debugmsg("hitstart "+x+" "+y);
 		for(i=0; i < len; i++){
 			if( i == 4 || i == 8 || i == 12){
 				y -= 50;
@@ -978,7 +1000,7 @@ function seqBit(bit)
 				this.initx = mx;
 				this.inity = my;
 				this.ival = this.values[this.selstep-1];
-				debugmsg("SEQ HT "+this.ival);
+//				debugmsg("SEQ HT "+this.ival);
 				return this;
 			}
 		}
@@ -1031,7 +1053,7 @@ function seqBit(bit)
 	}
 
 	// seq
-	this.exec = function(data)
+	this.setValue = function(data, chan)
 	{	let t = 1;
 
 		if( data == 0){
@@ -1254,6 +1276,10 @@ function seqBit(bit)
 	}
 }
 
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+// https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Visualizations_with_Web_Audio_API
+//
 scopeBit.prototype = Object.create(control.prototype);
 
 function scopeBit( bit )
@@ -1268,9 +1294,11 @@ function scopeBit( bit )
 	this.min = 1;
 	this.audioin = null;
 	this.ctx = ctx;
-	this.bgcolor = "#404040";
-	this.color = "#ff0000";
+	this.bgcolor = "#202020";
+	this.color = "#ffffff";
 	this.name = "Analyzer";
+	this.mode = 0;		// 0 is wave, 1 is spectrum
+	this.bitname = this.name;
 
 // scope
 	this.Draw = function()
@@ -1279,6 +1307,7 @@ function scopeBit( bit )
 		let v, f, prev;
 		let len;
 		let b = this.bit;
+		let scale = 350;
 
 		this.l = b.x;
 		this.t = b.y;
@@ -1297,36 +1326,47 @@ function scopeBit( bit )
 		this.ctx.strokeRect( this.l, this.t, this.w, this.h);
 
 		if( this.analyser != null){
-			this.bufferlength = this.analyser.frequencyBinCount;
-			this.analyser.getByteTimeDomainData(this.buffer);
+			if( this.mode == 0){
+				this.analyser.fftSize = 2048;
+				this.bufferlength = this.analyser.frequencyBinCount;
+				this.buffer = new Uint8Array(this.bufferlength);
+				this.analyser.getByteTimeDomainData(this.buffer);
+			}else {
+				this.analyser.fftSize = 256;
+				this.bufferlength = this.analyser.frequencyBinCount;
+				this.buffer = new Uint8Array(this.bufferlength);
+				this.analyser.getByteFrequencyData(this.buffer);
+				scale = -350;	// invert and scale.
+			}
 
 			len = this.bufferlength/ 2;
 
 			w = this.w * 1.0 / (len);
-			v = (this.buffer[idx] / 350.0) * this.h+this.t+5;
 			x = this.l;
 
 			f = 0;
-			prev = this.buffer[0];
-			while( prev >= this.buffer[f] && f < this.bufferlength){
-				prev = this.buffer[f];
-				f += 10;
+			if( this.mode == 0){
+				// find a local maximum.
+				prev = this.buffer[0];
+				while( prev >= this.buffer[f] && f < this.bufferlength){
+					prev = this.buffer[f];
+					f += 10;
+				}
+				while( prev <= this.buffer[f] && f < this.bufferlength){
+					prev = this.buffer[f];
+					f += 10;
+				}
 			}
-			while( prev <= this.buffer[f] && f < this.bufferlength){
-				prev = this.buffer[f];
-				f += 10;
-			}
-
+	
 			this.ctx.beginPath();
-
-			this.ctx.moveTo(x, v);
-
 			n = f;
+			v = ( (this.buffer[n]-128) / scale) * this.h+this.t+this.h2;
+			this.ctx.moveTo(x, v);
 			for(idx = 0; idx < len; idx++) {
 				if( n == this.bufferlength){
 					n = 0;
 				}
-				v = ( (this.buffer[n]-128) / 512.0) * this.h+this.t+this.h2;
+				v = ( (this.buffer[n]-128) / scale) * this.h+this.t+this.h2;
 				this.ctx.lineTo(x, v);
 
 				x += w;
@@ -1337,21 +1377,29 @@ function scopeBit( bit )
 		}
 
 		this.ctx.restore();
-
 	}
 
-	//scope
+
+//scope
 	this.setup = function ()
 	{
 		if( this.analyser == null){
 			if( actx != null){
 				this.analyser = actx.createAnalyser();
-				this.analyser.fftSize = 2048;
-				this.bufferlength = this.analyser.frequencyBinCount;
-				this.buffer = new Uint8Array(this.bufferlength);
-				this.analyser.getByteTimeDomainData(this.buffer);
+				if( this.mode == 0){
+					this.analyser.fftSize = 2048;
+					this.bufferlength = this.analyser.frequencyBinCount;
+					this.buffer = new Uint8Array(this.bufferlength);
+					this.analyser.getByteTimeDomainData(this.buffer);
+					debugmsg("Create Analyzer");
+				}else {
+					this.analyser.fftSize = 256;
+					this.bufferlength = this.analyser.frequencyBinCount;
+					this.buffer = new Uint8Array(this.bufferlength);
+					this.analyser.getByteFrequencyData(this.buffer);
+					debugmsg("Create Spectrum Analyzer");
+				}
 				this.audioin = this.analyser;
-				debugmsg("Create Analyzer");
 			}
 		}
 	}
@@ -1361,16 +1409,10 @@ function scopeBit( bit )
 	{
 		if( chan == 0){
 			this.setup();
-			this.timer();
+			this.Draw();
 		}
 	}
 
-	//scope
-	this.timer = function()
-	{
-		this.Draw();
-		return true;
-	}
 
 }
 
