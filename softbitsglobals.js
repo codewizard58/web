@@ -4,8 +4,8 @@
 //
 //////////////////////////////////////////////////////////////////////////////
 //
-var sketch;
-var ctx;
+var sketch = null;
+var ctx = null;
 var mx, my;
 var sx = 0;
 var sy = 0;	// when dragging background
@@ -391,6 +391,8 @@ function outBitValues()
 }
 
 
+// length counted objects.
+// len,type, ...
 function UIdoSave()
 {	let msg = "";
 	let bl = sketch.blist;
@@ -414,13 +416,13 @@ function UIdoSave()
 	while(bl != null){
 		bit = bl.bit;
 		if( bit.kit.name != ckit){
-			msg += "'kit','"+bit.kit.name+"',\n";
+			msg += "3, 'kit','"+bit.kit.name+"',\n";
 			ckit = bit.kit.name;
 		}
 		slen = bit.snaps.length;
 		bt = bit.btype & 7;
 		idx = bit.btype - bt;
-		msg += "'bit',"+bl.num+",'"+bit.name+"',"+bit.btype+','+bit.x+","+bit.y+",";
+		msg += "12, 'bit',"+bl.num+",'"+bit.name+"',"+bit.btype+','+bit.x+","+bit.y+",";
 		for(i=0; i < slen; i++){
 			if( bit.snaps[i] != null && bit.snaps[i].paired != null){
 				msg += bit.snaps[i].paired.bit.carrier.num;
@@ -440,7 +442,7 @@ function UIdoSave()
 	}
 //	message(msg);
 
-	msg += "'options',"+showchains+","+showprogram+","+showcode+", 1, \n"
+	msg += "5,'options',"+showchains+","+showprogram+","+showcode+", 1, \n"
 
 	f = document.getElementById('savedata');
 	f.innerHTML=msg;
@@ -709,6 +711,12 @@ function sbmodule( name )
 					dst = dst+1;
 				}
 				name = this.bitimagemap[i]+"-b";
+			}else if( mode == 0xc){		// -v
+				if( findimage(name) == null){
+					this.imagefetch(name, dst, folder);
+					dst = dst+1;
+				}
+				name = this.bitimagemap[i]+"-v";
 			}
 
 			if( findimage(name) == null){

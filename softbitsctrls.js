@@ -323,10 +323,12 @@ this.dockto = function(from, dom)
 
 	if( from.ctrl != null ){
 
-		if( from.ctrl.audioin != null){
+		if( from.ctrl.audioin != null && this.audioout != null ){
 			debugmsg("link "+this.name+" to next module");
 			this.audioout.connect( from.ctrl.audioin);
 			this.connected = true;
+		}else {
+			debugmsg("DOCKTO null");
 		}
 	}
 }

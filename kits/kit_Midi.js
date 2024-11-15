@@ -518,34 +518,19 @@ function kit_midi( )
 				0,	0, "Power On",		"Start a chain of SoftBits", 0x0010, "Power", 0, 1,	// 0
 		"poweroff", "power_off", 50, 50,	"powerin", null, null, null,			// 1
 				0,	0, "Power Off",		"End of a chain, optional.", 0x0001, "Power", 0, 1,	// 1
-//		"midiin", "midi_in", 100, 50,	null, "midiout" ,null,  null,	// 22
-//				0,	1, "midi_in",	"Midi Input Selector",	 0x0040, "Input", 0, 0,	// 7
 		"midigroup", "midi_group_in",	50, 50,	null, null ,null,  null, // 24
-			0,	1, "midi_group_in",	"Midi Group Input filter",	 0x0000, "Action", 0, 0,	// 7
+				0,	1, "midi_group_in",	"Midi Group Input filter",	 0x0000, "Action", 0, 0,	
 		"midigroup", "midi_group_out",	50, 50,	null, null ,null,  null, // 24
-			0,	1, "midi_group_out",	"Midi Group Output filter",	 0x0000, "Action", 0, 0,	// 7
+				0,	1, "midi_group_out",	"Midi Group Output filter",	 0x0000, "Action", 0, 0,	
 		"midicv", "midi_cc",	50, 50,	null, "actionout" ,null,  null, // 24
-				0,	1, "midi_cc",	"Midi CV filter",	 0x0010, "Input", 0, 0,	// 7
+				0,	1, "midi_cc",	"Midi CV filter",	 0x0010, "Input", 0, 0,	
 		"midicc", "midi_cv",	50, 50,	null, "actionout" ,null,  null,		// 		images for cv and cc reversed.
-				0,	1, "midi_cv",	"Midi Note filter",	 0x0010, "Input", 0, 0,	// 7
+				0,	1, "midi_cv",	"Midi Note filter",	 0x0010, "Input", 0, 0,	
 		"midicv", "midi_ccout",	50, 50,	"actionin" ,"actionout","logicin",  null, // 24
-				0,	1, "midi_ccout",	"Midi CV output",	 0x0111, "Output", 0, 0,	// 7
+				0,	1, "midi_ccout",	"Midi CV output",	 0x0111, "Output", 0, 0,	
 		"midicc", "midi_cvout",	50, 50,	"actionin" ,"actionout", "logicin",  null,		// 		images for cv and cc reversed.
-				0,	1, "midi_cvout",	"Midi Note output",	 0x0111, "Output", 0, 0,	// 7
+				0,	1, "midi_cvout",	"Midi Note output",	 0x0111, "Output", 0, 0,	
 
-
-//		"defaulta", "env_attack", 100, 50,		"actionin", "actionout" ,"actionin",  null,		// 31
-//				0,	0, "",	"",	 0x1,  "Action", 0, 0,	// 7
-//		"defaulta", "env_decay", 100, 50,		"actionin", "actionout" ,"actionin",  null,		// 32
-//				0,	0, "",	"",	 0x1,  "Action", 0, 0,	// 7
-//		"defaulta", "env_sustain", 100, 50,		"actionin", "actionout" ,"actionin",  null,		// 33
-//				0,	0, "",	"",	 0x1,  "Action", 0, 0,	// 7
-//		"defaulta", "env_release", 100, 50,		"actionin", "actionout" ,"actionin",  null,		//34
-//				0,	0, "",	"",	 0x1,  "Action", 0, 0,	// 7
-//		"defaulta", "env_value", 100, 50,		"actionin", "actionout" , null,  null,		// 35
-//				0,	0, "",	"",	 0x1,  "Action", 0, 0,	// 7
-//		"default", "glide", 100, 50,		"actionin","actionout" ,"actionin", null,		// 45
-//				0,	0, "",	"",	 0x1,  "Action", 0, 0,	// 7
 		null, null, null, null,				null, null, null, null
 	];
 
@@ -571,10 +556,8 @@ function kit_midi( )
 		"midicc-v", 1, 
 		"midicv", 1, 
 		"midicv-v", 1, 
-		"midiin-l", 0, 
-		"midiin-t", 0, 
-		"midiout-r", 0, 
-		"midiout-b", 0, 
+		"midiin", 4, 	// -l -t
+		"midiout", 8, 	// -r -b
 		null, null
 	];
 

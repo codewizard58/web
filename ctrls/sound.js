@@ -133,6 +133,38 @@ function delta()
 	}
 }
 
+function saveargs()
+{	this.data = [];
+	this.count = 0;
+
+	this.addarg = function(data)
+	{
+		this.data[this.count] = data;
+		this.count++;
+	}
+
+	this.addnv = function(name, val)
+	{
+		this.addarg(name);
+		this.addarg(val);
+	}
+
+	this.getargs = function()
+	{	let msg = "";
+		let n;
+
+
+		msg += (this.count+1)+", ";
+		for(n=0; n < this.count; n++){
+			msg += this.data[n]+", ";
+		}
+		msg += "\n";
+
+		return msg;
+	}
+
+}
+
 /// sound bits
 // https://developer.mozilla.org/en-US/docs/Web/API/OscillatorNode
 //
@@ -164,7 +196,7 @@ function oscBit(bit)
 	this.prevfreq = new delta();
 	this.nfreq=0;
 	this.audioin = null;
-	this.wave = -128;		// biased by 128
+	this.wave = 0;		// 
 	this.prevwave = new delta();
 	this.prevmix = new delta();
 	this.range = 12; 	// bend range
@@ -238,6 +270,7 @@ function oscBit(bit)
 	}
 
 	this.modnames = ["freq", 'gain', 'wave'];
+	this.wavenames = [ "sine", "triangle", "sawtooth", "square"];
 
 	// osc setValue - data biased by 128 on chan 1
 	this.setValue = function(data, chan)
@@ -329,21 +362,12 @@ function oscBit(bit)
 
 
 	this.setoscwave = function( val)
-	{	this.wave = val;
-		let t = "sawtooth";
+	{	let t = null;
 
 		if( this.osc == null){
 			return;
 		}
-		if( val < -64){				// biased by 128
-			t = "sawtooth";
-		}else if( val > 92){	// 127
-			t = "square";
-		}else if( val > -10){	// 0
-			t = "sine";
-		}else {
-			t = "triangle";
-		}
+		t = this.wavenames[Math.floor(val / 64)];
 //		debugmsg("wave "+val+" "+t);
 		this.osc.type = t;
 	}
@@ -366,19 +390,22 @@ function oscBit(bit)
 // osc
 	this.setData = function()
 	{	let msg="";
+		let wave = Math.floor(this.wave / 64);
 		if( bitform != null){
 			bitform.innerHTML="";
 		}
 		let freq = this.nfreq;
+
+		
 		bitform = document.getElementById("bitform");
 		if( bitform != null){
 			msg = "<table>";
 			msg += "<tr><th align='right'>Freq</th><td > <input type='text' id='freq' name='freq' value='"+freq+"' /></td></tr>\n";
 			msg += "<tr><th align='right'>Wave</th><td > <select id='wave'>";
-			msg += "<option value='255' "+this.selected(this.wave, 127)+">Square</option>\n";
-			msg += "<option value='0' "+this.selected(this.wave, -128)+">Saw</option>\n";
-			msg += "<option value='128' "+this.selected(this.wave, 0)+">Sine</option>\n";
-			msg += "<option value='64' "+this.selected(this.wave, -64)+">Triangle</option>\n";
+			msg += "<option value='0' "+this.selected(wave, 0)+">Sine</option>\n";
+			msg += "<option value='64' "+this.selected(wave, 1)+">Triangle</option>\n";
+			msg += "<option value='128' "+this.selected(wave, 2)+">Saw</option>\n";
+			msg += "<option value='255' "+this.selected(wave, 3)+">Square</option>\n";
 			msg += "</select></td></tr>\n";
 			msg += "<tr><th align='right'>Modulation</th><td >"+showModulation(this.mod, this.modnames)+"</td></tr>\n";
 
@@ -404,7 +431,7 @@ function oscBit(bit)
 		}
 		f = document.getElementById("wave");
 		if( f != null){
-			val = checkRange(f.value)-128;
+			val = checkRange(f.value);
 			this.wave = val;
 			this.setoscwave(val);
 		}
@@ -419,17 +446,39 @@ function oscBit(bit)
 		this.doSave = function()
 		{	let msg = "";
 			// save osc state.
-			let n = 1+2;
-	
-			msg += ""+n+", ";
-			msg+= ""+this.nfreq+", "+this.wave+", ";
-			return msg;
+			let s = new saveargs();
+
+			s.addnv("'control'", "'osc'");
+			s.addnv("'freq'", this.nfreq);
+			s.addnv("'wave'", this.wave);
+			s.addnv("'mod'", this.mod);
+
+			return s.getargs();
 		}
 
 		// osc
 		this.doLoad = function(initdata, idx)
-		{	var i = initdata[idx];
-	
+		{	let len = initdata[idx];
+			let n = 1;
+			let param="";
+			let val = "";
+
+			debugmsg("OSC doload "+idx+" "+len);
+			for(n = 1; n < len ; n += 2){
+				param = initdata[idx+n];
+				val = initdata[idx+n+1];
+
+				if( param == "control"){
+					continue;
+				}
+				if( param == "freq"){
+					this.nfreq = val;
+				}else if( param == "wave"){
+					this.wave = val;
+				}else if( param == "mod"){
+					this.mod = val;
+				}
+			}
 	
 		}		
 	
@@ -663,6 +712,7 @@ function filterBit(bit)
 	this.values = [128, 250];
 	this.selknob = 0;
 	let i;
+	this.mod = 0;		// mod routing
 
     let imagename = "filter";
 	this.bitimg =this.bit.findImage(imagename);
@@ -697,7 +747,7 @@ function filterBit(bit)
 		return null;
 	}
 
-
+// filter
 	this.Draw = function( )
 	{	let b = this.bit;
 		let bt;
@@ -769,16 +819,18 @@ function filterBit(bit)
 
 	this.setValue = function(val, chan)
 	{
-		if( chan == 0){		// cutoff
-			this.vcffreq = (val+ this.values[0])/2;
-//			message("F "+val);
-
-			this.setvcf();
-		}else if( chan == 1){
-			this.vcfq = (val + this.values[1]) / 16;
-			this.setvcf();
+		if( chan == 1){		// cutoff
+			if( this.mod == 0){
+				this.vcffreq = (val+ this.values[0])/2;
+				this.setvcf();
+			}else if( this.mod == 1){
+				this.vcfq = (val + this.values[1]) / 16;
+				this.setvcf();
+			}
 		}
 	}
+
+	this.modnames = [ "cutoff", "resonance"];
 
 
 	// filter bitform
@@ -794,6 +846,7 @@ function filterBit(bit)
 			msg += "<tr><th align='right'>Cutoff</th><td > <input type='text' id='freq' value='"+val+"' /></td></tr>\n";
 			msg += "<tr><th align='right'>Resonance</th><td > <input type='text' id='q' value='"+this.values[1]+"' /></td></tr>\n";
 			msg += "<tr><td>"+this.vcffreq+"</td><td>"+this.vcfq+"</td></tr>\n";
+			msg += "<tr><th align='right'>Modulation</th><td >"+showModulation(this.mod, this.modnames)+"</td></tr>\n";
 
 			msg += "</table>\n";
 
@@ -824,27 +877,48 @@ function filterBit(bit)
 			this.values[1] = val;
 			this.setValue(0, 1);
 		}
+		f = document.getElementById("mod");
+		if( f != null){
+			this.mod = f.value;
+		}
 	}
 
 	//filter
 	this.doSave = function()
 	{	let msg = "";
-		// save filter state.
-		let n = 1+2;
+		// save osc state.
+		let s = new saveargs();
 
-		msg += ""+n+", ";
-		msg+= ""+this.values[0]+", "+this.values[1]+", ";
-		return msg;
+		s.addnv("'control'", "'filter'");
+		s.addnv("'freq'", this.values[0]);
+		s.addnv("'res'", this.values[1]);
+		s.addnv("'mod'", this.mod);
+
+		return s.getargs();
 	}
 		
 	//filter
 	this.doLoad = function(initdata, idx)
-	{	var i = initdata[idx];
+	{	var len = initdata[idx];
+		let n = 1;
+		let param="";
+		let val = "";
 
-		if( i > 2){
-			this.values[0] = initdata[idx+1];
-			this.values[1] = initdata[idx+2];
-			this.setValue(0, 1);
+		debugmsg("FILT doload "+idx+" "+len);
+		for(n = 1; n < len ; n += 2){
+			param = initdata[idx+n];
+			val = initdata[idx+n+1];
+
+			if( param == "control"){
+				continue;
+			}
+			if( param == "freq"){
+				this.values[0] = val;
+			}else if( param == "res"){
+				this.this.values[1] = val;
+			}else if( param == "mod"){
+				this.mod = val;
+			}
 		}
 
 	}		
@@ -886,31 +960,201 @@ delayBit.prototype = Object.create(control.prototype);
 
 function delayBit(bit)
 {	control.call(this, bit);
+	this.prevdata = new delta();
+	this.knobs = [25, 30, 75, 30];
+	this.values = [128, 250];
+	this.selknob = 0;
+	this.wet = 200;
+	this.dry = 255;
+	this.mod = 0;
 
     let imagename = "delay";
 	this.bitimg =this.bit.findImage(imagename);
 	this.bitname = imagename;
 	this.name = "Delay";
 
+	roundknobimg =this.bit.findImage("roundknob");
+
+	this.HitTest = function(mx, my)
+	{	let b = this.bit;
+		let x = mx-b.x;
+		let y = my-b.y;
+		let i = 0;
+		let len = this.values.length;
+
+//		debugmsg("FIlter  "+x+" "+y);
+		for(i=0; i < len; i++){
+			x = mx - b.x - this.knobs[i+i]+10;
+			y = my - b.y - this.knobs[i+i+1]+10;
+//			debugmsg("FIlter HT "+x+" "+y);
+			if( x > 0 && x < 20 && y > 0 && y < 20 ){
+				this.initx = mx;
+				this.inity = my;
+				this.ival = this.values[i];
+				debugmsg("DELAY HT "+i);
+				this.selknob = i+1;
+				return this;
+			}
+		}
+
+		return null;
+	}
+
+
 	this.Draw = function( )
-	{	var b = this.bit;
-		var bt;
-		var xval = b.value;		// 0 - 255
-        let delay = this.bitimg;
+	{	let b = this.bit;
+		let bt;
+		let xval = this.values[0];
+		let i = 0;
 
 		if( b == null){
 			return;
 		}
 		bt = b.btype & 7;	// 0 = horiz, 1 == vert
-//		message("Draw slider "+ xval);
 
         ctx.fillStyle = "#ffffff";
 		if( bt == 0){
-			ctx.drawImage(bitpics[ delay ], b.x, b.y);
+			ctx.drawImage(bitpics[ this.bitimg ], b.x, b.y);
+			for(i=0; i < 4; i+= 2){
+				ctx.save();
+				ctx.translate( b.x+this.knobs[i], b.y+this.knobs[i+1]);
+				ctx.rotate( (xval-120 )*degree );
+				ctx.drawImage(bitpics[roundknobimg], -10, -10);
+				ctx.restore();
+				// Q
+				xval = this.values[1];
+			}
 		}else {
-			ctx.drawImage(bitpics[ delay+1 ], b.x, b.y);
+			ctx.drawImage(bitpics[ this.bitimg+1 ], b.x, b.y);
 		}
 	}
+
+	this.setValue = function(data, chan)
+	{	let wet = 0;
+		let dry = 0;
+
+		if( chan == 1){
+			if(this.prevdata.changed( data)){
+				wet = data / 300;
+				dry = 1.0 - wet;
+				debugmsg("DELAY set "+wet);
+
+				this.wetNode.gain.setValueAtTime(wet, audioContext.currentTime);
+			}
+		}
+	}
+
+
+	this.setup = function()
+	{	this.ingain = actx.createGain();		// used as the input node.
+		this.ingain.gain.value = 0.75;
+
+		if( false){
+
+		this.delay = actx.createDelay(1);
+		this.dryNode = actx.createGain();
+		this.wetNode = actx.createGain();
+		this.mixer = actx.createGain();
+		this.mixer.gain.value = 0.75;
+		this.filter = actx.createBiquadFilter();
+	
+		this.delay.delayTime.value = 0.75;
+		this.dryNode.gain.value = 1;
+		this.wetNode.gain.value = 0;
+		this.filter.frequency.value = 1100;
+		this.filter.type = "highpass";
+
+
+		this.ingain.connect(this.delay);
+		this.delay.connect(this.wetNode);
+		this.wetNode.connect(this.filter);
+		this.filter.connect(this.delay);
+	
+//			inputNode.connect(dryNode);
+//		this.ingain.connect(this.drynode);
+		this.dryNode.connect(this.mixer);
+		this.wetNode.connect(this.mixer);
+
+//		this.audioout = this.mixer;
+		}
+		this.audioout = this.ingain;
+		this.audioin = this.ingain;
+		debugmsg("Create delay");
+	}
+
+	this.modnames = ["wet", "dry" ];
+
+	// delay
+	this.setData = function()
+	{	let msg="";
+		if( bitform != null){
+			bitform.innerHTML="";
+		}
+		let wet = this.wet * 255;
+		bitform = document.getElementById("bitform");
+		if( bitform != null){
+			msg = "<table>";
+			msg += "<tr><th align='right'>Modulation</th><td >"+showModulation(this.mod, this.modnames)+"</td></tr>\n";
+
+			msg += "</table>\n";
+
+			bitform.innerHTML = msg;
+			bitformaction = this;
+		}
+	
+	}
+
+	
+// delay
+	this.getData = function()
+	{	let i = 0;
+		let f = null;
+		let val = 0;
+		let t=0;
+
+		f = document.getElementById("wet");
+		if( f != null){
+			val = f.value;
+			this.wet = val;
+		}
+		f = document.getElementById("mod");
+		if( f != null){
+			val = f.value;
+			this.mod = val;
+		}
+
+	}
+
+// delay
+	this.onMove = function(x, y)
+	{	let vx = x - this.initx;
+		let vy = y - this.inity;
+		let mag = vx *vx + vy * vy;
+		let f = null;
+
+		if( this.selknob > 0){
+			this.values[this.selknob-1] = rotaryvalue(vx, vy, this.ival);
+			if( this.selknob == 2){
+				this.setValue(0,1);
+			}
+		}
+
+		// update bitform
+		if( bitformaction != this){
+			return;
+		}
+		if(this.selknob-1 == 0){
+			f = document.getElementById( "wet");
+		}else if(this.selknob-1 == 1){
+			f = document.getElementById("dry");
+		}
+		if( f != null){
+			f.value = this.values[this.selknob-1];
+		}
+	}
+
+	this.setup();	
+	
 }
 
 function motion(tempo, gate)
@@ -1182,7 +1426,28 @@ function seqBit(bit)
 	}
 		
 	this.doLoad = function(initdata, idx)
-	{	var i = initdata[idx];
+	{	var len = initdata[idx];
+		let n = 1;
+		let param="";
+		let val = "";
+
+		debugmsg("SEQ doload "+idx+" "+len);
+		for(n = 1; n < len ; n += 2){
+			param = initdata[idx+n];
+			val = initdata[idx+n+1];
+
+			if( param == "control"){
+				debugmsg("CONTROL "+val);
+				continue;
+			}
+			if( param == "freq"){
+				this.values[0] = val;
+			}else if( param == "res"){
+				this.this.values[1] = val;
+			}else if( param == "mod"){
+				this.mod = val;
+			}
+		}
 	}		
 		
 
@@ -1293,7 +1558,8 @@ function scopeBit( bit )
 	this.af = null;
 	this.min = 1;
 	this.audioin = null;
-	this.ctx = ctx;
+	this.audioout = null;
+	this.ctx = null;
 	this.bgcolor = "#202020";
 	this.color = "#ffffff";
 	this.name = "Analyzer";
@@ -1315,6 +1581,13 @@ function scopeBit( bit )
 		this.h = 100;
 		this.r = this.l+this.w;
 		this.b = this.t+this.h;
+
+		if( this.ctx == null){
+			this.ctx = ctx;
+		}
+		if( this.ctx == null){
+			return;
+		}
 
 		this.ctx.save();
 
@@ -1400,6 +1673,7 @@ function scopeBit( bit )
 					debugmsg("Create Spectrum Analyzer");
 				}
 				this.audioin = this.analyser;
+				this.audioout = this.analyser;
 			}
 		}
 	}
@@ -1408,14 +1682,81 @@ function scopeBit( bit )
 	this.setValue = function(data, chan)
 	{
 		if( chan == 0){
-			this.setup();
 			this.Draw();
 		}
 	}
 
+	// initialize
+	this.setup();
 
 }
 
 
+micBit.prototype = Object.create(control.prototype);
+
+function micBit(bit)
+{	control.call(this, bit);
+	this.deg = degree;
+	this.bit = bit;
+	this.gain = null;
+	this.osc = null;
+	this.webkitstyle = false;
+	this.val = 255;		// debug set initial volume
+	this.freq= 60;		// middle C in Midi
+	this.prevfreq = new delta();
+	this.nfreq=0;
+	this.audioin = null;
+	this.audioout = null;
+	this.wave = -128;		// biased by 128
+	this.prevwave = new delta();
+	this.prevmix = new delta();
+	this.range = 12; 	// bend range
+	this.a440 = 440;
+	this.ival = 0;
+	this.mod = 0;		// modulation routing
+	this.modgain = 128;	// modulation gain
+	this.modfreq = 128;	// modulation freq
+
+    let imagename = "mic";
+	this.bitimg =this.bit.findImage(imagename);
+	this.bitname = imagename;
+	this.name = "Mic";
+
+	this.setup = function(){
+		if( this.audioout == null){
+			const constraints = { audio: true };
+			navigator.mediaDevices
+				.getUserMedia(constraints)
+				.then((stream) => {
+					source = actx.createMediaStreamSource(stream);
+					this.audioout = source;
+					debugmsg("Create microphone");
+				})
+				.catch(function (err) {
+				debugmsg("The following error occured: " + err);
+			});
+		}
+	}
+
+	// microphone
+	this.Draw = function( )
+	{	var b = this.bit;
+
+		if( b == null){
+			return;
+		}
+		bt = b.btype & 7;	// 0 = horiz, 1 == vert
+
+        ctx.fillStyle = "#ffffff";
+		if( bt == 0){
+			ctx.drawImage(bitpics[ this.bitimg ], b.x, b.y);
+		}else {
+			ctx.drawImage(bitpics[ this.bitimg+1 ], b.x, b.y);
+		}
+	}
+
+	this.setup();
+
+}
 
 

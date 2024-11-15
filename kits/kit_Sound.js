@@ -61,43 +61,31 @@ function kit_sound()
 		"control", "delay", 100, 50,	"audioin", "audioout" ,"actionin",  null,		// 0
 				0,	1, "Delay",	"change sound",	 0x0122, "Action", 0, 1,	// 0
 
-		"control", "seq", 200, 50,	"inputin", "inputout" ,null,  null,		// 0
-				0,	1, "Sequencer",	"sequencer",	 0x0011, "Input", 0, 1,	// 0
-
-		"control", "seq8", 200, 100,	"inputin", "inputout" ,null,  null,		// 0
-		0,	1, "Seq8",	"8 step sequencer",	 0x0011, "Input", 0, 1,	// 0
-
-		"control", "seq16", 200, 200,	"inputin", "inputout" ,null,  null,		// 0
-		0,	1, "Seq16",	"16 step sequencer",	 0x0011, "Input", 0, 1,	// 0
-
 		"control", "analyzer", 200, 100, "audioin", "audioout" ,null,  null,		// 0
 				0,	1, "Analyzer",	"Display sound",	 0x0022, "Output", 0, 1,	// 0
 
 		"control", "spectrum", 200, 100, "audioin", "audioout" ,null,  null,		// 0
 				0,	1, "Spectrum",	"Display sound",	 0x0022, "Output", 0, 1,	// 0
+
+		"control", "microphone", 50, 50, null, "audioout" ,null,  null,		// 0
+				0,	1, "Microphone",	"Input sound",	 0x0020, "Input", 0, 1,	// 0
 		null, null, null, null,				null, null, null, null
 		];
 
+	// name, folder:2,mode:2
+	// 
 	this.bitimagemap = [
-		"speaker", 1,		// bits
-		"speaker-v", 1,		// bits
-		"osc", 1,
-		"osc-v", 1,
-		"filter", 1,
-		"filter-v", 1,
-		"delay", 1,
-		"delay-v", 1,
-		"seq", 1,
-		"seq-v", 1,
-		"seq8", 1,
-		"seq8-v", 1,
-		"seq16", 1,
-		"seq16-v", 1,
-		"audioout-r", 0,	// snaps
-		"audioout-b", 0,
-		"audioin-t", 0,	// snaps
-		"audioin-l", 0,
+		"speaker", 0xd,		// bits
+		"osc", 0xd,
+		"filter", 0xd,
+		"delay", 0xd,
+		"seq", 0xd,
+		"seq8", 0xd,
+		"seq16", 0xd,
+		"audioout", 8,	// snaps -r -b
+		"audioin", 4,	// snaps -l -t
 		"roundknob", 2,	// round knob
+		"mic", 0xd,
 		null, null
 	];
 
@@ -109,11 +97,9 @@ function kit_sound()
 	"delay", 3, 4,		// delay
 	"mixer", 3, 5,		// mixer
 	"env", 3, 6,		// envelope
-	"seq", 3, 7,		// sequencer
-	"seq8", 3, 8,		// sequencer 8 step
-	"seq16", 3, 9,		// sequencer 16 step
 	"analyzer", 3, 10,	// scope
 	"spectrum", 3, 11,	// spectrum
+	"microphone", 3, 12,	// microphone
 	null, 0, 0, 0, 0	// end of table
 	];
 
@@ -123,11 +109,10 @@ function kit_sound()
 		"osc", 120,
 		"speaker", 121,
 		"filter", 122,
-		"seq", 123,
-		"seq8", 123,	// generic sequencer 8 step
-		"seq16", 123,	// generic sequencer 16 step
 		"analyzer", 124,	// audio display
 		"spectrum", 124,	// audio display
+		"microphone", 125,	// audio input
+		"delay", 126,	// audio input
 		null, 254
 	];
 
@@ -170,30 +155,6 @@ function kit_sound()
 					bit.ctrl = ct;
 					ct.setData();
 					return ct;
-				}else if( this.ctrltab[i+2] == 7){
-					// sequencer
-					ct = new seqBit( bit);
-					bit.ctrl = ct;
-					ct.setData();
-					return ct;
-				}else if( this.ctrltab[i+2] == 8){
-					// sequencer
-					ct = new seqBit( bit);
-					ct.values = [100,104,60,112, 64, 68, 72, 74];
-					ct.bitimg =ct.bit.findImage("seq8");
-					ct.bitname = "seq8";
-					bit.ctrl = ct;
-					ct.setData();
-					return ct;
-				}else if( this.ctrltab[i+2] == 9){
-					// sequencer
-					ct = new seqBit( bit);
-					ct.values = [100,104,60,112, 64, 68, 72, 74, 100,104,60,112, 64, 68, 72, 74];
-					ct.bitimg =ct.bit.findImage("seq16");
-					ct.bitname = "seq16";
-					bit.ctrl = ct;
-					ct.setData();
-					return ct;
 				}else if( this.ctrltab[i+2] == 10){
 					// scope
 					ct = new scopeBit( bit);
@@ -207,9 +168,15 @@ function kit_sound()
 					bit.ctrl = ct;
 					ct.setData();
 					return ct;
+				}else if( this.ctrltab[i+2] == 12){
+					ct = new micBit( bit);
+					bit.ctrl = ct;
+					ct.setData();
+					return ct;
 				}
 			}
 		}
+		return null;
 	}
 
 	// kit sound

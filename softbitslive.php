@@ -58,38 +58,6 @@
   if( $action != ""){
      if( $action == "code"){
        die("");
-        $senddata = base64_decode($_POST['data']);
-        $host="";
-        $port=0;
-        $comport="";
-        if( isset($_POST['host']) ){
-          $host=$_POST['host'];
-        }
-        if( isset($_POST['port']) ){
-          $port= $_POST['port'];
-        }
-        if( isset($_POST['comport']) ){
-          $comport=$_POST['comport'];
-        }
-        if( $nonet == 0){
-          $com7 = stream_socket_client("tcp://$host:$port", $errno, $errstr, 30);
-          if (!$com7) {
-            $msg = "Connect($host,$port,$comport) $errstr ($errno)<br />\n";
-            $errf = fopen("/tmp/sblerror","a");
-            fwrite($errf, $msg);
-            fclose($errf);
-            
-            echo "$errstr ($errno)<br />\n";
-          } else {
-              fwrite($com7, $senddata);
-              fpassthru($com7);
-              fclose($com7);
-          }
-      }else {
-          echo "                                                             No Connection\n";
-      }
-
-      die("");
 
     }else if( $action == "noteon"){
       $note = $_POST['note'];
@@ -211,21 +179,23 @@
     echo "<script type='text/javascript'>\n";
     echo "var initdataonLoad= [\n";
     if( $loaddata == ""){
-      $loaddata = "'bit',1,'power_on',0,245,319,0,0,0,0,  1,
-      'bit',2,'power_off',16,426,319,0,0,0,0,  1,
+      $loaddata = "12,'bit',1,'power_on',0,245,319,0,0,0,0,  1,
+      12,'bit',2,'power_off',16,426,319,0,0,0,0,  1,
       ";
     }
     echo $loaddata;
-    echo "'end'";
+    echo "2,'end',\n";
+    echo "0\n";
     echo "];\n";
     
     echo "var initdataonReset= [\n";
-      $loaddata = "'bit',1,'power_on',0,245,319,0,0,0,0,  1,
-      'bit',2,'power_off',16,426,319,0,0,0,0,  1,
-      'options',1,1,1,1,
+      $loaddata = "12,'bit',1,'power_on',0,245,319,0,0,0,0,  1,
+      12,'bit',2,'power_off',16,426,319,0,0,0,0,  1,
+      6,'options',1,1,1,1,
       ";
     echo $loaddata;
-    echo "'end'";
+    echo "2,'end',\n";
+    echo "0\n";
     echo "];\n";
     
     echo "</script>\n";

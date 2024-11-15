@@ -14,7 +14,7 @@ var seqimg = 0;
 const none = null;
 var trace = 0;
 // 10/27/24
-var activedomains = 1;		// which domains are active  1 == basic
+var activedomains = 1;		// which domains are active  1 == basic, 2 = sound, 4 = midi
 var hidetouch = true;		
 var curtab = "progtab";
 
@@ -36,6 +36,8 @@ const SPEAKER = 121;
 const FILTER = 122;
 const SEQUENCER = 123;
 const SCOPE = 124;
+const MICROPHONE = 125;
+const DELAY = 126;
 
 var divlist = [
 	"headerdiv",
@@ -271,8 +273,6 @@ function UIaddBit(idx, x, y, kit)
 	}
 	selected = nbit;
 
-	nbit.setDomain();
-
 	sketch.drawProgram();
 }
 
@@ -505,19 +505,21 @@ function Source()
 
 
 	this.addCode = function(code)
-	{	let limit = this.code.length;
+	{	let limit;
+		
 
 		if( this.code == null){
 			this.code.debug();
 			return;
 		}
+		limit = this.code.length;
 		code = checkRange(code);
 
 		this.code[ this.codeptr] = code;
 		this.codeptr++;
 		this.codebits[this.codeptr] = null;
 		if( this.codeptr > limit-10){
-			message("Addcode limit "+codeptr);
+			message("Addcode limit "+this.codeptr);
 			this.codeptr = limit-10;
 		}
 	}
@@ -635,7 +637,7 @@ function Program()
 
 		// need a temp power on for the rest of the chain.
 		nbit = new Bit(0, 50, 300, k.bitnames[ 2], k.bitnames[ 3], k);
-		nbit.snaps[0] = new Snap(nbit, "-l", 0, 0, 0, 0, 0, 0);		// add snap 0 to save back link.
+		nbit.snaps[0] = new Snap(nbit, "-l", 0, 0, 0, 0, 0, 0, 0);		// add snap 0 to save back link.
 
 		tl = new Bitlist(nbit);
 		tl.next = sketch.blist;		// add bit to global bitlist
@@ -665,17 +667,11 @@ function Program()
 		let nbit;
 		let tl;
 		let chain;
-		let dom = bit.domain;
 		let code;
 		let xsnap;
 		let p;
 		let msg="";
-
-		if( dom != 1){
-			dom = 0;
-		}
-
-		dom = 0;	// debug
+		let dom = 0;
 
 		this.source[dom].chain++;
 		chain = this.source[dom].chain;
@@ -700,7 +696,6 @@ function Program()
 				nbit = this.insertTempPowerOn( bit.snaps[3].paired);
 
 				nbit.chain = 0;
-				nbit.domain = bit.domain;
 
 				this.markChain(nbit);
 			}
@@ -905,7 +900,7 @@ function Program()
 		while(b != null){
 			bit = b.bit;
 			
-			if( bit.code == POWERON || bit.code == MIDICV || bit.code == MIDICC){
+			if( bit.code == POWERON || bit.code == MIDICV || bit.code == MIDICC || bit.code == MICROPHONE){
 				// a power_on
 				this.markChain(bit);
 			}
@@ -917,7 +912,7 @@ function Program()
 		while(b != null){
 			bit = b.bit;
 			
-			if( bit.code == POWERON || bit.code == MIDICV || bit.code == MIDICC){
+			if( bit.code == POWERON || bit.code == MIDICV || bit.code == MIDICC || bit.code == MICROPHONE){
 				// a power_on
 				this.drawMesh(bit );
 			}
@@ -1016,7 +1011,7 @@ function Program()
 	this.drawMesh = function(bit)
 	{	let b = bit;
 		let idx;
-		let bnxt;
+		let bnxt = null;
 		let bpair, bpair2;
 		let code=5;
 		let cd;
@@ -1030,11 +1025,7 @@ function Program()
 			bpair = this.getPair( b.snaps[1]);
 			bpair2 = this.getPair( b.snaps[3]);
 			code = b.code;
-			dom = b.domain;
-			cd = dom;
-			if( cd != 1){
-				cd = 0;
-			}
+
 			cd = 0;		//debug
 			if(trace == 1){
 				debugreset();
@@ -1044,7 +1035,7 @@ function Program()
 			if( trace > 0){
 				debugmsg("Trace: "+b.name+" "+idx+" "+code+" dom "+cd);
 			}
-			if( code == POWERON || code == MIDICV || code == MIDICC){		// power on
+			if( code == POWERON || code == MIDICV || code == MIDICC || code == MICROPHONE){		// power on
 				this.source[cd].msg += drawFunction1( idx, b.chain);
 				this.source[cd].codeBit1(b, b.chain);
 
@@ -1085,20 +1076,11 @@ function Program()
 					b = null;
 				}
 			}else{
+				// bpair not null
 				if( b != null && b.chain != bpair.chain){
-					b = null;
-				}else if( bpair.domain == 0){
-					if( ( dom & bpair.bit.domain) == 0){
-						b = null;
-					}else {
-						b = bpair;
-					}
+					b = null;	// chain mismatch
 				}else {
-					if( (dom & bpair.domain) == 0){
-						b = null;
-					}else {
-						b = bpair;
-					}
+					b = bpair;
 				}
 			}
 		}
@@ -1217,7 +1199,7 @@ function Program()
 				}
 			}else if(code == ENDPROG){
 				prog = null;		// end of program
-			}else if( code == MIDICV || code == MIDICC){			// midicv is power on
+			}else if( code == MIDICV || code == MIDICC || code == MICROPHONE){			// midicv is power on
 					chain = prog[bp];
 					bp++;
 					if( chain < 0 || chain >= nchains){
@@ -1251,7 +1233,7 @@ function Program()
 						data = 0;			// note off when disconnected.
 					}else if(  arg2 > 0 && arg2 < nchains){		// modmix ?
 						data2 = this.getchaindata(arg2, nchains);
-						progbits[ ibp].ctrl.setValue(data2, 1);	// mute
+						progbits[ ibp].ctrl.setValue(data2, 1);	// modulation
 					}
 					progbits[ ibp].ctrl.setValue(data, 0);		
 					progbits[ibp].value = this.chains[ curchain].data;
@@ -1569,7 +1551,7 @@ function Program()
 						data = 0;			// note off when disconnected.
 					}else if(  arg2 > 0 && arg2 < nchains){		
 						data2 = this.getchaindata(arg2, nchains);
-						progbits[ ibp].ctrl.setValue(data2, 1);	// mute
+						progbits[ ibp].ctrl.setValue(data2, 1);	// modulation
 					}
 					progbits[ ibp].ctrl.setValue(data, 0);	
 					progbits[ibp].value = this.chains[ curchain].data;
@@ -1582,8 +1564,6 @@ function Program()
 					if( arg2 > 0 && arg2 < 20){
 						data2 = this.chains[ arg2].data;
 						progbits[ ibp].ctrl.setValue(data2, 1);	// modfreq
-					}else{
-						progbits[ ibp].ctrl.setValue(128, 1);	// modfreq
 					}
 					if(curchain  == 0){
 						data = 0;			// silence osc if not linked in a chain.
@@ -1726,7 +1706,7 @@ function getXY(e) {
 }
 
 
-function Snap(bit, side, x, srx, y, sry, w, h)
+function Snap(bit, side, x, srx, y, sry, w, h, idx)
 {
 	this.x = x+srx;
 	this.y = y+sry;
@@ -1741,6 +1721,10 @@ function Snap(bit, side, x, srx, y, sry, w, h)
 	this.domain = 0;
 	this.indval = 0;
 	this.indcolor = "";
+	this.idx = idx;		// index.  0 = in, 1= out, 2 = in2, 3=out2
+
+	this.domain = (bit.domain >> (idx*4)) & 0xf;
+	debugmsg("SNAP "+bit.name+" "+idx+" "+this.domain);
 
 	this.drawIndicator = function(orientation, x, y)
 	{	var val;
@@ -1820,6 +1804,7 @@ function Snap(bit, side, x, srx, y, sry, w, h)
 	}
 
 // snap dodock
+// one snap is out and one is in. 
 	this.doDock = function( other)
 	{	let b = this.bit;
 		let dom = this.domain;
@@ -1828,26 +1813,20 @@ function Snap(bit, side, x, srx, y, sry, w, h)
 		if( other == null){
 			return;
 		}
-		if( dom == 0){
-			dom = b.domain;
-		}
 
 		dom2 = other.domain;
-		if( dom2 == 0){
-			dom2 = other.bit.domain;
-		}
 
 		if( (dom & dom2 ) != 0){
 
 			this.connectTo( other);
 
-			this.domain = (dom & dom2);
-			other.domain = (dom & dom2);
+//			this.domain = (dom & dom2);
+//			other.domain = (dom & dom2);
 
-			if( b.snaps[0] == this || b.snaps[2] == this){
-				b.dock(other.bit);
+			if( this.idx == 0 || this.idx == 2){
+				b.dock(other.bit, this.idx);		// input snap on b
 			}else {
-				other.bit.dock(b);
+				other.bit.dock(b, this.paired.idx);		// output snap on b
 			}
 		}
 
@@ -2038,28 +2017,6 @@ function Snap(bit, side, x, srx, y, sry, w, h)
 }
 
 
-// bit setDomain
-function setDomain( bit)
-{	let msg="";
-	let i=0;
-	let n = 0;
-	let slen = bit.snaps.length;
-
-	n = bit.domain;
-
-	for(i=0; i < slen; i++){
-		if( bit.snaps[i] != null){
-			bit.snaps[i].domain = (n & 0xf);
-			msg += bit.snaps[i].domain;
-		}else {
-			msg += "x";
-		}
-		n = Math.floor(n / 16);
-	}
-	debugmsg("SETDOM "+bit.name+" "+n+" "+msg);
-
-}
-
 
 ///////////////////////////////// BIT ///////////////////////////////////////
 ///////////////////////////////// BIT ///////////////////////////////////////
@@ -2085,7 +2042,6 @@ function Bit( btype, x, y, w, h, k) {
 	this.data = 255;
 	this.value = 255;
 	this.prevvalue = 255;
-	this.domain = 0;			// for arduino, local , other
 	this.net = 0;				// for labeling nets used in dock/undock.
 	this.addr = 0;				// offset of this bit in the codebyte array. 
 	this.bitimg = 0;
@@ -2093,6 +2049,7 @@ function Bit( btype, x, y, w, h, k) {
 	this.kit = k;
 	this.name = "unset";
 	this.connected = 0;			// count of  connections.
+	this.domain = 0;			// not set.
 
 	let bt = (btype & 7);
 	let bidx = btype-bt;
@@ -2166,14 +2123,13 @@ function Bit( btype, x, y, w, h, k) {
 		if( snapname != null){
 			if( i < 2){
 			// in out
-				this.snaps[i] = new Snap(this, this.suffix[i], this.x, this.coords[i+i], this.y,this.coords[i+i+1], sw, sh);
+				this.snaps[i] = new Snap(this, this.suffix[i], this.x, this.coords[i+i], this.y,this.coords[i+i+1], sw, sh, i);
 			}else{
 			// in2 out2
-				this.snaps[i] = new Snap(this, this.suffix[i], this.x, this.coords[i+i], this.y,this.coords[i+i+1], sh, sw);
+				this.snaps[i] = new Snap(this, this.suffix[i], this.x, this.coords[i+i], this.y,this.coords[i+i+1], sh, sw, i);
 			}
 		}
 	}
-	setDomain(this);
 
 	debugmsg("Bit: "+ this.kit.name + " idx "+ idx + " name "+this.name+" img "+this.bitimg+" "+this.name+" domain "+this.domain.toString(16));
 
@@ -2409,33 +2365,18 @@ function Bit( btype, x, y, w, h, k) {
 	}
 
 	// input / output
-	this.dock = function(partner)
+	// this bit is the receiver
+	// added snap index 
+	this.dock = function(partner, sidx)
 	{	let i = 0;
 		let msg = "";
 		let slen = this.snaps.length;
 		let p = null;
-		let pdom = 0;
+		let snap = this.snaps[sidx];
 
-		for(i=0; i < slen ; i++){
-			if( this.snaps[i] != null){
-				msg += this.snaps[i].domain;
-				p = this.snaps[i].paired;
-				if( p != null){
-					msg += "-"+p.domain;
-					if( p.bit == partner){
-						pdom = p.domain;
-					}
-				}else {
-					msg += " ";
-				}
-			}else {
-				msg += " x ";
-			}
-		}
-
-		debugmsg("BIT Docked "+this.name+" to "+partner.name+" "+msg+" pdom="+pdom);
+		debugmsg("BIT Docked "+this.name+" to "+partner.name+" pdom="+snap.paired.domain);
 		if( this.ctrl != null){
-			this.ctrl.dock(partner, pdom);
+			this.ctrl.dock(partner, snap.paired.domain);
 		}
 	}
 
@@ -2638,12 +2579,6 @@ function Bit( btype, x, y, w, h, k) {
 		}
 	}
 
-// bit setDomain
-	this.setDomain = function(){
-
-		setDomain(this);
-
-	}
 
 }
 
@@ -3544,44 +3479,59 @@ function sketchinit() {
 
 // find bit N in the bitlist
 function initFindBit( i)
-{	var bl;
+{	let bl;
 	bl = sketch.blist;
-	while( bl.num != i){
+	while( bl != null){
+		if( bl.num == i){
+			return bl.bit;
+		}
 		bl = bl.next;
 	}
+	// not found
+	debugmsg("Initfind not found "+i);
+	bl = sketch.blist;
+	while( bl != null){
+		debugmsg("Initfind bit "+bl.num+" != "+i);
+		bl = bl.next;
+	}
+
 	return bl.bit;
 }
 
 // find bit N in the initdata
 function initFindTab(initdata, i, n)
 {	var idx = i;
+	let len = initdata[i-1];
+	let obj = i;
+	idx++;
 
-	while( initdata[idx+1] != n){
+	debugmsg("initFindtab "+i+" "+n+" "+initdata[i]);
+
+	while( idx < initdata.length && initdata[idx+1] != n){
 		if( initdata[idx] == "bit" ){
-			idx += 10 + initdata[idx+10];
+			idx += 10 + initdata[idx+10] +1;
 		}else if( initdata[idx] == "kit"){
-			idx += 2;
+			idx += 3;
 		}
 	}
 	return idx;
 }
 
 function loadInitData( initdata)
-{	var i,j, num;
-	var bl, bp;
-	var pair;
-	var snap;
-	var bit, bit2;
-	var nbit;
-	var idx;
-	var opt;
-	var bt;
-
-	arduino=null;		// clear before load.
-	piano=null;			// clear before load.
+{	let i,j, num;
+	let bl, bp;
+	let pair;
+	let snap;
+	let bit, bit2;
+	let nbit;
+	let idx;
+	let opt;
+	let bt;
+	let len;
+	let obj;
+	let next = initdata.length;
 
 	// pass 1 create the bits.
-	i = 0;
 	num = 1;
 	sketch.blist = null;
 
@@ -3589,11 +3539,20 @@ function loadInitData( initdata)
 		curkit = findkit("Basic");
 	}
 
-	while(initdata[i] == "bit" || initdata[i] == "kit" ){
-		if( initdata[i] == "kit"){
+	obj = 0;
+	len = initdata[obj];
+	i = obj+1;
+	next = obj+len;
+	while( len > 0 && i < initdata.length){
+		if( len > 1){
+			debugmsg("INIT["+initdata.length+"] len="+len+" obj="+obj+" "+initdata[i]);
+		}else {
+			debugmsg("INIT["+initdata.length+"] len="+len+" obj="+obj);
+		}
+		if( len > 1 && initdata[i] == "kit"){
 			UIchooseKit(initdata[i+1]);
 			i += 2;
-		}else if( initdata[i] == "bit"){
+		}else if( len > 10 && initdata[i] == "bit"){
 			idx = initdata[i+3];
 			bt = idx & 7;
 			idx = idx - bt;
@@ -3612,11 +3571,6 @@ function loadInitData( initdata)
 			sketch.blist = bl;
 			nbit.carrier = bl;
 
-			j =  initdata[i+10];
-			if( j == 'bit' || j == 'end'){
-				// ("Initdata...");
-				return;
-			} 
 			if( bitform != null){
 				bitform.innerHTML = "";
 				bitform = null;
@@ -3626,24 +3580,47 @@ function loadInitData( initdata)
 			if( ctrllen > 1){
 				// decode control
 				debugmsg("Load control "+ctrllen);
+				ctrl = curkit.addCtrl( nbit);
 			}
-			i += 10 + ctrllen;
+			debugmsg("CTRLLEN "+ctrllen+" "+obj);
+			next += ctrllen -1;			// bit counts the ctrllen.
 			num++;
-		}else {
-			message("Bad load data, expected 'bit' got "+initdata[i] );
+		}else if( len > 1 && initdata[i] == "end"){
+			debugmsg("INIT end");
+		}else if( len > 1 && initdata[i] == "options"){
+			debugmsg("INIT options");
+		}else if( len > 2 ){
+			message("Bad load data, expected 'bit' got "+initdata[i] +" len="+len);
 			return;
 		}
+		obj = next;
+		len = initdata[obj];
+		next = obj+len;
+		debugmsg("INIT next "+obj+" "+len);
+		if( len > 2){
+			debugmsg("____ next: "+initdata[obj+1]+" "+initdata[obj+2]);
+		}
+		i = obj+1;
 	}
+	debugmsg("End of pass["+initdata.length+"] 1: "+i+" len="+len+" obj="+obj);
 
 	// pass 2 link the bits.
-	i = 0;
-	while(initdata[i] == "bit" || initdata[i] == "kit"){
+	obj = 0;
+	len = initdata[obj];
+	i = obj+1;
+	next = obj+len;
+	while(len > 0 && i < initdata.length){
+		if( len > 1){
+			debugmsg("PASS2 len="+len+" obj="+obj+" "+initdata[i]);
+		}else {
+			debugmsg("PASS2 len="+len+" obj="+obj);
+		}
 		if( initdata[i] == "kit"){
 			curkit = findkit(initdata[i+1]);
 			i += 2;
-		}else {
+		}else if( initdata[i] == 'bit'){
 			num = initdata[i+1];
-			bit = initFindBit( initdata[i+1]);
+			bit = initFindBit( num);
 			if( initdata[i+6] != 0){
 				bit2 = initFindBit( initdata[i+6]);
 				idx = initFindTab( initdata, 0, initdata[i+6]);
@@ -3674,8 +3651,14 @@ function loadInitData( initdata)
 					bit.snaps[0].doDock(bit.snaps[0].paired);
 				}
 			}
-			i += 10 + initdata[i+10];
+			ctrllen = initdata[i+10];
+			next += ctrllen -1;			// bit counts the ctrllen.
 		}
+		// next
+		obj = next;
+		len = initdata[obj];
+		next = obj+len;
+		i = obj+1;
 	}
 	if( initdata[i] == "options"){
 		showchains = initdata[i+1];

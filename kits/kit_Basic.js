@@ -95,10 +95,15 @@ function kit_basic()
 		"control", "graph", 200, 100,		"outputin", "outputout" ,"outputin",  null,		// 31
 				0,	1, "Draw line graph",	"", 0x0111, "Output", 0, 1,		// 22
 
-//		"default", "Midi Kit", 100, 50,			null, null, null, null,
-//				0,	1, "Midi Kit", "Load the Midi Kit", 0x3, "Kits", 0, 1,		// 22
-//		"default", "Sound Kit", 100, 50,			null, null, null, null,
-//				0,	1, "Sound Kit", "Load the Sound Kit", 0x3, "Kits", 0, 1,		// 23
+		"control", "seq", 200, 50,	"inputin", "inputout" ,null,  null,		// 0
+		0,	1, "Sequencer",	"sequencer",	 0x0011, "Input", 0, 1,	// 0
+
+		"control", "seq8", 200, 100,	"inputin", "inputout" ,null,  null,		// 0
+		0,	1, "Seq8",	"8 step sequencer",	 0x0011, "Input", 0, 1,	// 0
+
+		"control", "seq16", 200, 200,	"inputin", "inputout" ,null,  null,		// 0
+		0,	1, "Seq16",	"16 step sequencer",	 0x0011, "Input", 0, 1,	// 0
+
 		null, null, null, null,				null, null, null, null
 	];
 
@@ -117,7 +122,10 @@ function kit_basic()
 	"wire", 3, 12,			// wire
 	"Midi Kit", 3, 14,		// midi kit
 	"Sound Kit", 3, 15,		// sound kit
-	null, 0, 0, 0, 0	// end of table
+	"seq", 3, 17,		// sequencer
+	"seq8", 3, 18,		// sequencer 8 step
+	"seq16", 3, 19,		// sequencer 16 step
+null, 0, 0, 0, 0	// end of table
 ];
 
 // defines the op codes for the program. softbitslivs:execProgram
@@ -142,6 +150,9 @@ this.kitctrlcodes = [
 	"logic_nand", 19,
 	"logic_nor", 20,
 	"logic_xor", 42,
+	"seq", 123,
+	"seq8", 123,	// generic sequencer 8 step
+	"seq16", 123,	// generic sequencer 16 step
 	null, 254
 ];
 
@@ -205,6 +216,30 @@ this.kitctrlcodes = [
 					ct.setData();
 					this.value = 0;
 					return ct;
+				}else if( this.ctrltab[i+2] == 17){
+					// sequencer
+					ct = new seqBit( bit);
+					bit.ctrl = ct;
+					ct.setData();
+					return ct;
+				}else if( this.ctrltab[i+2] == 18){
+					// sequencer
+					ct = new seqBit( bit);
+					ct.values = [100,104,60,112, 64, 68, 72, 74];
+					ct.bitimg =ct.bit.findImage("seq8");
+					ct.bitname = "seq8";
+					bit.ctrl = ct;
+					ct.setData();
+					return ct;
+				}else if( this.ctrltab[i+2] == 19){
+					// sequencer
+					ct = new seqBit( bit);
+					ct.values = [100,104,60,112, 64, 68, 72, 74, 100,104,60,112, 64, 68, 72, 74];
+					ct.bitimg =ct.bit.findImage("seq16");
+					ct.bitname = "seq16";
+					bit.ctrl = ct;
+					ct.setData();
+					return ct;
 				}else {
 					message("Unknown control "+this.ctrltab[i+2]);
 				}
@@ -215,27 +250,20 @@ this.kitctrlcodes = [
 
 // name, type 0=snap, 1=bit, 2=resources/images
 	this.bitimagemap = [
-		"powerin",	6,		// 4 == -l -t
-		"powerout",	0xa,	// 8 == -r -b
+		"powerin",		6,		// 4 == -l -t
+		"powerout",		0xa,	// 8 == -r -b
 		"flip",			2,
 		"flip-v",		2,
 		"remove",		0,
-		"inputin",	4,		// 4 == -l -t
-		"inputout",	8,		// -r -b
-		"outputin-l",	0,
-		"outputin-t",	0,
-		"outputout-r",	0,
-		"outputout-b",	0,
-		"actionin-t",	0,
-		"actionin-l",	0,
-		"actionout-r",	0,
-		"actionout-b",	0,
-		"wirein-l",		0,
-		"wirein-t",		0,
-		"wireout-r",	0,
-		"wireout-b",	0,
-		"split",		1,
-		"split-v",		1,
+		"inputin",		4,		// 4 == -l -t
+		"inputout",		8,		// -r -b
+		"outputin",		4,
+		"outputout",	8,		// -r -b
+		"actionin",		4,
+		"actionout",	8,		// -r -b
+		"wirein",		4,
+		"wireout",		8,		// -r -b
+		"split",		0xd,	// -v
 		"logicin-l",	0,
 		"logicin-t",	0,
 		"logicout-b",	0,
@@ -245,12 +273,9 @@ this.kitctrlcodes = [
 		"blankout-r",	0,
 		"blankout-b",	0,
 
-		"poweron",		1,
-		"poweron-v",	1,
-		"poweroff",		1,
-		"poweroff-v",	1,
-		"default",		1,
-		"default-v",	1,
+		"poweron",		0xd,
+		"poweroff",		0xd,
+		"default",		0xd,
 		"defaulta",		1,
 		"defaulta-v",	1,
 		"corner",		1,
@@ -295,64 +320,4 @@ addkit( new kit_basic() );
 
 new postkitload("Basic");
 
-
-ArduinoKit.prototype = Object.create( control.prototype);
-
-function ArduinoKit( abit)
-{
-	control.call(this, abit);
-
-	this.Init = function()
-	{ var i;
-
-		adddomain( new arduino_domain());
-
-		i = findkit("Arduino");
-	}
-
-	this.doSave = function()
-	{	var msg = "2,'Arduino',";
-
-		return msg;
-	}
-}
-
-MidiKit.prototype = Object.create( control.prototype);
-
-function MidiKit( abit)
-{
-	control.call(this, abit);
-
-	this.Init = function()
-	{ var i;
-
-		i = findkit("Midi");
-	}
-
-	this.doSave = function()
-	{	var msg = "2,'Midi',";
-
-		return msg;
-	}
-}
-
-
-SoundKit.prototype = Object.create( control.prototype);
-
-function SoundKit( abit)
-{
-	control.call(this, abit);
-
-	this.Init = function()
-	{ var i;
-
-		i = findkit("Sound");
-	}
-
-	this.doSave = function()
-	{	var msg = "2,'Sound',";
-
-		return msg;
-	}
-}
 

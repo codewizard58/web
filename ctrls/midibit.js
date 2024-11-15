@@ -342,7 +342,7 @@ function midiCCBit(bit)
 {	control.call(this, bit);
 	this.bit = bit;
 
-    let imagename = "midicv";
+    let imagename = "midicc";
 	this.bitimg =this.bit.findImage(imagename);
 	this.bitname = imagename;
 	this.cc = 0;
@@ -469,7 +469,7 @@ function midiCVOutBit(bit)
 	this.offset = 128;		// 128 biased.
 	this.gain = 128;
 
-    let imagename = "midicc";
+    let imagename = "midicv";
 	this.bitimg =this.bit.findImage(imagename);
 	this.bitname = "midicvout";
 
@@ -653,10 +653,10 @@ function midiCCOutBit(bit)
 	this.groupobj = findGroupDefault(0);
 	this.mute = false;
 	this.mod = 0;
-	this.offset = 0;
-	this.gain = 0;		// mod depth.
+	this.offset = 128;	// 128 bias
+	this.gain = 0;		// 255 - mod depth.
 
-    let imagename = "midicv";		// cc and cv images swapped.
+    let imagename = "midicc";		
 	this.bitimg =this.bit.findImage(imagename);
 	this.bitname = "midiccout";
 
@@ -777,9 +777,8 @@ function midiCCOutBit(bit)
 		if( f != null){
 			if( f.value > 0){
 				this.groupobj = getMidiGroup(f.value);
+				debugmsg("CC Out "+this.groupobj.name+" "+this.groupobj.channel);
 			}
-
-			debugmsg("CC Out "+this.groupobj.groupname+" "+this.groupobj.channel);
 		}
 		f = document.getElementById("control");
 		if( f != null){
