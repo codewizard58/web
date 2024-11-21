@@ -133,6 +133,19 @@ function delta()
 	}
 }
 
+function stringValue(s)
+{	let msg = "";
+
+	if( s.indexOf("'") == -1){
+		msg += "'"+s+"'";
+	}else {
+		msg += "'"+s+"'";
+	}
+
+	return msg;
+
+}
+
 function saveargs()
 {	this.data = [];
 	this.count = 0;
@@ -145,7 +158,7 @@ function saveargs()
 
 	this.addnv = function(name, val)
 	{
-		this.addarg(name);
+		this.addarg(stringValue(name));
 		this.addarg(val);
 	}
 
@@ -448,10 +461,10 @@ function oscBit(bit)
 			// save osc state.
 			let s = new saveargs();
 
-			s.addnv("'control'", "'osc'");
-			s.addnv("'freq'", this.nfreq);
-			s.addnv("'wave'", this.wave);
-			s.addnv("'mod'", this.mod);
+			s.addnv("control", "'osc'");
+			s.addnv("freq", this.nfreq);
+			s.addnv("wave", this.wave);
+			s.addnv("mod", this.mod);
 
 			return s.getargs();
 		}
@@ -889,10 +902,10 @@ function filterBit(bit)
 		// save osc state.
 		let s = new saveargs();
 
-		s.addnv("'control'", "'filter'");
-		s.addnv("'freq'", this.values[0]);
-		s.addnv("'res'", this.values[1]);
-		s.addnv("'mod'", this.mod);
+		s.addnv("control", "'filter'");
+		s.addnv("freq", this.values[0]);
+		s.addnv("res", this.values[1]);
+		s.addnv("mod", this.mod);
 
 		return s.getargs();
 	}
@@ -1164,6 +1177,7 @@ function motion(tempo, gate)
 	this.counter = 0;
 	this.stepinc = 1;
 	this.perbeat = 64;
+	this.steprate = 100;
 
 	this.step = function(){
 		this.counter += this.stepinc;
@@ -1178,7 +1192,7 @@ function motion(tempo, gate)
 		this.tempo = tempo;
 		// 64 ticks = 1.0
 		// 120 = 0.5   
-		this.stepinc = ( 4 / len) * (100/ 64) * tempo / 60 ;
+		this.stepinc = ( 4 / len) * (this.steprate/ 64) * tempo / 60 ;
 		this.perbeat = Math.floor(256 / beats);
 
 	}
@@ -1187,9 +1201,8 @@ function motion(tempo, gate)
 	{
 		let n = Math.floor(this.counter / this.perbeat);
 		let val = this.counter - (n * this.perbeat);
-		let g = val * 100 / this.perbeat;
+		let g = val * 100 / this.perbeat;		// percent
 
-//		debugmsg("Gate "+this.gate+" g "+g+' n '+n);
 		if( g >this.gate){
 			return false;
 		}
@@ -1216,6 +1229,7 @@ function seqBit(bit)
 	this.prog = 0;
 	this.progprev = 0;
 	this.ival = 0;
+	this.clksrc = null;		// midi vs local
 
 	let imagename = "seq";
 	this.bitimg =this.bit.findImage(imagename);
@@ -1305,9 +1319,6 @@ function seqBit(bit)
 			return;
 		}
 		if( data == 255){
-			// auto step use tempo
-			// 60 / (tempo* 100) = time 
-			// 
 			this.motion.step();
 			this.step = this.motion.counter;
 			if( this.motion.getgated()){
@@ -1325,12 +1336,7 @@ function seqBit(bit)
 	this.getstep = function()
 	{	let len = this.values.length;
 
-		if( len == 8){
-			return Math.floor(this.step / 32);
-		}else if(len == 16){
-			return Math.floor(this.step / 16);
-		}
-		return Math.floor(this.step / 64);
+		return Math.floor(this.step / (256 / len));
 	}
 
 	// seq
@@ -1354,8 +1360,10 @@ function seqBit(bit)
 				msg += "<td > <input type='text' id='knob_"+i+"' name='knob_"+i+"' value='"+this.values[i]+"' size='4' /></td>";
 			}
 			msg += "</tr>\n";
-			msg += "<tr><th>Tempo</th><td colspan='2'><input type='text' id='tempo' value='"+this.motion.tempo+"'  size='4' /></td>\n";
-			msg += "</tr>\n";
+			if( this.clksrc == null){
+				msg += "<tr><th>Tempo</th><td colspan='2'><input type='text' id='tempo' value='"+this.motion.tempo+"'  size='4' /></td>\n";
+				msg += "</tr>\n";
+			}
 			msg += "<tr><th>Gate</th><td colspan='2'><input type='text' id='gate' value='"+this.motion.gate+"'  size='4' /></td></tr>";
 			msg += "</table>\n";
 

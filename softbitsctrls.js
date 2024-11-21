@@ -1,5 +1,5 @@
 // 10/19/24
-// 1
+// 2
 
 function doBitFormAction()
 {
@@ -136,7 +136,11 @@ function control(bit)
 	this.audioin = null;
 	this.audioout = null;
 	this.connected = false;	// audio connected?
+	this.background = "#ffffff";
+	this.color = "#000000";
+	this.font = "10px Georgia";
 
+	// control
 	this.setBounds = function()
 	{	var b = this.bit;
 		var bt;
@@ -160,6 +164,7 @@ function control(bit)
 	}
 
 
+	// control
 	this.getDockedBit = function(s)
 	{	var b = this.bit;
 		var s, p;
@@ -176,6 +181,7 @@ function control(bit)
 		return p.bit;
 	}
 
+	// control
 	this.Draw = function( )
 	{	var b = this.bit;
 		var bt;
@@ -208,6 +214,7 @@ function control(bit)
 		ctx.restore();
 	}
 
+	// control
 	this.HitTest = function(x, y)
 	{	var res = null;
 		var i;
@@ -217,6 +224,10 @@ function control(bit)
 		if( b == null){
 			return;
 		}
+		if( !b.isDocked()){
+			return null;
+		}
+
 		bt = b.btype & 7;	// 0 = horiz, 1 == vert
 		this.setBounds();
 		

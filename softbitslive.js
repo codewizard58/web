@@ -1,4 +1,4 @@
-// 10/19/24
+// 11/16/24
 ////////////////////////////////////////////////////////////////////////////
 var flipimg = 0;
 var flipvimg = 0;
@@ -24,6 +24,7 @@ const MIDICV=4;
 const MIDICC=5;
 const MIDICVOUT=6;
 const MIDICCOUT=7;
+const MIDICLOCK=8;
 const AINVERT = 13;
 const DIMMER = 14;
 const ENDPROG=255;
@@ -734,10 +735,6 @@ function Program()
 						msg += hexCode( this.source[cd].code[i]);
 						i++;
 						j++;
-		//				if( j == 8){
-		//					msg += "<br />\n";
-		//					j = 0;
-		//				}
 					}
 				}
 				msg += "<br />\n";
@@ -900,7 +897,7 @@ function Program()
 		while(b != null){
 			bit = b.bit;
 			
-			if( bit.code == POWERON || bit.code == MIDICV || bit.code == MIDICC || bit.code == MICROPHONE){
+			if( bit.code == POWERON || bit.code == MIDICV || bit.code == MIDICC || bit.code == MICROPHONE ){
 				// a power_on
 				this.markChain(bit);
 			}
@@ -912,7 +909,7 @@ function Program()
 		while(b != null){
 			bit = b.bit;
 			
-			if( bit.code == POWERON || bit.code == MIDICV || bit.code == MIDICC || bit.code == MICROPHONE){
+			if( bit.code == POWERON || bit.code == MIDICV || bit.code == MIDICC || bit.code == MICROPHONE ){
 				// a power_on
 				this.drawMesh(bit );
 			}
@@ -1035,7 +1032,7 @@ function Program()
 			if( trace > 0){
 				debugmsg("Trace: "+b.name+" "+idx+" "+code+" dom "+cd);
 			}
-			if( code == POWERON || code == MIDICV || code == MIDICC || code == MICROPHONE){		// power on
+			if( code == POWERON || code == MIDICV || code == MIDICC || code == MICROPHONE ){		// power on
 				this.source[cd].msg += drawFunction1( idx, b.chain);
 				this.source[cd].codeBit1(b, b.chain);
 
@@ -1199,7 +1196,7 @@ function Program()
 				}
 			}else if(code == ENDPROG){
 				prog = null;		// end of program
-			}else if( code == MIDICV || code == MIDICC || code == MICROPHONE){			// midicv is power on
+			}else if( code == MIDICV || code == MIDICC || code == MICROPHONE ){			// midicv is power on
 					chain = prog[bp];
 					bp++;
 					if( chain < 0 || chain >= nchains){
@@ -1655,6 +1652,11 @@ function Program()
 						progbits[ibp].value = this.chains[ curchain].data;
 						osnap.indcolor = "#ff0000";
 						osnap.indval = this.chains[ curchain].data;
+					}else if(code == MIDICLOCK){		// clock
+						progbits[ibp].ctrl.setValue(data, 0);
+						this.chains[ curchain].data = this.getValue( progbits, ibp, 255);
+						osnap.indcolor = "#ffffff";
+						osnap.indval = this.chains[ curchain].data;
 					}else if(code == 21){
 					}else if(code == 22){
 					}else if(code == 25){
@@ -1724,7 +1726,7 @@ function Snap(bit, side, x, srx, y, sry, w, h, idx)
 	this.idx = idx;		// index.  0 = in, 1= out, 2 = in2, 3=out2
 
 	this.domain = (bit.domain >> (idx*4)) & 0xf;
-	debugmsg("SNAP "+bit.name+" "+idx+" "+this.domain);
+//	debugmsg("SNAP "+bit.name+" "+idx+" "+this.domain);
 
 	this.drawIndicator = function(orientation, x, y)
 	{	var val;
@@ -2050,6 +2052,9 @@ function Bit( btype, x, y, w, h, k) {
 	this.name = "unset";
 	this.connected = 0;			// count of  connections.
 	this.domain = 0;			// not set.
+	this.background = "#808080";
+	this.color = "#000000";
+	this.font = "12px Georgia";
 
 	let bt = (btype & 7);
 	let bidx = btype-bt;
@@ -2215,6 +2220,7 @@ function Bit( btype, x, y, w, h, k) {
 	}
 
 	// is the coordinate x,y in this bit?
+	// bit
 	this.HitTest = function(x, y)
 	{	let res = null;
 		let i;
@@ -2255,13 +2261,20 @@ function Bit( btype, x, y, w, h, k) {
 	{	var btmp = this.btype & 7;
 		var idx = this.btype - btmp;
 
-        ctx.fillStyle = "#000000";
+		if( this.color != ""){
+	        ctx.fillStyle = this.color;
+		}
+		if( this.font != ""){
+	        ctx.font = this.font;
+		}
 		if( btmp == 0){
 			ctx.fillText(msg, this.x+10, this.y+25 );
 		}else {
+//			ctx.save();
 			ctx.translate( this.x+15, this.y+10);
 			ctx.rotate( Math.PI/2);
 			ctx.fillText(msg, 0, 0 );
+//			ctx.restore();
 		}
 	}
 
@@ -2270,7 +2283,7 @@ function Bit( btype, x, y, w, h, k) {
 	{	var btmp = this.btype & 7;
 		var idx = this.btype - btmp;
 
-        ctx.fillStyle = "#000000";
+        ctx.fillStyle = this.color;
 		if( btmp == 0){
 			ctx.fillText(""+this.data, this.x+this.w-30, this.y+this.h-10 );
 		}else {
@@ -2453,6 +2466,7 @@ function Bit( btype, x, y, w, h, k) {
 		return true;
 	}
 
+	// bit
 	this.Animate = function( t)
 	{
 		t = 9 - t
@@ -2703,12 +2717,15 @@ function Keyboard(){
 }
 
 function Sketch() {
-	var ix, iy;
 	var idx;
-	var blist = null;			// list of bits.
+	this.blist = null;			// list of bits.
 	var i;
-	var bll, blr, blt, blb;		// bounds of bitlist net
-	var bitvisible = 0;			// how many bits can be seen in the window.
+	this.bll = 0;
+	this.blr = 0;
+	this.blt = 0;
+	this.blb = 0;
+	this.bitvisible = 0;			// how many bits can be seen in the window.
+	this.start = 0;
 
 	this.drawText = function(bit, msg)
 	{
@@ -2739,7 +2756,11 @@ function Sketch() {
 
 // sketch.draw()
     this.Draw = function() 
-	{	var cx, cy;
+	{	let cx, cy;
+		let ix, iy;
+		let bt;
+		let idx;
+		let i;
 
         if (!this.canvas || !this.canvas.getContext) {
             return false;
@@ -2756,15 +2777,16 @@ function Sketch() {
 		        ctx.drawImage(background, ix, iy);
 			}
 		}
-		var pass;
+		let pass;
 		for(pass=0; pass < 4; pass++){
 	        for (i = this.blist ; i != null ; i = i.next) {
 				i.bit.Draw(pass);
-				var bt = i.bit.btype & 7;
-				var idx = i.bit.btype - bt;
+				bt = i.bit.btype & 7;
+				idx = i.bit.btype - bt;
 
 				if( pass == 3){
 					if( i.bit.bitname == "default" || i.bit.bitname == "defaulta"){
+
 						this.drawText( i.bit, i.bit.name );
 					}
 					if( i.bit.chain != 0){
@@ -2790,8 +2812,9 @@ function Sketch() {
 
 // sketch
     this.doMouseDown = function() {
-		var ahit = null;
-		var tmp;
+		let ahit = null;
+		let tmp;
+		let i;
 
 		if( selected != null){
 			ahit = selected.getDrag();
@@ -2861,8 +2884,8 @@ function Sketch() {
 					}
 				}
 			}
-
-			if( curctrl == null && i.bit.ctrl != null && i.bit.isDocked() ){
+// && i.bit.isDocked()
+			if( curctrl == null && i.bit.ctrl != null  ){
 				curctrl = i.bit.ctrl.HitTest(mx, my);
 				if( curctrl != null){
 					curctrl.startMove(mx, my);
@@ -2893,12 +2916,6 @@ function Sketch() {
 			document.getElementById("canvasbox").style.cursor = "help"; // debugging..
 		}
 
-//		if( scanning != null){
-//			message("Domain="+scanning.domain);
-//		}
-//		if( selected != null){
-//			message("Domain="+selected.domain+" Chain="+selected.getDrag().chain);
-//		}
         return false;
     }
 
@@ -3211,9 +3228,9 @@ function Sketch() {
 
 	// sketch.getBounds
 	this.getBounds = function()
-	{	var b;
-		var cw, ch;
-		var bx, by;
+	{	let b;
+		let cw, ch;
+		let bx, by;
 
 		this.bll = 0;
 		this.blr = 0;
@@ -3226,24 +3243,26 @@ function Sketch() {
 
 		b = this.blist;
 		while( b != null){
-			bx = b.bit.x;
-			by = b.bit.y;
+			if( b.bit.name != "map"){
+				bx = b.bit.x;
+				by = b.bit.y;
 
-			if( bx > 0 && bx < cw - 25 &&
-				by > 0 && by < ch - 25){
-				this.bitvisible++;
-			}
+				if( bx > 0 && bx < cw - 25 &&
+					by > 0 && by < ch - 25){
+					this.bitvisible++;
+				}
 
-			if( this.bll > bx){
-				this.bll = bx;
-			}else if( this.blr < b.bit.x+b.bit.w){
-				this.blr = b.bit.x+b.bit.w;
-			}
+				if( this.bll > bx){
+					this.bll = bx;
+				}else if( this.blr < b.bit.x+b.bit.w){
+					this.blr = b.bit.x+b.bit.w;
+				}
 
-			if( this.blt > b.bit.y){
-				this.blt = b.bit.y;
-			}else if( this.blb < b.bit.y+b.bit.h){
-				this.blb = b.bit.y+b.bit.h;
+				if( this.blt > b.bit.y){
+					this.blt = b.bit.y;
+				}else if( this.blb < b.bit.y+b.bit.h){
+					this.blb = b.bit.y+b.bit.h;
+				}
 			}
 			b = b.next;
 		}
@@ -3254,6 +3273,7 @@ function Sketch() {
     this.Init = function() {
 		var nam;
 		var cw, ch;
+		this.start = Date.now();
 
 		drawing = 1;
         background = document.getElementById("background");
@@ -3408,19 +3428,26 @@ var tock2 = 0;
 var tock3 = 0;
 
 function doTimer()
-{	var rx = 0;
-	var ry = 0;
+{	let rx = 0;
+	let ry = 0;
 
-	let j = joblist;
-	if( j != null){
-		while( j != null){
-			if( j.done == false){
-				// alert("Timer job "+j.name);
-				j.run();
-			}
-			j = j.next;
+	let t= timer_list.head;
+	let tn = null;
+	let tafter = null;
+
+	while(t != null){
+		tn = t.next;
+		if( !t.ob.run() ){
+			t.next = tafter;
+			tafter = t;
+		}else {
+			t.obj = null;	// deref
 		}
+
+		t = tn;
 	}
+	timer_list.head = tafter;
+
 
 	softprogram.runProgram();
 
@@ -3440,31 +3467,23 @@ function doTimer()
 	}
 
 	tock2++;
-	if(tock2 == 11){
+	if(tock2 == 100){
 		tock2 = 0;
 
-		if( arduino != null){
-	//		checkValues(sketch.blist);
-	debugmsg("Out to arduino");
-			if( seqmissmatch != 0){
-				sketch.drawProgram();
-				seqmissmatch = 0;
-			}else{
-				outBitValues();
+		t = slowTimer_list.head;
+		tafter = null;
+		while(t != null){
+			tn = t.next;
+			if( !t.ob.run() ){
+				t.next = tafter;
+				tafter = t;
+			}else {
+				t.obj = null;	// deref
 			}
+	
+			t = tn;
 		}
-	}
-}
-
-// from midi/processbase.js
-timer_list.addobj( new softbitstimer(), null);
-
-function softbitstimer()
-{
-	this.timer = function()
-	{
-		doTimer();
-		return false;
+		slowTimer_list.head = tafter;
 	}
 }
 
@@ -3500,12 +3519,12 @@ function initFindBit( i)
 
 // find bit N in the initdata
 function initFindTab(initdata, i, n)
-{	var idx = i;
+{	let idx = i;
 	let len = initdata[i-1];
 	let obj = i;
 	idx++;
 
-	debugmsg("initFindtab "+i+" "+n+" "+initdata[i]);
+//	debugmsg("initFindtab "+i+" "+n+" "+initdata[i]);
 
 	while( idx < initdata.length && initdata[idx+1] != n){
 		if( initdata[idx] == "bit" ){
@@ -3544,11 +3563,11 @@ function loadInitData( initdata)
 	i = obj+1;
 	next = obj+len;
 	while( len > 0 && i < initdata.length){
-		if( len > 1){
-			debugmsg("INIT["+initdata.length+"] len="+len+" obj="+obj+" "+initdata[i]);
-		}else {
-			debugmsg("INIT["+initdata.length+"] len="+len+" obj="+obj);
-		}
+//		if( len > 1){
+//			debugmsg("INIT["+initdata.length+"] len="+len+" obj="+obj+" "+initdata[i]);
+//		}else {
+//			debugmsg("INIT["+initdata.length+"] len="+len+" obj="+obj);
+//		}
 		if( len > 1 && initdata[i] == "kit"){
 			UIchooseKit(initdata[i+1]);
 			i += 2;
@@ -3579,10 +3598,10 @@ function loadInitData( initdata)
 			ctrllen = initdata[i+10];
 			if( ctrllen > 1){
 				// decode control
-				debugmsg("Load control "+ctrllen);
+//				debugmsg("Load control "+ctrllen);
 				ctrl = curkit.addCtrl( nbit);
 			}
-			debugmsg("CTRLLEN "+ctrllen+" "+obj);
+//			debugmsg("CTRLLEN "+ctrllen+" "+obj);
 			next += ctrllen -1;			// bit counts the ctrllen.
 			num++;
 		}else if( len > 1 && initdata[i] == "end"){
@@ -3596,13 +3615,8 @@ function loadInitData( initdata)
 		obj = next;
 		len = initdata[obj];
 		next = obj+len;
-		debugmsg("INIT next "+obj+" "+len);
-		if( len > 2){
-			debugmsg("____ next: "+initdata[obj+1]+" "+initdata[obj+2]);
-		}
 		i = obj+1;
 	}
-	debugmsg("End of pass["+initdata.length+"] 1: "+i+" len="+len+" obj="+obj);
 
 	// pass 2 link the bits.
 	obj = 0;
@@ -3610,11 +3624,6 @@ function loadInitData( initdata)
 	i = obj+1;
 	next = obj+len;
 	while(len > 0 && i < initdata.length){
-		if( len > 1){
-			debugmsg("PASS2 len="+len+" obj="+obj+" "+initdata[i]);
-		}else {
-			debugmsg("PASS2 len="+len+" obj="+obj);
-		}
 		if( initdata[i] == "kit"){
 			curkit = findkit(initdata[i+1]);
 			i += 2;

@@ -12,9 +12,11 @@ var midiavail = false;
 var midiinit = true;
 var midilearning = false;
 var midilearndir = 1;		// input channels
+var midiclockmode = 0;		// all
 
 MIDIoutdev_list = new objlist();
 MIDIindev_list = new objlist();
+MIDIindev = [ null, null, null, null, null];
 
 function showMIDIinterfaces(inout, cur)
 {
@@ -286,8 +288,8 @@ function UImidiGroups()
 	}
 }
 
-function getMidiGroupByName(name)
-{
+function getMidiGroupByName(name, dir)
+{	let ret = null;
 	let g = midiGroups_list.head;
 
 	while(g != null){
@@ -296,7 +298,55 @@ function getMidiGroupByName(name)
 		}
 		g = g.next;
 	}
-	return null;
+//	debugmsg("getmidigroup not found "+name+" "+dir);
+	if( dir == 2){
+		return null;
+	}
+	if(dir==1 ){
+		name += " Input";
+	}else {
+		name += " Output";
+	}
+	ret = getMidiGroupByName(name, 2);	// 0 or 1. use 2 to stop recursion.
+
+	return ret;
+}
+
+function MIDIslowTimer()
+{
+	this.run = function()
+	{	let i = 0;
+
+		for(i=0; i < MIDIindev.length; i++){
+			if( MIDIindev[i] != null){
+				MIDIindev[i].slowTimer();
+			}
+		}
+
+	}
+
+}
+
+slowTimer_list.addobj(new MIDIslowTimer());
+
+function doMidiClock(op, dev)
+{	let f;
+	let mclk = MIDIindev[dev];
+
+	if( mclk != null){
+		mclk.clock++;
+	}
+
+	f = midiclk_list.head;
+
+	// run through the filter list
+	while(f != null){
+		if( f.ob.filter(op, dev)){
+			break;	// processed it.
+		}
+		f = f.next;
+	}
+
 }
 
 function midi_process()
@@ -313,6 +363,24 @@ function MIDIobj(m)
 {	this.midi = m;
 	this.count = 0;
 	this.portid = m.id;
+	this.clock = 0;
+	this.clkstart = Date.now();
+	this.running = 0;
+	this.tempo = 0;
+
+	this.slowTimer = function()
+	{	
+		let now = Date.now();
+		let millis = now - this.clkstart;
+
+		this.clkstart = now;
+
+		if(this.clock > 0 && millis > 0){
+			this.tempo = (2500*this.clock) / millis;
+			this.clock = 0;
+		}
+
+	}
 
 }
 
@@ -367,6 +435,7 @@ function MIDIMessageEventHandler2( e){
 function MIDIMessageEventHandler3( e){
 	MIDIMessageEventHandler( e, 3);
 }
+
 
 
 function MIDIMessageEventHandler( e, dev){
@@ -442,8 +511,16 @@ function MIDIMessageEventHandler( e, dev){
 
 		return;
 
+	case 0xf0:
+		// 
+		if( e.data[0] == 0xf8 || e.data[0] == 0xfa || e.data[0] == 0xfb || e.data[0] == 0xfc ){
+			doMidiClock(e.data[0], dev);
+			return;
+		}
+
 	}
 	 // xdebugmsg = "MidiIN "+(e.data[0] & 0xf0)+"["+(e.data[0]&0x0f)+"] "+e.data[1]+" "+e.data[2];
+	debugmsg( xdebugmsg);
 }
 
 function midiinsetvalues( op, chan, arg, arg2, dev)
@@ -531,6 +608,8 @@ function kit_midi( )
 		"midicc", "midi_cvout",	50, 50,	"actionin" ,"actionout", "logicin",  null,		// 		images for cv and cc reversed.
 				0,	1, "midi_cvout",	"Midi Note output",	 0x0111, "Output", 0, 0,	
 
+		"midiclk", "midi_clk",	50, 50,	"actionin", "actionout" ,null,  null, // 24
+				0,	1, "midi_clk",	"Midi Clock",	 0x0011, "Input", 0, 0,	
 		null, null, null, null,				null, null, null, null
 	];
 
@@ -543,19 +622,17 @@ function kit_midi( )
 	"midi_ccout", 3, 7,		// control code filter
 	"midi_group_in", 3, 8,		// Midi group filter
 	"midi_group_out", 3, 9,		// Midi group outputfilter
+	"midi_clk", 3, 10,		// Midi clock filter
 	null, 0, 0, 0, 0	// end of table
 	];
 
 
 	this.bitimagemap = [
-		"midiin", 1, 
-		"midiin-v", 1, 
-		"midigroup", 1, 
-		"midigroup-v", 1, 
-		"midicc", 1, 
-		"midicc-v", 1, 
-		"midicv", 1, 
-		"midicv-v", 1, 
+		"midiin", 0xd, 
+		"midigroup", 0xd, 
+		"midicc", 0xd, 
+		"midicv", 0xd, 
+		"midiclk", 0xd, 
 		"midiin", 4, 	// -l -t
 		"midiout", 8, 	// -r -b
 		null, null
@@ -568,6 +645,7 @@ function kit_midi( )
 		"midi_cc", 5,
 		"midi_cvout", 6,
 		"midi_ccout", 7,
+		"midi_clk", 8,
 		null, 253
 	];
 
@@ -609,6 +687,7 @@ function kit_midi( )
 					ct = new midiGroupBit( bit);
 					bit.ctrl = ct;
 					ct.grouptype = 1;
+					ct.groupname = "Default Input";
 					ct.setData();
 					return ct;
 				}else if( this.ctrltab[i+2] == 9){
@@ -616,6 +695,13 @@ function kit_midi( )
 					ct = new midiGroupBit( bit);
 					bit.ctrl = ct;
 					ct.grouptype = 0;
+					ct.groupname = "Default Output";
+					ct.setData();
+					return ct;
+				}else if( this.ctrltab[i+2] == 10){
+					// Clock filter
+					ct = new midiClockBit( bit);
+					bit.ctrl = ct;
 					ct.setData();
 					return ct;
 				}

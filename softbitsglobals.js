@@ -68,6 +68,7 @@ var forth = null;
 // from midi/processbase
 var timerval= 20;
 var timer_list = new objlist();
+var slowTimer_list = new objlist();
 var scene_list = new objlist();
 var animation_list = new objlist();
 
@@ -726,7 +727,7 @@ function sbmodule( name )
 			i += 2;
 		}
 
-		debugmsg("Load "+imagedir+this.bitimagemap[i]+" "+dst);
+//		debugmsg("Load "+imagedir+this.bitimagemap[i]+" "+dst);
 
 		flipimg = findimage("flip");
 		flipvimg = findimage("flip-v");
@@ -822,93 +823,30 @@ function findkit( name)
 	return null;
 }
 
-//var timerlock = 0;
-var joblist = null;
-
-function scheduler()
-{	this.next = null;
-	this.prev = null;
-	this.done = false;
-	this.name = "";
-
-//	timerlock++;
-
-	this.next = joblist;
-	if( joblist != null){
-		joblist.prev = this;
-	}
-
-	joblist = this;
-
-//	timerlock--;
-
-	this.run = function()
-	{
-		this.done = true;
-	}
-
-	this.delete = function()
-	{
-//		timerlock++;
-		this.done = true;
-		// alert("Scheduler delete "+this.name);
-		return;
-
-		if( joblist == this){
-			if( joblist.next != null){
-				joblist.next.prev = null;
-			}
-			joblist = joblist.next;
-		}else {
-			if( this.prev != null){
-				this.prev.next = this.next;
-			}
-			if( this.next != null){
-				this.next.prev = this.prev;
-			}
-		}
-		this.next = null;
-		this.prev = null;
-
-//		timerlock--;
-	}
-}
-
-
-postkitload.prototype = Object.create( scheduler.prototype);
 
 function postkitload(name)
 {
-	scheduler.call(this);
+	// will be called by the doTimer()
 
 	this.name = name;
 
 	this.run = function()
-	{	var k;
-		var i;
-		var m;
+	{	let k;
 		let name = this.name;
-		this.done = true;
-
 		
 		if( loading_kit == null){
 			k = findkit(name);
 			if(k != null){
-
-//				k.loadBits();
-
-				// alert("Postkitload loadimages "+this.name);
 				k.loadimages();
-//				k.loadmenu();
-
-				// alert("Postkitload found="+this.name);
-				this.delete();
-				return;
+				debugmsg("load "+name+" kit.");
+				return true;
 			}
-			message("Failed to load "+name+" kit.");
-			this.delete();
+			debugmsg("Failed to load "+name+" kit.");
 		}
+		return false;
 	}
+
+	timer_list.addobj(this, name);
 
 }
 

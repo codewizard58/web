@@ -80,10 +80,24 @@ function findNoteGroup( group, ng, poly)
 	return null;
 }
 
+function UIeditname()
+{	let f;
+
+	bitform = document.getElementById("bitform");
+	if( bitform == null){
+		return;
+	}
+	f = document.getElementById("groupedit");
+	if( f != null){
+		f.innerHTML = "<input type='text' id='newname' value='New name' />\n";
+	}
+
+}
 
 
 var midicv_list = new objlist();
 var midicc_list = new objlist();
+var midiclk_list = new objlist();
 
 // used by learn function.
 var midicvout_list = new objlist();
@@ -91,7 +105,7 @@ var midiccout_list = new objlist();
 
 
 function selMIDIindev(dev)
-{	var l = MIDIindev_list.head;
+{	var l = MIDIindev_list.head;	// list of interfaces
 
 	if( useMIDIin != null){
 		useMIDIin.midi.value.onmidimessage = noMIDIMessageEventHandler;
@@ -102,12 +116,16 @@ function selMIDIindev(dev)
 		if( l.ob.count == dev){
 			useMIDIin = l.ob;
 			if( dev == 1){
+				MIDIindev[dev] = useMIDIin;
 				useMIDIin.midi.value.onmidimessage = MIDIMessageEventHandler1;
 			}else if( dev == 2){
+				MIDIindev[dev] = useMIDIin;
 				useMIDIin.midi.value.onmidimessage = MIDIMessageEventHandler2;
 			}else if( dev == 3){
+				MIDIindev[dev] = useMIDIin;
 				useMIDIin.midi.value.onmidimessage = MIDIMessageEventHandler3;
 			}else if( dev == 4){
+				MIDIindev[dev] = useMIDIin;
 				useMIDIin.midi.value.onmidimessage = MIDIMessageEventHandler4;
 			}
 			l = null;
@@ -239,7 +257,7 @@ function midiCVBit(bit)
 	this.note = 0;
 	this.groupobj = findGroupDefault(1);
 
-    let imagename = "midicc";
+    let imagename = "midicv";
 	this.bitimg =this.bit.findImage(imagename);
 	this.bitname = imagename;
 
@@ -274,7 +292,7 @@ function midiCVBit(bit)
 		if( bitform != null){
 			msg = "<table>";
 			msg += "<tr><th>Group</th><td>"+showMidiGroups(1,grp.name, false)+"</td></tr>\n";
-			msg += "<tr><th>Channel</th><td>"+grp.channel+"</td></tr>\n";
+			msg += "<tr><th>Configure</th><td>Action/midi_group_in</td></tr>\n";
 			msg += "</table>\n";
 
 			bitform.innerHTML = msg;
@@ -381,7 +399,7 @@ function midiCCBit(bit)
 		if( bitform != null){
 			msg = "<table>";
 			msg += "<tr><th>Group</th><td>"+showMidiGroups(1, grp.name, false)+"</td></tr>\n";
-			msg += "<tr><th>Channel</th><td>"+grp.channel+"</td></tr>\n";
+			msg += "<tr><th>Configure</th><td>Action/midi_group_in</td></tr>\n";
 			msg += "<tr><th>Control Code</th><td>"+showMidiControlCodes(this.cc);
 			msg += "<input type='button' value='Learn' id='learn' onclick='UIlearn(0, "+grp.grouptype+");'";
 			msg += "/></td></tr>";
@@ -580,7 +598,7 @@ function midiCVOutBit(bit)
 		if( bitform != null){
 			msg = "<table>";
 			msg += "<tr><th>Group</th><td>"+showMidiGroups(0, grp.name, false)+"</td></tr>\n";
-			msg += "<tr><th>Channel</th><td>"+grp.channel+"</td></tr>\n";
+			msg += "<tr><th>Configure</th><td>Action/midi_group_out</td></tr>\n";
 			msg += "<tr><th align='right'>Modulation</th><td >"+showModulation(this.mod, this.modnames)+"</td></tr>\n";
 			msg += "<tr><th>Offset</th><td><input type='text' id='offset' value='"+this.offset+"' /></td></tr>\n";
 			msg += "<tr><th>Gain</th><td><input type='text' id='gain' value='"+this.gain+"' /></td></tr>\n";
@@ -751,7 +769,7 @@ function midiCCOutBit(bit)
 		if( bitform != null){
 			msg = "<table>";
 			msg += "<tr><th>Group</th><td>"+showMidiGroups(0, grp.name, false)+"</td></tr>\n";
-			msg += "<tr><th>Channel</th><td>"+grp.channel+"</td></tr>\n";
+			msg += "<tr><th>Configure</th><td>Action/midi_group_out</td></tr>\n";
 			msg += "<tr><th>Control Code</th><td>"+showMidiControlCodes(this.cc);
 			msg += "<input type='button' value='Learn' id='learn' onclick='UIlearn(0, "+grp.grouptype+");'";
 			msg += "</td></tr>";
@@ -843,11 +861,17 @@ function midiGroupBit(bit)
 	this.grouptype = 1;		// start as input
 	this.midi = 0;
 	this.channel = 0;
-	this.group = 0;		// number of group in list.
+	this.paramnames = ["name", "type", "interface", "channel"];
+	bit.color = "purple";
+	bit.font = "14px Georgia";
+	this.clockmode = 0;
+	this.clocks = 0;
+	this.clkstart = Date.now();
 
     let imagename = "midigroup";
 	this.bitimg =this.bit.findImage(imagename);
 	this.bitname = imagename;
+
 
     // Midi group bit self draw
 	this.Draw = function( )
@@ -858,12 +882,20 @@ function midiGroupBit(bit)
 		}
 		bt = b.btype & 7;	// 0 = horiz, 1 == vert
 
+		ctx.save();
         ctx.fillStyle = "#ffffff";
 		if( bt == 0){
 			ctx.drawImage(bitpics[ this.bitimg ], b.x, b.y);
 		}else {
 			ctx.drawImage(bitpics[ this.bitimg+1 ], b.x, b.y);
 		}
+		if( this.grouptype == 1){
+			b.drawText(ctx, " IN");
+		}else {
+			b.color = "green";
+			b.drawText(ctx, "OUT");
+		}
+		ctx.restore();
 	}
 
 	// midigroup
@@ -871,32 +903,35 @@ function midiGroupBit(bit)
 	{	let msg="";
 		let g = null;
 		let gtmsg;
+		let md = null;
+		let tempo = 0;
 
 
 		if( bitform != null){
 			bitform.innerHTML="";
 		}
-		midilearning = false;	// clear learning mode
 
 		midilearning = false;	// clear learning mode
 		bitform = document.getElementById("bitform");
 		if( bitform != null){
-			g = getMidiGroupByName(this.groupname);
+			g = getMidiGroupByName(this.groupname, this.grouptype);
+			md = MIDIindev[g.midi];
+			if( md != null){
+				tempo = md.tempo;
+			}
 			msg += "<h2>Midi Group</h2>\n";
 			msg = "<table>";
 			if( g != null){
-				msg += "<tr><th>Name</th><td>"+showMidiGroups(this.grouptype, this.groupname,true)+"</td></tr>\n";
+				msg += "<tr><th><input type='button' value='Name' onclick='UIeditname();' /></th><td><span id='groupedit'>"+showMidiGroups(this.grouptype, this.groupname,true)+"</span></td></tr>\n";
 				if( this.grouptype == 1){
 					// input
 					msg += "<tr><th>Interface</th><td>"+showMIDIinterfaces(1, this.midi)+"</td></tr>\n";
 					msg += "<tr><th align='right'>Channel</th><td > "+MidiChannelSelector(this.channel, true)+"</td></tr>\n";
+					msg += "<tr><th align='right'>Tempo</th><td > "+tempo+"</td></tr>\n";
 				}else {
 					msg += "<tr><th>Interface</th><td>"+showMIDIinterfaces(0, this.midi)+"</td></tr>\n";
 					msg += "<tr><th align='right'>Channel</th><td > "+MidiChannelSelector(this.channel, false)+"</td></tr>\n";
 				}
-			}else {
-				debugmsg("SetData name"+this.groupname+" type "+this.grouptype);
-				msg += "<tr><th>Name</th><td>"+showMidiGroups(this.grouptype, this.groupname,true)+"</td></tr>\n";
 			}
 			msg += "</table>\n";
 
@@ -914,6 +949,27 @@ function midiGroupBit(bit)
 		let t=0;
 		let gn = null;
 
+		f = document.getElementById("newname");
+		if( f != null){
+			gn = getMidiGroupByName(f.value, this.grouptype);
+			if( gn == null){
+				gn = getMidiGroup(0);
+				gn.grouptype = this.grouptype;	// also inits the new group type.
+				gn.name = f.value;
+				if( this.grouptype == 1){
+					gn.name += " Input";
+				}else {
+					gn.name += " Output";
+				}
+				debugmsg("getdata new "+gn.name);
+				this.groupname = gn.name;
+				this.groupobj = gn;
+			}else {
+				debugmsg("getdata found "+f.value);
+				this.groupname = gn.name;
+				this.groupobj = gn;
+			}
+		}
 		f = document.getElementById("groupname");
 		if( f != null){
 			val = f.value;
@@ -922,16 +978,17 @@ function midiGroupBit(bit)
 			}
 			gn = getMidiGroup(val);
 			gn.grouptype = this.grouptype;	// also inits the new group type.
-			this.group = val;
 
 			if( this.groupname != gn.name){
+				debugmsg("Change Groupname '"+this.groupname+"'  '"+gn.name+"' "+val);
 				this.groupname = gn.name;
-				debugmsg("Change Groupname "+this.groupname+" "+gn.name+" "+val);
+				this.midi = gn.midi;
+				this.channel = gn.channel;
 				return;
 			}
 		}
-		if( gn == null){
-			debugmsg("Getdata gn null");
+		if( f != null && gn == null){
+			debugmsg("Getdata gn null val="+val);
 			return;
 		}
 
@@ -963,7 +1020,207 @@ function midiGroupBit(bit)
 		// update midi nodes.
 	}
 
+	this.doSave = function()
+	{	let msg = "";
+		let s = new saveargs();
+		let b = this.bit;
 
+		if( b == null){
+			return;
+		}
+		// strings, numbers
+// this.paramnames = ["name", "type", "interface", "channel"];
+		let vs = [this.groupname, null, null, null];
+		let vn =[0, this.grouptype, this.midi, this.channel];
+		let i = 0;
+
+		for(i=0; i < this.paramnames.length; i++){
+			if( vs[i] != null){
+				s.addnv(this.paramnames[i], stringValue(vs[i]));
+			}else {
+				s.addnv(this.paramnames[i], vn[i]);
+			}
+		}
+
+		return s.getargs();
+	}
+
+	this.doLoad = function(initdata, idx)
+	{	let len = initdata[idx];
+		let n = 1;
+		let param="";
+		let val = "";
+		let b = this.bit;
+
+		if( b == null){
+			return;
+		}
+
+// this.paramnames = ["name", "type", "interface", "channel"];
+		for(n = 1; n < len ; n += 2){
+			param = initdata[idx+n];
+			val = initdata[idx+n+1];
+//			debugmsg("P "+param+" V "+val);
+
+			if( param == "control"){
+				continue;
+			}
+			if( param == "label"){
+				this.label = val;
+			}else if( param == "background"){
+				this.background = val;
+				b.background = val;
+			}else if( param == "font"){
+				this.font = val;
+				b.font = val;
+			}else if( param == "color"){
+				this.color = val;
+				b.color = val;
+			}
+		}
+	}
+
+}
+
+// midi clock bit. 
+// generate a value based on the midi clock
+midiClockBit.prototype = Object.create(control.prototype);
+
+function midiClockBit(bit)
+{	control.call(this, bit);
+	this.bit = bit;
+	this.groupobj = findGroupDefault(1);
+	this.running = 0;
+	this.data = 0;
+	this.beats = 16;
+	this.ticks = 0;
+	this.tempo = 0;
+	this.motion = new motion(120, 100);
+	this.prevtempo = new delta();
+
+    let imagename = "midiclk";
+	this.bitimg =this.bit.findImage(imagename);
+	this.bitname = imagename;
+
+	this.paramnames = ["source", "beats", "tempo"];
+
+    // Midi note bit self draw
+	this.Draw = function( )
+	{	var b = this.bit;
+
+		if( b == null){
+			return;
+		}
+		bt = b.btype & 7;	// 0 = horiz, 1 == vert
+
+        ctx.fillStyle = "#ffffff";
+		if( bt == 0){
+			ctx.drawImage(bitpics[ this.bitimg ], b.x, b.y);
+		}else {
+			ctx.drawImage(bitpics[ this.bitimg+1 ], b.x, b.y);
+		}
+	}
+
+	// midi clock
+	this.setValue = function(data, chan)
+	{	const grp =  this.groupobj;
+		let t = MIDIindev[grp.midi];
+
+		if(t != null){
+			this.tempo = t.tempo;
+			this.ticks = t.clocks;
+			if( this.tempo != 0 && this.prevtempo.changed(this.tempo)){
+				this.motion.settempo(this.tempo, this.beats);
+//				debugmsg("New tempo "+this.tempo);
+			}
+		}
+
+		if( chan == 0){
+			this.motion.step();
+			this.step = this.motion.counter;
+			if( this.motion.getgated()){
+				this.bit.value = Math.floor(this.step);
+				if(this.bit.value > 254 ){
+					this.bit.value = 254;		// assume linked to seq so no 255 value.
+				}else if( this.bit.value < 1){
+					this.bit.value = 1;
+				}
+			}else {
+				this.bit.value = 0;
+			}
+
+		}
+
+	}
+
+	// midi clock
+    this.setData = function()
+	{	let msg="";
+		const grp =  this.groupobj;
+		let t = MIDIindev[grp.midi];
+
+		if(t != null){
+			this.tempo = t.tempo;
+		}
+
+		if( bitform != null){
+			bitform.innerHTML="";
+		}
+		midilearning = false;	// clear learning mode
+
+		bitform = document.getElementById("bitform");
+		if( bitform != null){
+			msg = "<table>";
+			msg += "<tr><th>Group</th><td>"+showMidiGroups(1,grp.name, false)+"</td></tr>\n";
+			msg += "<tr><th>Configure</th><td>Action/midi_group_in</td></tr>\n";
+			msg += "<tr><th>Beats</th><td><input type='text' value='"+this.beats+"' /></td></tr>\n";
+			msg += "<tr><th>Running</th><td><input type='text' value='"+this.running+"' /></td></tr>\n";
+			msg += "<tr><th>Tempo</th><td><input type='text' value='"+this.tempo+"' /></td></tr>\n";
+			msg += "</table>\n";
+
+			bitform.innerHTML = msg;
+			bitformaction = this;
+		}
+	
+	}
+
+// midi clock
+	this.getData = function()
+	{	let f = null;
+		let val = 0;
+
+		f = document.getElementById("groupname");
+		if( f != null){
+			this.groupobj = getMidiGroup(f.value);
+			debugmsg("CV "+this.groupobj.name+" "+this.groupobj.channel);
+		}
+	}
+
+	this.onRemove = function()
+	{
+		let x = midicv_list.adduniq( this, null);
+		x.ob = null;		// blank our reference
+		midicv_list.removeobj(x);
+	}
+
+	// midiclock
+	this.filter = function(op, dev)
+	{	let b = this.bit;
+		
+		this.data++;
+		if( this.data == 256){
+			this.data = 0;
+		}
+
+		if( this.running == 0){
+			b.value = this.data;
+		}
+
+		return false;
+	}
+
+	// finish init.
+	midiclk_list.adduniq( this, null);
 }
 
 
