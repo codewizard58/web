@@ -11,8 +11,10 @@ var sx = 0;
 var sy = 0;	// when dragging background
 var dx, dy;	// offsets into object being dragged.
 var background;
+var imagemap;
 var bitpics = new Array();
 var bitpicnames = new Array();
+var bitpicsmap = new Array();		// imagemap data
 var selected = null;	// the object selected.
 var tick = 0;		// used by animate
 var drawing = 0;
@@ -516,6 +518,53 @@ function UIdoShowCode()
 	sketch.drawProgram();
 }
 
+function drawImage( idx, x, y)
+{	let sx,sy,sw,sh;
+	let i;
+	if( bitpics[idx] != null){
+		ctx.drawImage(bitpics[idx], x, y);
+	}else {
+		i = bitpicsmap[idx];
+		ctx.drawImage(imagemap, i.x, i.y, i.w, i.h, x, y, i.w, i.h);
+	}
+}
+
+function UIimagemap()
+{	let i;
+	let img;
+	let x = 0;
+	let y = 0;
+	let my = 0;
+	let pass = 0;
+	let prev = 0;
+
+	debugcnt = -100;	// allow more.
+
+	for(pass=20; pass < 250; pass += 20){
+		for(i=0; i < bitpics.length; i++){
+			img = bitpics[i];
+			if( img.height < pass && img.height >= prev){
+				if( bitpicnames[i] != "imagetile"){
+					if( x + img.width > 700){
+					x = 0;
+					y += my;
+					my = pass;
+				}
+					debugmsg("'image','"+bitpicnames[i]+"',"+x+","+y+","+img.width+","+img.height+",");
+					ctx.drawImage(img, x, y);
+					x += img.width;
+	
+					if( img.height > my){
+						my = img.height;
+					}
+				}
+			}
+		}
+		prev = pass;
+	}
+	getimagemap = true;
+}
+
 function doNewAction()
 {
 	loadInitData(initdataonReset);
@@ -594,6 +643,9 @@ function findimage(name){
 
 	for(i=0; i < bitpicnames.length; i++){
 		if( bitpicnames[i] == name){
+			if( bitpics[i] == null){
+				debugmsg("IMAP "+name+" "+bitpicsmap[i].x+" "+bitpicsmap[i].y+" "+bitpicsmap[i].w+" "+bitpicsmap[i].h);
+			}
 //	debugmsg("Find "+name+"="+i);
 			return i;
 		}
@@ -602,11 +654,31 @@ function findimage(name){
 	return null;
 }
 
-function loadimage(name, dst, imagedir)
+// search the imagemapdata first
+function imagemapfunc(x, y, w, h)
 {
+	this.x = x;
+	this.y = y;
+	this.w = w;
+	this.h = h;
+}
+
+function loadimage(name, dst, imagedir)
+{	let i = 0;
+
+	for(i=0; i < imagemapdata.length; i+= 6){
+		if( imagemapdata[i+1] == name){
+			bitpicsmap[dst] = new imagemapfunc(imagemapdata[i+2], imagemapdata[i+3], imagemapdata[i+4], imagemapdata[i+5])
+			bitpics[ dst] = null;
+			bitpicnames[dst] = name;
+			return;
+		}
+	}
+
 	bitpics[ dst ] = new Image();
 	bitpics[ dst ].src = imagedir+name+".png";
 	bitpicnames[dst] = name;
+	bitpicsmap[ dst] = null;
 }
 
 ////////////////////////////////////////////////////////////////////////

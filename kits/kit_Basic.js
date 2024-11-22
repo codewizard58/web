@@ -297,9 +297,6 @@ this.kitctrlcodes = [
 		"and",			1,
 		"and-v",		1,
 
-		"piano",		1,
-		"piano",		1,
-
 		"knob", 		2,
 		"knob-v", 		2,
 		"invert", 		1,
@@ -308,7 +305,6 @@ this.kitctrlcodes = [
 		"patchin-v",	1,
 		"patchout",		1,
 		"patchout-v",	1,
-		"arduino",		1,
 		"imagetile",	1,
 		null, null
 	];

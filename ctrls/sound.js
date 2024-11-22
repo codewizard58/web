@@ -266,18 +266,18 @@ function oscBit(bit)
         ctx.fillStyle = "#ffffff";
 		if( bt == 0){
 			xval = xval;
-			ctx.drawImage(bitpics[ osc ], b.x, b.y-5);
+			drawImage( osc , b.x, b.y-5);
 			ctx.save();
 			ctx.translate( b.x+50, b.y+30);
 			ctx.rotate( (xval-120 )*this.deg );
-			ctx.drawImage(bitpics[roundknobimg], -10, -10);
+			drawImage(roundknobimg, -10, -10);
 			ctx.restore();
 		}else {
-			ctx.drawImage(bitpics[ osc+1 ], b.x, b.y);
+			drawImage( osc+1 , b.x, b.y);
 			ctx.save();
 			ctx.translate( b.x+50, b.y+30);
 			ctx.rotate( (xval-120 )*this.deg );
-			ctx.drawImage(bitpics[roundknobimg], -10, -10);
+			drawImage( roundknobimg, -10, -10);
 			ctx.restore();
 		}
 	}
@@ -606,18 +606,18 @@ function speakerBit(bit)
 
         ctx.fillStyle = "#ffffff";
 		if( bt == 0){
-			ctx.drawImage(bitpics[ speaker ], b.x, b.y);
+			drawImage( speaker , b.x, b.y);
 			ctx.save();
 			ctx.translate( b.x+10, b.y+40);
 			ctx.rotate( (xval-120 )*this.deg );
-			ctx.drawImage(bitpics[roundknobimg], -10, -10);
+			drawImage( roundknobimg, -10, -10);
 			ctx.restore();
 		}else {
-			ctx.drawImage(bitpics[ speaker+1 ], b.x, b.y);
+			drawImage( speaker+1 , b.x, b.y);
 			ctx.save();
 			ctx.translate( b.x+10, b.y+10);
 			ctx.rotate( (xval-120 )*this.deg );
-			ctx.drawImage(bitpics[roundknobimg], -10, -10);
+			drawImage( roundknobimg, -10, -10);
 			ctx.restore();
 		}
 	}
@@ -774,18 +774,18 @@ function filterBit(bit)
 
         ctx.fillStyle = "#ffffff";
 		if( bt == 0){
-			ctx.drawImage(bitpics[ this.bitimg ], b.x, b.y);
+			drawImage( this.bitimg , b.x, b.y);
 			for(i=0; i < 4; i+= 2){
 				ctx.save();
 				ctx.translate( b.x+this.knobs[i], b.y+this.knobs[i+1]);
 				ctx.rotate( (xval-120 )*degree );
-				ctx.drawImage(bitpics[roundknobimg], -10, -10);
+				drawImage( roundknobimg, -10, -10);
 				ctx.restore();
 				// Q
 				xval = this.values[1];
 			}
 		}else {
-			ctx.drawImage(bitpics[ this.bitimg+1 ], b.x, b.y);
+			drawImage( this.bitimg+1 , b.x, b.y);
 		}
 	}
 	//////////////////////
@@ -1027,18 +1027,18 @@ function delayBit(bit)
 
         ctx.fillStyle = "#ffffff";
 		if( bt == 0){
-			ctx.drawImage(bitpics[ this.bitimg ], b.x, b.y);
+			drawImage( this.bitimg , b.x, b.y);
 			for(i=0; i < 4; i+= 2){
 				ctx.save();
 				ctx.translate( b.x+this.knobs[i], b.y+this.knobs[i+1]);
 				ctx.rotate( (xval-120 )*degree );
-				ctx.drawImage(bitpics[roundknobimg], -10, -10);
+				drawImage( roundknobimg, -10, -10);
 				ctx.restore();
 				// Q
 				xval = this.values[1];
 			}
 		}else {
-			ctx.drawImage(bitpics[ this.bitimg+1 ], b.x, b.y);
+			drawImage( this.bitimg+1 , b.x, b.y);
 		}
 	}
 
@@ -1286,7 +1286,7 @@ function seqBit(bit)
 
         ctx.fillStyle = "#ffffff";
 		if( bt == 0){
-			ctx.drawImage(bitpics[ seq ], b.x, b.y-5);
+			drawImage( seq , b.x, b.y-5);
 			for(i = 0; i < len; i++){
 				if( i == 4 || i == 8 || i == 12){
 					tx -= 160;
@@ -1296,7 +1296,7 @@ function seqBit(bit)
 				ctx.save();
 				ctx.translate( tx+50+(40 * i), ty+20);
 				ctx.rotate( (xval-120 )*this.deg );
-				ctx.drawImage(bitpics[roundknobimg], -10, -10);
+				drawImage( roundknobimg, -10, -10);
 				ctx.restore();
 				if( ac == i){	
 					ctx.fillStyle = "#00ff00";
@@ -1306,7 +1306,7 @@ function seqBit(bit)
 				ctx.fillRect(tx+35+i*40,  ty+30, 5, 10);
 				}
 		}else {
-			ctx.drawImage(bitpics[ this.bitimg+1 ], tx, ty);
+			drawImage( this.bitimg+1 , tx, ty);
 		}
 	}
 
@@ -1757,9 +1757,9 @@ function micBit(bit)
 
         ctx.fillStyle = "#ffffff";
 		if( bt == 0){
-			ctx.drawImage(bitpics[ this.bitimg ], b.x, b.y);
+			drawImage( this.bitimg , b.x, b.y);
 		}else {
-			ctx.drawImage(bitpics[ this.bitimg+1 ], b.x, b.y);
+			drawImage( this.bitimg+1 , b.x, b.y);
 		}
 	}
 

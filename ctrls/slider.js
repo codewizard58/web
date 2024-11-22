@@ -55,13 +55,13 @@ function sliderBit(bit)
 	        ctx.fillRect(b.x,  b.y+(b.h/2)-10, b.w, 20);
 	        ctx.fillStyle = "#000000";
 	        ctx.fillRect(b.x,  b.y+(b.h/2)-1, b.w, 2);
-			ctx.drawImage(bitpics[ knobimg ], b.x+xval, b.y-2);
+			drawImage( knobimg , b.x+xval, b.y-2);
 		}else {
 			xval = Math.floor( (xval * (b.h-10))/ 255);
 	        ctx.fillRect(b.x+(b.w/2)-10, b.y, 20, b.h);
 	        ctx.fillStyle = "#000000";
 	        ctx.fillRect(b.x+(b.w/2)-1, b.y, 2, b.h);
-	        ctx.drawImage(bitpics[knobvimg],b.x+(b.w/2)-15, b.y+b.h-xval-10);	// 255 at top..
+	        drawImage( knobvimg,b.x+(b.w/2)-15, b.y+b.h-xval-10);	// 255 at top..
 		}
 	}
 

@@ -272,9 +272,9 @@ function midiCVBit(bit)
 
         ctx.fillStyle = "#ffffff";
 		if( bt == 0){
-			ctx.drawImage(bitpics[ this.bitimg ], b.x, b.y);
+			drawImage( this.bitimg, b.x, b.y);
 		}else {
-			ctx.drawImage(bitpics[ this.bitimg+1 ], b.x, b.y);
+			drawImage( this.bitimg+1 , b.x, b.y);
 		}
 	}
 
@@ -379,9 +379,9 @@ function midiCCBit(bit)
 
         ctx.fillStyle = "#ffffff";
 		if( bt == 0){
-			ctx.drawImage(bitpics[ this.bitimg ], b.x, b.y);
+			drawImage(this.bitimg , b.x, b.y);
 		}else {
-			ctx.drawImage(bitpics[ this.bitimg+1 ], b.x, b.y);
+			drawImage( this.bitimg+1 , b.x, b.y);
 		}
 	}
 
@@ -502,9 +502,9 @@ function midiCVOutBit(bit)
 
         ctx.fillStyle = "#ffffff";
 		if( bt == 0){
-			ctx.drawImage(bitpics[ this.bitimg ], b.x, b.y);
+			drawImage( this.bitimg , b.x, b.y);
 		}else {
-			ctx.drawImage(bitpics[ this.bitimg+1 ], b.x, b.y);
+			drawImage(this.bitimg+1 , b.x, b.y);
 		}
 		if( this.mute){
 			ctx.fillStyle = "#ff0000";
@@ -689,9 +689,9 @@ function midiCCOutBit(bit)
 
         ctx.fillStyle = "#ffffff";
 		if( bt == 0){
-			ctx.drawImage(bitpics[ this.bitimg ], b.x, b.y);
+			drawImage( this.bitimg , b.x, b.y);
 		}else {
-			ctx.drawImage(bitpics[ this.bitimg+1 ], b.x, b.y);
+			drawImage(this.bitimg+1 , b.x, b.y);
 		}
 		if( this.mute){
 			ctx.fillStyle = "#ff0000";
@@ -885,9 +885,9 @@ function midiGroupBit(bit)
 		ctx.save();
         ctx.fillStyle = "#ffffff";
 		if( bt == 0){
-			ctx.drawImage(bitpics[ this.bitimg ], b.x, b.y);
+			drawImage( this.bitimg , b.x, b.y);
 		}else {
-			ctx.drawImage(bitpics[ this.bitimg+1 ], b.x, b.y);
+			drawImage(this.bitimg+1 , b.x, b.y);
 		}
 		if( this.grouptype == 1){
 			b.drawText(ctx, " IN");
@@ -1115,9 +1115,9 @@ function midiClockBit(bit)
 
         ctx.fillStyle = "#ffffff";
 		if( bt == 0){
-			ctx.drawImage(bitpics[ this.bitimg ], b.x, b.y);
+			drawImage( this.bitimg , b.x, b.y);
 		}else {
-			ctx.drawImage(bitpics[ this.bitimg+1 ], b.x, b.y);
+			drawImage( this.bitimg+1 , b.x, b.y);
 		}
 	}
 

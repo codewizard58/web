@@ -52,17 +52,17 @@ function wireBit(bit)
 		if( b.snaps[1].paired != null){
 			// draw input snap
 			if( bt == 0){
-				ctx.drawImage(bitpics[wirelinimg], b.snaps[0].x, b.snaps[0].y);
+				drawImage(wirelinimg, b.snaps[0].x, b.snaps[0].y);
 			}else {
-				ctx.drawImage(bitpics[wiretinimg], b.snaps[0].x, b.snaps[0].y);
+				drawImage(wiretinimg, b.snaps[0].x, b.snaps[0].y);
 			}
 		} 
 		if( b.snaps[0].paired != null){
 			// draw output snap
 			if( bt == 0){
-				ctx.drawImage(bitpics[wireroutimg], b.snaps[1].x, b.snaps[1].y);
+				drawImage(wireroutimg, b.snaps[1].x, b.snaps[1].y);
 			}else {
-				ctx.drawImage(bitpics[wireboutimg], b.snaps[1].x, b.snaps[1].y);
+				drawImage(wireboutimg, b.snaps[1].x, b.snaps[1].y);
 			}
 		} 
 	}
@@ -205,11 +205,11 @@ function control(bit)
 
 		ctx.save();
 		if( bt == 0){
-	        ctx.drawImage(bitpics[ defaultimg ], b.x,  b.y);
+	       drawImage(defaultimg , b.x,  b.y);
 		}else {
 			ctx.translate( b.x, b.y+b.h);
 			ctx.rotate(- Math.PI/2);
-	        ctx.drawImage(bitpics[ defaultimg ], b.x,  b.y);
+	        drawImage( defaultimg , b.x,  b.y);
 		}
 		ctx.restore();
 	}

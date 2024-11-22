@@ -198,6 +198,11 @@
     echo "0\n";
     echo "];\n";
     
+    if( is_file("resources/imagemap.txt") ){
+      echo ("var imagemapdata = [\n");
+      include("resources/imagemap.txt");
+      echo ("];\n");
+    }
     echo "</script>\n";
     ?>
     <div id="progdiv" >
@@ -310,6 +315,8 @@
     </div>
     <div id="debugdiv">
       <input type="button" value="Debug" onclick="UIsettrace();" ></input>
+      <input type="button" value="Imagemap" onclick="UIimagemap();" ></input>
+
       <div id="debugmsg">Debug messages<br />
       </div>
     </div>
@@ -321,6 +328,7 @@
       <img src="background.png" id="background" />
       <img src="up.png" id="up" />
       <img src="down.png" id="down" />
+      <img src="resources/imagemap.png" id="imagemap">
   </div>
 
   </body>

@@ -13,6 +13,7 @@ var defaultimg = 0;
 var seqimg = 0;
 const none = null;
 var trace = 0;
+var getimagemap = false;
 // 10/27/24
 var activedomains = 1;		// which domains are active  1 == basic, 2 = sound, 4 = midi
 var hidetouch = true;		
@@ -2305,11 +2306,11 @@ function Bit( btype, x, y, w, h, k) {
 
 //			debugmsg("Draw "+img+" x="+this.x);
 			if( btmp == 0){
-				ctx.drawImage(bitpics[ img ], this.x, this.y);
+				drawImage( img , this.x, this.y);
 			}else {
 				// -v version
 				img = img+1;
-				ctx.drawImage(bitpics[ img ], this.x, this.y);
+				drawImage( img , this.x, this.y);
 			}
 			if( this.chain != 0){
 				// draw the power border
@@ -2323,26 +2324,26 @@ function Bit( btype, x, y, w, h, k) {
 			snapname = this.snapnames[0];
 			if( this.code != WIRE || this.snaps[1].paired == null){		// wire then ctrl draws if paired.
 				if( snapname != null){	
-					ctx.drawImage(bitpics[snapname], this.x+this.coords[0], this.y+this.coords[1]);
+					drawImage(snapname, this.x+this.coords[0], this.y+this.coords[1]);
 					this.snaps[0].drawIndicator( this.suffix[0], this.x+this.coords[0], this.y+this.coords[1]);
 				}
 			}
 			snapname = this.snapnames[2];
 			if( snapname != null){	
-				ctx.drawImage(bitpics[snapname], this.x+this.coords[4], this.y+this.coords[5]);
+				drawImage(snapname, this.x+this.coords[4], this.y+this.coords[5]);
 				this.snaps[2].drawIndicator( this.suffix[2], this.x+this.coords[4], this.y+this.coords[5]);
 			}
 		}else if( pass == 1){	// output snaps
 			snapname = this.snapnames[1];
 			if( this.code != WIRE || this.snaps[0].paired == null){		// wire
 				if( snapname != null){
-					ctx.drawImage(bitpics[snapname], this.x+this.coords[2], this.y+this.coords[3]);
+					drawImage(snapname, this.x+this.coords[2], this.y+this.coords[3]);
 					this.snaps[1].drawIndicator( this.suffix[1], this.x+this.coords[2], this.y+this.coords[3]);
 				}
 			}
 			snapname = this.snapnames[3];
 			if( snapname != null){
-				ctx.drawImage(bitpics[snapname], this.x+this.coords[6], this.y+this.coords[7]);
+				drawImage(snapname, this.x+this.coords[6], this.y+this.coords[7]);
 				this.snaps[3].drawIndicator( this.suffix[3], this.x+this.coords[6], this.y+this.coords[7]);
 			}
 		}else if( pass == 3){
@@ -2356,11 +2357,11 @@ function Bit( btype, x, y, w, h, k) {
 		if( !this.isDocked() && selected ==this ){
 			// if a selected bit is not docked then show the handles
 			if( btmp == 0){
-				ctx.drawImage( bitpics[flipimg], this.x+this.w, this.y+this.h);
+				drawImage( flipimg, this.x+this.w, this.y+this.h);
 			}else {
-				ctx.drawImage( bitpics[flipvimg], this.x+this.w, this.y+this.h);
+				drawImage( flipvimg, this.x+this.w, this.y+this.h);
 			}
-			ctx.drawImage( bitpics[removeimg], this.x-25, this.y-25);
+			drawImage( removeimg, this.x-25, this.y-25);
 		}
 
 	}
@@ -2765,6 +2766,9 @@ function Sketch() {
         if (!this.canvas || !this.canvas.getContext) {
             return false;
         }
+		if( getimagemap){
+			return false;
+		}
 		drawing = 1;
         ctx = this.canvas.getContext('2d');
 
@@ -3277,6 +3281,7 @@ function Sketch() {
 
 		drawing = 1;
         background = document.getElementById("background");
+		imagemap = document.getElementById("imagemap");
 
 		k = kitlist;
 		if( k != null){
