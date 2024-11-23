@@ -250,7 +250,7 @@ function oscBit(bit)
 		return null;
 	}
 
-
+// osc
 	this.Draw = function( )
 	{	var b = this.bit;
 		var bt;
@@ -533,7 +533,7 @@ function speakerBit(bit)
 	this.mix = 0.2;
 	this.modmix = 128;
 	this.prevmix = new delta();
-	this.deg = Math.PI/180;
+	this.deg = degree;
 	this.ival = 0;
 	this.name = "speaker";
 	roundknobimg =this.bit.findImage("roundknob");
@@ -724,9 +724,10 @@ function filterBit(bit)
 	this.knobs = [25, 30, 75, 30];
 	this.values = [128, 250];
 	this.selknob = 0;
-	let i;
 	this.mod = 0;		// mod routing
+	this.deg = degree;
 
+	let i;
     let imagename = "filter";
 	this.bitimg =this.bit.findImage(imagename);
 	this.bitname = imagename;
@@ -760,35 +761,49 @@ function filterBit(bit)
 		return null;
 	}
 
-// filter
-	this.Draw = function( )
-	{	let b = this.bit;
-		let bt;
-		let xval = this.values[0];
-		let i = 0;
+// filter - generic draw func
+this.Draw = function( )
+{   let b = this.bit;
+	let xval = 0;
+	let i;
+	let k;
 
-		if( b == null){
-			return;
+	if( b == null){
+		return;
+	}
+	bt = b.btype & 7;	// 0 = horiz, 1 == vert
+
+	ctx.fillStyle = "#ffffff";
+	if( bt == 0){
+		drawImage( this.bitimg , b.x, b.y);
+		k = 0;
+		for(i=0; i < this.knobs.length; i+= 2){
+			xval = this.values[k];		// 0 - 255
+			ctx.save();
+			ctx.translate( b.x+this.knobs[i+0], b.y+this.knobs[i+1]);
+			ctx.rotate( (xval-120 )*this.deg );
+			drawImage(roundknobimg, -10, -10);
+			ctx.restore();
+			k++;
 		}
-		bt = b.btype & 7;	// 0 = horiz, 1 == vert
-
-        ctx.fillStyle = "#ffffff";
-		if( bt == 0){
-			drawImage( this.bitimg , b.x, b.y);
-			for(i=0; i < 4; i+= 2){
-				ctx.save();
-				ctx.translate( b.x+this.knobs[i], b.y+this.knobs[i+1]);
-				ctx.rotate( (xval-120 )*degree );
-				drawImage( roundknobimg, -10, -10);
-				ctx.restore();
-				// Q
-				xval = this.values[1];
-			}
-		}else {
-			drawImage( this.bitimg+1 , b.x, b.y);
+	}else {
+		drawImage(this.bitimg+1 , b.x, b.y);
+		k = 0;
+		for(i=0; i < this.knobs.length; i+= 2){
+			xval = this.values[k];		// 0 - 255
+			ctx.save();
+			ctx.translate( b.x+this.knobs[i+0], b.y+this.knobs[i+1]);
+			ctx.rotate( (xval-120 )*this.deg );
+			drawImage(roundknobimg, -10, -10);
+			ctx.restore();
+			k++;
 		}
 	}
-	//////////////////////
+
+}
+
+
+//////////////////////
 	// filter
 	this.setup = function ()
 	{
@@ -832,14 +847,12 @@ function filterBit(bit)
 
 	this.setValue = function(val, chan)
 	{
-		if( chan == 1){		// cutoff
-			if( this.mod == 0){
+		if( chan == 2 || ( chan == 1 && this.mod == 0)){		// cutoff
 				this.vcffreq = (val+ this.values[0])/2;
 				this.setvcf();
-			}else if( this.mod == 1){
+		}else if( chan == 3 || ( chan == 1 && this.mod == 1)){
 				this.vcfq = (val + this.values[1]) / 16;
 				this.setvcf();
-			}
 		}
 	}
 
@@ -928,7 +941,7 @@ function filterBit(bit)
 			if( param == "freq"){
 				this.values[0] = val;
 			}else if( param == "res"){
-				this.this.values[1] = val;
+				this.values[1] = val;
 			}else if( param == "mod"){
 				this.mod = val;
 			}
@@ -946,8 +959,10 @@ function filterBit(bit)
 
 		if( this.selknob > 0){
 			this.values[this.selknob-1] = rotaryvalue(vx, vy, this.ival);
-			if( this.selknob == 2){
-				this.setValue(0,1);
+			if( this.selknob == 1){
+				this.setValue(0, 2);
+			}else if( this.selknob == 2){
+				this.setValue(0, 3);
 			}
 		}
 
@@ -964,8 +979,6 @@ function filterBit(bit)
 			f.value = this.values[this.selknob-1];
 		}
 	}
-
-
 }
 
 
@@ -975,11 +988,14 @@ function delayBit(bit)
 {	control.call(this, bit);
 	this.prevdata = new delta();
 	this.knobs = [25, 30, 75, 30];
-	this.values = [128, 250];
+	this.values = [60, 10];
 	this.selknob = 0;
 	this.wet = 200;
 	this.dry = 255;
 	this.mod = 0;
+	this.dly = 0.5;
+	this.ival = 0;
+	this.deg = degree;
 
     let imagename = "delay";
 	this.bitimg =this.bit.findImage(imagename);
@@ -1004,7 +1020,6 @@ function delayBit(bit)
 				this.initx = mx;
 				this.inity = my;
 				this.ival = this.values[i];
-				debugmsg("DELAY HT "+i);
 				this.selknob = i+1;
 				return this;
 			}
@@ -1015,10 +1030,10 @@ function delayBit(bit)
 
 
 	this.Draw = function( )
-	{	let b = this.bit;
-		let bt;
-		let xval = this.values[0];
-		let i = 0;
+	{   let b = this.bit;
+		let xval = 0;
+		let i;
+		let k;
 
 		if( b == null){
 			return;
@@ -1028,74 +1043,100 @@ function delayBit(bit)
         ctx.fillStyle = "#ffffff";
 		if( bt == 0){
 			drawImage( this.bitimg , b.x, b.y);
-			for(i=0; i < 4; i+= 2){
+			k = 0;
+			for(i=0; i < this.knobs.length; i+= 2){
+				xval = this.values[k];		// 0 - 255
 				ctx.save();
-				ctx.translate( b.x+this.knobs[i], b.y+this.knobs[i+1]);
-				ctx.rotate( (xval-120 )*degree );
-				drawImage( roundknobimg, -10, -10);
+				ctx.translate( b.x+this.knobs[i+0], b.y+this.knobs[i+1]);
+				ctx.rotate( (xval-120 )*this.deg );
+				drawImage(roundknobimg, -10, -10);
 				ctx.restore();
-				// Q
-				xval = this.values[1];
+				k++;
 			}
 		}else {
-			drawImage( this.bitimg+1 , b.x, b.y);
+			drawImage(this.bitimg+1 , b.x, b.y);
+			k = 0;
+			for(i=0; i < this.knobs.length; i+= 2){
+				xval = this.values[k];		// 0 - 255
+				ctx.save();
+				ctx.translate( b.x+this.knobs[i+0], b.y+this.knobs[i+1]);
+				ctx.rotate( (xval-120 )*this.deg );
+				drawImage(roundknobimg, -10, -10);
+				ctx.restore();
+				k++;
+			}
 		}
+
 	}
 
+
+	//  chan 0 not used
+	//  chan 1 delay time
+	//  chan 2 feedback
+	//
 	this.setValue = function(data, chan)
 	{	let wet = 0;
 		let dry = 0;
+		let delay = 0;
 
-		if( chan == 1){
+		if( chan == 0){
+			return;
+		}
+
+		if( chan == 2 || (chan == 1 && this.mod == 0)){
 			if(this.prevdata.changed( data)){
-				wet = data / 300;
-				dry = 1.0 - wet;
-				debugmsg("DELAY set "+wet);
-
-				this.wetNode.gain.setValueAtTime(wet, audioContext.currentTime);
+				delay = 0.1 + (data * 4.0) / 256;
+				this.dly = data;
+				this.values[0] = data;
+				this.delay.delayTime.setValueAtTime(delay, 0.05);
+//				debugmsg("DELAY "+this.dly+" chan="+chan+" mod="+this.mod);
 			}
+		}else if( chan == 3 || (chan == 1 && this.mod == 1)){
+			// feedback
+			wet = data / 300;
+			this.wet = data;
+			this.values[1] = data;
+			dry = 1.0 - wet;
+			this.wetNode.gain.setValueAtTime(wet, 0.05);
+			this.dryNode.gain.setValueAtTime(dry+0.2, 0.05);
+//			debugmsg("WET "+wet);
 		}
 	}
 
 
 	this.setup = function()
-	{	this.ingain = actx.createGain();		// used as the input node.
-		this.ingain.gain.value = 0.75;
+	{
+		if( this.audioin == null ){
+			this.ingain = actx.createGain();		// used as the input node.
+			this.ingain.gain.value = 0.75;
 
-		if( false){
+			this.mixer = actx.createGain();			// for output
+			this.mixer.gain.value = 0.75;
 
-		this.delay = actx.createDelay(1);
-		this.dryNode = actx.createGain();
-		this.wetNode = actx.createGain();
-		this.mixer = actx.createGain();
-		this.mixer.gain.value = 0.75;
-		this.filter = actx.createBiquadFilter();
-	
-		this.delay.delayTime.value = 0.75;
-		this.dryNode.gain.value = 1;
-		this.wetNode.gain.value = 0;
-		this.filter.frequency.value = 1100;
-		this.filter.type = "highpass";
+			this.delay = actx.createDelay(5.0);
+			this.delay.delayTime.value = 1.0;
+			this.ingain.connect(this.delay);
+
+			this.wetNode = actx.createGain();
+			this.wetNode.gain.value = 0.5;
+			this.delay.connect(this.wetNode);
 
 
-		this.ingain.connect(this.delay);
-		this.delay.connect(this.wetNode);
-		this.wetNode.connect(this.filter);
-		this.filter.connect(this.delay);
-	
-//			inputNode.connect(dryNode);
-//		this.ingain.connect(this.drynode);
-		this.dryNode.connect(this.mixer);
-		this.wetNode.connect(this.mixer);
+			this.dryNode = actx.createGain();
+			this.dryNode.gain.value = 0.0;
+			this.ingain.connect(this.dryNode);
 
-//		this.audioout = this.mixer;
+			this.dryNode.connect(this.mixer);
+
+			this.wetNode.connect(this.ingain);
+
+			this.audioout = this.mixer;
+			this.audioin = this.ingain;
+			debugmsg("Create delay");
 		}
-		this.audioout = this.ingain;
-		this.audioin = this.ingain;
-		debugmsg("Create delay");
 	}
 
-	this.modnames = ["wet", "dry" ];
+	this.modnames = ["delay", "feedback" ];
 
 	// delay
 	this.setData = function()
@@ -1108,7 +1149,8 @@ function delayBit(bit)
 		if( bitform != null){
 			msg = "<table>";
 			msg += "<tr><th align='right'>Modulation</th><td >"+showModulation(this.mod, this.modnames)+"</td></tr>\n";
-
+			msg += "<tr><th align='right'>Delay</th><td ><input type='text' id='delay' value='"+this.dly+"' /></td></tr>\n";
+			msg += "<tr><th align='right'>Feedback</th><td ><input type='text' id='wet' value='"+this.wet+"' /></td></tr>\n";
 			msg += "</table>\n";
 
 			bitform.innerHTML = msg;
@@ -1128,7 +1170,12 @@ function delayBit(bit)
 		f = document.getElementById("wet");
 		if( f != null){
 			val = f.value;
-			this.wet = val;
+			this.setValue(val, 3);
+		}
+		f = document.getElementById("delay");
+		if( f != null){
+			val = f.value;
+			this.setValue(val, 2);
 		}
 		f = document.getElementById("mod");
 		if( f != null){
@@ -1147,9 +1194,13 @@ function delayBit(bit)
 
 		if( this.selknob > 0){
 			this.values[this.selknob-1] = rotaryvalue(vx, vy, this.ival);
-			if( this.selknob == 2){
-				this.setValue(0,1);
+//			debugmsg("MOVE "+this.selknob+" v="+this.values[this.selknob-1]);
+			if( this.selknob == 1){
+				this.setValue(this.values[this.selknob-1],2);	// chan 2 delay 0 - 5sec
+			}else if( this.selknob == 2){
+				this.setValue(this.values[this.selknob-1],3);	// feedback
 			}
+
 		}
 
 		// update bitform
@@ -1157,9 +1208,9 @@ function delayBit(bit)
 			return;
 		}
 		if(this.selknob-1 == 0){
-			f = document.getElementById( "wet");
+			f = document.getElementById( "delay");
 		}else if(this.selknob-1 == 1){
-			f = document.getElementById("dry");
+			f = document.getElementById("wet");
 		}
 		if( f != null){
 			f.value = this.values[this.selknob-1];
@@ -1219,7 +1270,7 @@ seqBit.prototype = Object.create(control.prototype);
 function seqBit(bit)
 {	control.call(this, bit);
 	this.values = [0, 100, 200, 50];
-	this.deg = Math.PI/180;
+	this.deg = degree;
 	this.step = 0;
 	this.selstep = 0;	// 1-4
 	this.initx = 0;
@@ -1451,7 +1502,7 @@ function seqBit(bit)
 			if( param == "freq"){
 				this.values[0] = val;
 			}else if( param == "res"){
-				this.this.values[1] = val;
+				this.values[1] = val;
 			}else if( param == "mod"){
 				this.mod = val;
 			}
@@ -1767,4 +1818,146 @@ function micBit(bit)
 
 }
 
+pannerBit.prototype = Object.create(control.prototype);
 
+function pannerBit(bit)
+{	control.call(this, bit);
+	this.deg = degree;
+	this.bit = bit;
+	this.panner = null;
+	this.audioin = null;
+	this.audioout = null;
+	this.pan = 128;
+	this.initx = 0;
+	this.inity = 0;
+	this.ival = this.pan;
+	this.knobs = [50, 30];
+	this.values = [128];
+	this.selknob = 0;
+
+
+    let imagename = "panner";
+	this.bitimg =this.bit.findImage(imagename);
+	this.bitname = imagename;
+	this.name = "Panner";
+	roundknobimg =this.bit.findImage("roundknob");
+
+	this.HitTest = function(mx, my)
+	{	let b = this.bit;
+		let x = mx-b.x;
+		let y = my-b.y;
+		let bt = b.btype & 7;	// 0 = horiz, 1 == vert
+
+		if( bt == 0){
+			x = x - 39;
+			y = y - 15;
+		}else {
+			x = x - 39;
+			y = y - 10;
+		}
+
+		if( x > 0 && x < 20 && y > 0 && y < 20 ){
+			this.initx = mx;
+			this.inity = my;
+			this.ival = this.pan;
+			debugmsg("pan HT "+this.ival);
+			return this;
+		}
+
+		return null;
+	}
+
+
+
+	// panner
+	this.Draw = function( )
+	{   let b = this.bit;
+		let xval = 0;
+		let i;
+		let k;
+
+		if( b == null){
+			return;
+		}
+		bt = b.btype & 7;	// 0 = horiz, 1 == vert
+
+        ctx.fillStyle = "#ffffff";
+		if( bt == 0){
+			drawImage( this.bitimg , b.x, b.y);
+			k = 0;
+			for(i=0; i < this.knobs.length; i+= 2){
+				xval = this.values[k];		// 0 - 255
+				ctx.save();
+				ctx.translate( b.x+this.knobs[i+0], b.y+this.knobs[i+1]);
+				ctx.rotate( (xval-120 )*this.deg );
+				drawImage(roundknobimg, -10, -10);
+				ctx.restore();
+				k++;
+			}
+		}else {
+			drawImage(this.bitimg+1 , b.x, b.y);
+			k = 0;
+			for(i=0; i < this.knobs.length; i+= 2){
+				xval = this.values[k];		// 0 - 255
+				ctx.save();
+				ctx.translate( b.x+this.knobs[i+0], b.y+this.knobs[i+1]);
+				ctx.rotate( (xval-120 )*this.deg );
+				drawImage(roundknobimg, -10, -10);
+				ctx.restore();
+				k++;
+			}
+		}
+
+	}
+
+
+	this.setup = function(){
+		if( this.audioout == null){
+			this.panner = actx.createStereoPanner();
+			this.panner.pan.setValueAtTime( 0.0, 0.01);
+
+			this.audioout = this.panner;
+			this.audioin = this.panner;
+		}
+	}
+
+	// panner
+	this.setValue = function(data, chan)
+	{	let b = this.bit;
+		let val = this.values[0];
+
+		if( b == null){
+			return;
+		}
+		if( chan == 0){
+			return;
+		}
+		if( chan == 1){
+			val += data-128;
+		}
+		val = checkRange(val)-128;
+
+		this.panner.pan.setValueAtTime( val / 128, 0.01);
+	}
+
+	this.onMove = function(x, y)
+	{	let vx = x - this.initx;
+		let vy = y - this.inity;
+
+		this.values[0] = rotaryvalue(vx, vy, this.ival);
+		this.setValue( 128, 1);
+
+		if( bitformaction != this){
+			return;
+		}
+
+		f = document.getElementById("pan");
+		if( f != null){
+			f.value = val;
+		}
+	}
+
+
+
+	this.setup();
+}

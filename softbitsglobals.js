@@ -638,15 +638,18 @@ function doReload()
 	}
 }
 
+// use three arrays, one for javascript images
+// one for the names
+// one for imagemap data
+// if bitpisc[ i ] is null then the bitpicsmap[ i ] has the coords in the imagemap.
+// global drawimage works out which to use.
+// if name not in the imagemapdata, then the image will be loaded explicitly.
+
 function findimage(name){
 	let i = 0;
 
 	for(i=0; i < bitpicnames.length; i++){
 		if( bitpicnames[i] == name){
-			if( bitpics[i] == null){
-				debugmsg("IMAP "+name+" "+bitpicsmap[i].x+" "+bitpicsmap[i].y+" "+bitpicsmap[i].w+" "+bitpicsmap[i].h);
-			}
-//	debugmsg("Find "+name+"="+i);
 			return i;
 		}
 	}

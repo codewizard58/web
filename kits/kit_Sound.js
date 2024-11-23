@@ -70,6 +70,8 @@ function kit_sound()
 
 		"control", "microphone", 50, 50, null, "audioout" ,null,  null,		// 0
 				0,	1, "Microphone",	"Input sound",	 0x0020, "Input", 0, 1,	// 0
+		"control", "panner", 100, 50, "audioin", "audioout" ,"actionin",  null,		// 0
+				0,	1, "Panner",	"Pan sound",	 0x0122, "Action", 0, 1,	// 0
 		null, null, null, null,				null, null, null, null
 		];
 
@@ -87,6 +89,7 @@ function kit_sound()
 		"audioin", 4,	// snaps -l -t
 		"roundknob", 2,	// round knob
 		"mic", 0xd,
+		"panner", 0xd,
 		null, null
 	];
 
@@ -101,6 +104,7 @@ function kit_sound()
 	"analyzer", 3, 10,	// scope
 	"spectrum", 3, 11,	// spectrum
 	"microphone", 3, 12,	// microphone
+	"panner", 3, 13,	// stereo panner
 	null, 0, 0, 0, 0	// end of table
 	];
 
@@ -114,6 +118,7 @@ function kit_sound()
 		"spectrum", 124,	// audio display
 		"microphone", 125,	// audio input
 		"delay", 126,	// audio input
+		"panner", 127,	// audio panner
 		null, 254
 	];
 
@@ -171,6 +176,11 @@ function kit_sound()
 					return ct;
 				}else if( this.ctrltab[i+2] == 12){
 					ct = new micBit( bit);
+					bit.ctrl = ct;
+					ct.setData();
+					return ct;
+				}else if( this.ctrltab[i+2] == 13){
+					ct = new pannerBit( bit);
 					bit.ctrl = ct;
 					ct.setData();
 					return ct;

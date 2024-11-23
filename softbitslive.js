@@ -40,6 +40,7 @@ const SEQUENCER = 123;
 const SCOPE = 124;
 const MICROPHONE = 125;
 const DELAY = 126;
+const PANNER = 127;
 
 var divlist = [
 	"headerdiv",
@@ -1474,7 +1475,7 @@ function Program()
 					arg2 = prog[bp];
 					bp++;
 					if(arg2 == 0){
-						curchain = 0;
+						curchain = 0; // needs both inputs.
 					}
 					if( curchain != 0){
 						data2 =  this.getchaindata(arg2, nchains);
@@ -1496,36 +1497,6 @@ function Program()
 						osnap.indcolor = "";
 					}
 
-				}else if( code == 107){		// wire send 0x6b
-					arg2 = prog[bp];
-					bp++;
-					if( curchain != 0 && this.prevdata[arg2] != data){
-						if( this.senddata != null){
-							this.senddata[this.sendsize] = arg2 & 0x7f;
-							this.senddata[this.sendsize+1]= Math.floor(arg2 / 128);
-							this.senddata[this.sendsize+2] = data & 0x7f;
-							this.senddata[this.sendsize+3]=  Math.floor(data / 128);
-						}
-						this.sendsize += 4;
-						this.needsend = 1;
-						osnap.indcolor = "#000000";
-						osnap.indval = this.chains[ curchain].data;
-					}
-					// bit.data sent to the chain on the arduino
-				}else if( code == 108){		// wire recv 0x6c
-					arg2 = prog[bp];
-					bp++;
-					if( curchain != 0){
-						if( arduino != null){
-							if( arg2 > 0 && arg2 < 20){
-								this.chains[ curchain].data = arduino.remdata[ arg2];
-								this.needsend = 1;
-							}
-						}
-						osnap.indcolor = "#000000";
-						osnap.indval = this.chains[ curchain].data;
-					}
-
 				}else if(code == GRAPH){	// graph
 					arg2 = prog[bp];
 					bp++;
@@ -1536,7 +1507,6 @@ function Program()
 							data2 = this.chains[ arg2].data;
 							progbits[ ibp].ctrl.setValue(data2, 1);
 						}
-
 						osnap.indcolor = "#ffffff";
 					}else {
 						osnap.indcolor = "";
@@ -1570,17 +1540,19 @@ function Program()
 					}
 					osnap.indcolor = "#ff0000";
 					osnap.indval = this.chains[ curchain].data;
-				}else if(code == FILTER){		// filter
+				}else if(code == FILTER || code == DELAY || code == PANNER){		// filter,delay,panner
 					arg2 = prog[bp];
 					bp++;
 					data2 = data;
-//						progbits[ ibp].ctrl.setValue(data, 0);
 					if( arg2 > 0 && arg2 < nchains){
-						data2 = this.chains[ arg2].data;
+						data2 = this.getchaindata(arg2, nchains);
+						progbits[ ibp].ctrl.setValue(data2, 1);
 					}
-					progbits[ ibp].ctrl.setValue(data2, 0);
+					if( data < 20){	// effects do not mute output when in is less than 20.
+						data = 20;
+						this.chains[ curchain].data = data;	
+					}
 					progbits[ibp].value = this.chains[ curchain].data;
-//						this.chains[ curchain].data = this.getValue( progbits, ibp, 255);
 					osnap.indcolor = "#ff0000";
 					osnap.indval = this.chains[ curchain].data;
 			}else if( curchain != 0){
