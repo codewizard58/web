@@ -1,4 +1,14 @@
 /// sound bits
+// softbits are inspired by the Littlebits snap together hard modules. 
+// the snaps have magnets so that inputs snap to outputs, but input repel inputs 
+// and outputs repel outputs. Each snap provides power and a single analog data wire.
+// Ths softbits execution model links bits into chains and each chain has a single value
+// that can be modified by each bit in the chain. Bits with two inputs get the second value from another 
+// chain, bits with two output write the second output to another chain start.
+//
+// the execution is done by byte codes with zero, one or two extra bytes. The chain data is nominally
+// 0 - 255 to mimic the Littlebits 0-5 volt range.
+//
 // https://developer.mozilla.org/en-US/docs/Web/API/OscillatorNode
 //
 // control are self draw objects that need more state than simple "bits".
