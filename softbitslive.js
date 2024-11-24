@@ -3404,6 +3404,14 @@ var tock = 0;
 var tock2 = 0;
 var tock3 = 0;
 
+function flash(a, b)
+{
+	if( tock2 < 50){
+		return a;
+	}
+	return b;
+}
+
 function doTimer()
 {	let rx = 0;
 	let ry = 0;
@@ -3424,7 +3432,6 @@ function doTimer()
 		t = tn;
 	}
 	timer_list.head = tafter;
-
 
 	softprogram.runProgram();
 

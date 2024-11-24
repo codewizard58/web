@@ -503,6 +503,10 @@ function oscBit(bit)
 		this.nfreq = rotaryvalue(vx, vy, this.ival);
 		this.setoscfreq(0);
 
+		if( miditargeting != null){
+			midiAddTarget(this, 0);
+		}
+
 		if( bitformaction != this){
 			return;
 		}
@@ -695,6 +699,10 @@ function speakerBit(bit)
 		this.mix = val / 255;
 		this.setValue(val, 0);
 
+		if( miditargeting != null){
+			midiAddTarget(this, 0);
+		}
+
 		if( bitformaction != this){
 			return;
 		}
@@ -848,11 +856,13 @@ this.Draw = function( )
 	this.setValue = function(val, chan)
 	{
 		if( chan == 2 || ( chan == 1 && this.mod == 0)){		// cutoff
-				this.vcffreq = (val+ this.values[0])/2;
-				this.setvcf();
+			this.values[0] = val;
+			this.vcffreq = this.values[0];
+			this.setvcf();
 		}else if( chan == 3 || ( chan == 1 && this.mod == 1)){
-				this.vcfq = (val + this.values[1]) / 16;
-				this.setvcf();
+			this.values[1] = val;
+			this.vcfq = val / 16;
+			this.setvcf();
 		}
 	}
 
@@ -895,13 +905,12 @@ this.Draw = function( )
 		f = document.getElementById("freq");
 		if( f != null){
 			val = checkRange(f.value);
-			this.values[0] = val;
+			this.setValue(val, 2);
 		}
 		f = document.getElementById("q");
 		if( f != null){
 			val = checkRange(f.value);
-			this.values[1] = val;
-			this.setValue(0, 1);
+			this.setValue(val, 3);
 		}
 		f = document.getElementById("mod");
 		if( f != null){
@@ -956,14 +965,18 @@ this.Draw = function( )
 		let vy = y - this.inity;
 		let mag = vx *vx + vy * vy;
 		let f = null;
+		let val;
 
 		if( this.selknob > 0){
-			this.values[this.selknob-1] = rotaryvalue(vx, vy, this.ival);
+			val = rotaryvalue(vx, vy, this.ival);
 			if( this.selknob == 1){
-				this.setValue(0, 2);
+				this.setValue(val, 2);
 			}else if( this.selknob == 2){
-				this.setValue(0, 3);
+				this.setValue(val, 3);
 			}
+		}
+		if( miditargeting != null){
+			midiAddTarget(this, this.selknob-1);
 		}
 
 		// update bitform
@@ -1191,6 +1204,7 @@ function delayBit(bit)
 		let vy = y - this.inity;
 		let mag = vx *vx + vy * vy;
 		let f = null;
+		let o = null;
 
 		if( this.selknob > 0){
 			this.values[this.selknob-1] = rotaryvalue(vx, vy, this.ival);
@@ -1203,6 +1217,9 @@ function delayBit(bit)
 
 		}
 
+		if( miditargeting != null){
+			o = midiAddTarget(this, this.selknob-1);
+		}
 		// update bitform
 		if( bitformaction != this){
 			return;
@@ -1518,6 +1535,9 @@ function seqBit(bit)
 
 		if( mag > 100 && this.selstep > 0){
 			this.values[this.selstep-1] = rotaryvalue(vx, vy, this.ival);
+		}
+		if( miditargeting != null){
+			midiAddTarget(this, this.selstep-1);
 		}
 
 	}

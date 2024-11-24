@@ -10,6 +10,7 @@ function rotaryBit(bit)
 	this.sx = 0;
 	this.sy = 0;
 	this.sval = 0;
+	this.name = "Rotary";
 
 	this.setBounds = function()
 	{	var b = this.bit;
@@ -117,6 +118,11 @@ function rotaryBit(bit)
 		b.value = Math.floor( (xval * 256) / xmax);
 //		display(b);
 		displaying = null;
+
+		if( miditargeting != null){
+			o = midiAddTarget(this, this.selknob-1);
+		}
+
 	}
 
 	this.startMove = function()

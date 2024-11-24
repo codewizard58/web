@@ -139,6 +139,7 @@ function control(bit)
 	this.background = "#ffffff";
 	this.color = "#000000";
 	this.font = "10px Georgia";
+	this.name = "Control";
 
 	// control
 	this.setBounds = function()

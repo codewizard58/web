@@ -15,6 +15,7 @@ function sliderBit(bit)
 	this.sx = 0;
 	this.sy = 0;
 	this.sval = 0;
+	this.name = "Slider";
 
 	this.setBounds = function()
 	{	let b = this.bit;
@@ -123,6 +124,10 @@ function sliderBit(bit)
 		}
 		b.value = Math.floor( (xval * 256) / xmax);
 		displaying = null;
+
+		if( miditargeting != null){
+			o = midiAddTarget(this, 0);
+		}
 	}
 
 	this.startMove = function()

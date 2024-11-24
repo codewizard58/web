@@ -7,11 +7,9 @@ var midiAccess = null;
 var useMIDIin = null;
 var useMIDIout = null;
 var chosenOutput = 0;
-var midiintarget = null;
 var midiavail = false;
 var midiinit = true;
-var midilearning = false;
-var midilearndir = 1;		// input channels
+var miditargeting = null;
 var midiclockmode = 0;		// all
 
 MIDIoutdev_list = new objlist();
@@ -29,8 +27,8 @@ function showMIDIinterfaces(inout, cur)
 	if( inout == 1){	// inputs
 		l = MIDIindev_list.head;
 
-		msg += "<select id='midiinsel' >\n";
-		msg += "<option value='0' "+isSelected(0, cur)+">Keyboard</option>\n";
+		msg += "<select id='midiinsel' onchange='UImidiIndev();' >\n";
+		msg += "<option value='0' "+isSelected(0, cur)+">Local</option>\n";
 
 		while(l != null){
 			l.ob.count = cnt;
@@ -47,7 +45,7 @@ function showMIDIinterfaces(inout, cur)
 
 		msg += "<select id='midioutsel' >\n";
 		//  msg += "<option value='0'>Web Audio</option>\n";
-		msg += "<option value='0' "+isSelected(0, cur)+">Don't use Midi</option>\n";
+		msg += "<option value='0' "+isSelected(0, cur)+">Local</option>\n";
 
 		cnt = 1;
 		l = MIDIoutdev_list.head;
@@ -65,8 +63,28 @@ function showMIDIinterfaces(inout, cur)
 
 }
 
+// called when the interface in a group is changed.
+function UImidiIndev()
+{	let f = null;
+	let g = null;
+
+	if( bitform == null || bitformaction == null){
+		return;
+	}
+	g = bitformaction.groupobj;
+	f = document.getElementById("midiinsel");
+	if( f != null){
+		val = f.value;
+		g.midi = val;
+		selMIDIindev(val);
+	}
+	bitformaction.setData();		// refresh form.
+}
+
 function showMidiInOut(t)
-{
+{	let f = null;
+	let md = null;
+
 	let msg = "";
 	msg += "<select id='grouptype' onchange='UImidiInOut();' >\n";
 	msg += "<option value='1' "+isSelected(1, t)+" >Input</option>\n";
@@ -88,43 +106,111 @@ function UImidiInOut()
 
 
 // learn mode
-function UIlearn(mode, dir)
+// called from the midigroup bitform.
+// bitformaction will be a midigroup control.
+function UIlearn(grpname)
 {	let f = null;
+	let g = null;
+	let md = null;
 	if( bitformaction == null){
 		return;
 	}
 	f = document.getElementById("learn");
 	if( f != null){
-		if( midilearning){
-			f.style="background-color: green;";
-			midilearning = false;
-		}else {
-			f.style="background-color: red;";
-			midilearning = true;
-			midilearndir = dir;		// i = in, 0 = out
+		g = bitformaction.groupobj;
+		md = MIDIindev[g.midi];
+		if( md != null){
+			md.learn = f.value;
+			miditargeting = null;
+			if( f.value > 0){		// targeting
+				miditargeting = md;
+			}
 		}
 	}
+	bitformaction.setData();		// refresh
+}
+
+// midi target list handling.
+// used to allow learn functionality.
+// used to id entries in the list.
+var midiTargetcount = 0;
+
+// miditarget_list
+function midiTarget( bit, knob, chan)
+{	this.bit = bit;
+	this.knob = knob;
+	this.val = 0;
+	this.id = midiTargetcount;
+	this.channel = chan;
+
+	midiTargetcount++;
 
 }
 
-function learn(obj, op, chan, arg2, arg3)
-{	let f = null;
-	const grp = obj.groupobj;
-	if( bitformaction == null){
-		return false;
-	}
 
-	f = document.getElementById("usercontrol");
-	if( f != null){
-		f.value = arg2;
+// returns the list object
+// target can be any control.
+function midiAddTarget(bit, knob)
+{	let chan = 0;
+	let grp = null;
+
+	if( miditargeting == null){
+		return null;
 	}
-	f = document.getElementById("learn");
-	if( f != null){
-		f.style="background-color: green;";
-		midilearning = false;
-		return true;		// processed it.
+	chan = miditargeting.learnchan;
+	let ob = miditargeting.learnlist.head;
+	while(ob != null){
+		if( ob.ob.bit == bit && ob.ob.knob == knob){
+			return ob;	// already in list
+		}
+		ob = ob.next;
 	}
-	return false;
+	ob = miditargeting.learnlist.addobj(new midiTarget(bit, knob, chan), null);
+	return ob;
+}
+
+function midiClearTargets()
+{
+	if( miditargeting == null){
+		return null;
+	}
+	let ob = miditargeting.learnlist.head;
+	while(ob != null){
+		miditargeting.learnlist.removeobj(ob);
+		ob = miditargeting.learnlist.head;	
+	}
+	midiTargetcount = 0;
+
+}
+
+
+// used to handle del and clear functions on the targetlist.
+function UImidiTarget(op, id)
+{
+	if( miditargeting == null){
+		return null;
+	}
+	let ob = miditargeting.learnlist.head;
+	while(ob != null){
+		if( ob.ob.id == id){
+			if( op == 0){
+				// del
+				miditargeting.learnlist.removeobj(ob);
+				break;
+			}else if(op == 1){
+				// clear
+				ob.ob.val = 0;
+				debugmsg("Clear "+ob.ob.bit.name+":"+ob.ob.knob);
+				break;
+			}
+		}
+		ob = ob.next;
+	}
+	if(bitformaction == null){
+		return;
+	}
+	bitformaction.setData();		// refresh
+
 }
 
 function showMute(muted){
@@ -144,7 +230,6 @@ function showMute(muted){
 function UImute()
 {
 	let f = null;
-	const grp = obj.groupobj;
 
 	if( bitformaction == null){
 		debugmsg("Mute not bit");
@@ -359,6 +444,9 @@ function midi_process()
 	}
 }
 
+// midi interface object wrapper. 
+// midi is index into list of devices.
+
 function MIDIobj(m)
 {	this.midi = m;
 	this.count = 0;
@@ -367,6 +455,9 @@ function MIDIobj(m)
 	this.clkstart = Date.now();
 	this.running = 0;
 	this.tempo = 0;
+	this.learn = 0;
+	this.learnlist = new objlist(); 	// of miditarget
+	this.learnchan = 0;					// what channel when learning?
 
 	this.slowTimer = function()
 	{	
@@ -402,7 +493,7 @@ function onMIDIInit(midi){
 		MIDIoutdev_list.addobj(new MIDIobj(odev), null);
 	}
 
-	activedomains |= 4;
+	activedomains |= 4;		// mark that midi objects can be used.
 
 }
 
@@ -410,6 +501,7 @@ function onMIDIReject(err){
 	alert("Failed to init MIDI");
 }
 
+// used as a sink when midi interfaces are not used.
 function noMIDIMessageEventHandler( e){
 }
 
@@ -421,6 +513,7 @@ function ashex(x)
 
 // interface event handlers
 function MIDIMessageEventHandler0( e){
+	// local handler
 	MIDIMessageEventHandler( e, 0);
 }
 
@@ -436,6 +529,30 @@ function MIDIMessageEventHandler3( e){
 	MIDIMessageEventHandler( e, 3);
 }
 
+function MIDIMessageEventHandler4( e){
+	MIDIMessageEventHandler( e, 4);
+}
+
+function MIDIMessageEventHandler5( e){
+	MIDIMessageEventHandler( e, 5);
+}
+
+function MIDIMessageEventHandler6( e){
+	MIDIMessageEventHandler( e, 6);
+}
+
+function MIDIMessageEventHandler7( e){
+	MIDIMessageEventHandler( e, 7);
+}
+
+function MIDIMessageEventHandler8( e){
+	MIDIMessageEventHandler( e, 8);
+}
+
+function MIDIMessageEventHandler9( e){
+	MIDIMessageEventHandler( e, 9);
+}
+
 
 
 function MIDIMessageEventHandler( e, dev){
@@ -443,6 +560,7 @@ function MIDIMessageEventHandler( e, dev){
 	let msg;
 	let msg3=[0, 0, 0];
 	let msg2= [0, 0];
+	xdebugmsg = "";
 
 	if( e.data.length > 2){
 		xdebugmsg = "Min("+dev+")"+ashex(e.data[0])+" "+ashex(e.data[1])+" "+ashex(e.data[2]);
@@ -451,8 +569,6 @@ function MIDIMessageEventHandler( e, dev){
 	}else {
 		xdebugmsg = "Min("+dev+")"+ashex(e.data[0]);
 	}
-
-//	debugmsg( xdebugmsg);
 
 	switch( code){
 	case 0x90:
@@ -487,8 +603,6 @@ function MIDIMessageEventHandler( e, dev){
 		msg3[1] = e.data[1];
 		msg3[2] = e.data[2];
 
-		msg = "CC-"+e.data[1];
-
 		if( e.data[1] == 106 ){
 			prognum = (prognum - 1) & 0x7f;
 			msg2[0] = 0xc0 | (e.data[0] & 0xf);
@@ -506,7 +620,7 @@ function MIDIMessageEventHandler( e, dev){
 			}
 			return;
 		}
-// xdebugmsg = "MidiIN "+msg+"["+(e.data[0]&0x0f)+"] "+e.data[1]+" "+e.data[2];
+
 		midiinsetvalues(2, e.data[0]&0xf, msg3[1], msg3[2], dev);
 
 		return;
@@ -519,15 +633,15 @@ function MIDIMessageEventHandler( e, dev){
 		}
 
 	}
-	 // xdebugmsg = "MidiIN "+(e.data[0] & 0xf0)+"["+(e.data[0]&0x0f)+"] "+e.data[1]+" "+e.data[2];
 	debugmsg( xdebugmsg);
 }
 
+
+// process the midi events for note on/off and control change.
 function midiinsetvalues( op, chan, arg, arg2, dev)
 {	let n = op;
 	let f;
-
-	chan++;		// midi channels are 1 origin.
+	let md = MIDIindev[dev];
 
 	if(op ==2){
 		f = midicc_list.head;
@@ -541,36 +655,40 @@ function midiinsetvalues( op, chan, arg, arg2, dev)
 		}
 		f = f.next;
 	}
-	
-	if( midilearning){
-		if( midilearndir == 1){
-			if(op ==2){
-				f = midicc_list.head;
-			}else {
-				f = midicv_list.head;
+//	debugmsg("MIDI LEARN "+op+" "+chan+" "+arg+" "+arg2);
+
+	if( md != null && op == 2){		// CC learnmodes.
+		let obj;
+		let o = md.learnlist.head;
+
+		// run through the filter list
+		if( md.learn == 2){		// armed?
+			while(o != null){
+				obj = o.ob;
+				if( obj.val == 0 && (obj.channel == 0 || obj.channel == chan)){
+					debugmsg("target "+obj.bit.name+" "+obj.knob+" "+arg);
+					obj.val = arg;
+				}
+				o = o.next;
 			}
-		}else {
-			if(op ==2){
-				f = midiccout_list.head;
-			}else {
-				f = midicvout_list.head;
+		}
+		
+		o = md.learnlist.head;
+
+		// run through the filter list
+		while(o != null){
+			obj = o.ob;
+			if( obj.val == arg && (obj.channel == 0 || obj.channel == chan)){
+				debugmsg("map cc "+obj.bit.name+" "+obj.knob+" "+arg+" "+arg2);
+				obj.bit.setValue(arg2, obj.knob+2);
 			}
+			o = o.next;
 		}
-		if( f == null){
-			debugmsg("NO FILTERS dir="+midilearndir);
-			midilearning = false;
-		}
-	// run through the filter list
-		while(f != null){
-			f.ob.filter(op, chan, arg, arg2, dev);
-			f = f.next;
-		}
-		debugmsg("MIDI LEARN "+op+" "+chan+" "+arg+" "+arg2);
 		return;
 	}
 	
-	if( f == null){
-		debugmsg("MIDI IN ignored "+op+" "+chan+" "+arg+" "+arg2);
+	if( f == null ){
+		debugmsg("MIDI IN ignored op="+op+" chan="+chan+" "+arg+" "+arg2);
 	}
 }
 
