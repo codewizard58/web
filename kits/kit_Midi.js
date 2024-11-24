@@ -16,6 +16,7 @@ MIDIoutdev_list = new objlist();
 MIDIindev_list = new objlist();
 MIDIindev = [ null, null, null, null, null];
 
+// output interface selector
 function showMIDIinterfaces(inout, cur)
 {
 	let msg="";
@@ -32,7 +33,9 @@ function showMIDIinterfaces(inout, cur)
 
 		while(l != null){
 			l.ob.count = cnt;
-			msg += "<option value='"+cnt+"' "+isSelected(cnt, cur)+">"+l.ob.midi.value.name+"</option>";
+			if(l.ob.connected){
+				msg += "<option value='"+cnt+"' "+isSelected(cnt, cur)+">"+l.ob.midi.value.name+"</option>";
+			}
 			cnt++;
 			l = l.next;
 		}
@@ -51,7 +54,9 @@ function showMIDIinterfaces(inout, cur)
 		l = MIDIoutdev_list.head;
 		while(l != null){
 			l.ob.count = cnt;
-			msg += "<option value='"+cnt+"' "+isSelected(cnt, cur)+" >"+l.ob.midi.value.name+"</option>";
+			if(l.ob.connected){
+				msg += "<option value='"+cnt+"' "+isSelected(cnt, cur)+" >"+l.ob.midi.value.name+"</option>";
+			}
 			cnt++;
 			l = l.next;
 		}
@@ -462,8 +467,8 @@ function midi_process()
 
 function MIDIobj(m)
 {	this.midi = m;
-	this.count = 0;
-	this.portid = m.id;
+	this.count = 0;;
+	this.portid;
 	this.clock = 0;
 	this.clkstart = Date.now();
 	this.running = 0;
@@ -471,6 +476,11 @@ function MIDIobj(m)
 	this.learn = 0;
 	this.learnlist = new objlist(); 	// of miditarget
 	this.learnchan = 0;					// what channel when learning?
+	this.connected = true;
+
+	if( m != null){
+		this.portid = m.id;
+	}
 
 	this.slowTimer = function()
 	{	
@@ -486,6 +496,40 @@ function MIDIobj(m)
 
 	}
 
+}
+
+function MIDIstateChange(event)
+{   let port = event.port;
+	let name = port.name;
+	let type = port.type;
+	let state= port.state;
+	let dir = 0;
+	let l;
+	let o;
+	let connected = false;
+
+	if( state == "connected"){
+		connected = true;
+	}
+
+//	debugmsg("MIDI "+type+" "+name+" "+state);
+
+	if(type == "input"){
+		dir = 1;
+		l = MIDIindev_list.head;
+	}else {
+		l = MIDIoutdev_list.head;
+	}
+	while(l != null){
+		o = l.ob;
+		if( o.midi.value.name == name){
+//			debugmsg("STATE found "+name);
+			o.connected = connected;
+			break;
+		}
+
+		l = l.next;
+	}
 }
 
 function onMIDIInit(midi){
@@ -505,6 +549,7 @@ function onMIDIInit(midi){
 	for( odev = outputs.next(); odev && !odev.done; odev = outputs.next() ){
 		MIDIoutdev_list.addobj(new MIDIobj(odev), null);
 	}
+	midiAccess.onstatechange = MIDIstateChange;
 
 	activedomains |= 4;		// mark that midi objects can be used.
 

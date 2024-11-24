@@ -11,6 +11,17 @@ function notes()
 	this.stream = null;
 }
 
+function MIDInoOutput()
+{	this.sending = 0;
+
+	this.send = function(msg)
+	{
+
+	}
+}
+
+var noOutput = null;
+
 
 // local Midi output handler.
 var localOut = null;
@@ -121,14 +132,19 @@ function selMIDIindev(dev)
 	}
 
 	useMIDIin = null;
+	if( dev == 0){
+		if( MIDIindev[dev] == null){
+			debugmsg("Local Midi In");
+			MIDIindev[dev] = new MIDIobj(null);
+		}
+//		useMIDIin.midi.value.onmidimessage = MIDIMessageEventHandler0;
+		return;
+	}
+
 	while(l != null){
 		if( l.ob.count == dev){
 			useMIDIin = l.ob;
-			if( dev == 0){
-				debugmsg("Local Midi In");
-				MIDIindev[dev] = useMIDIin;
-				useMIDIin.midi.value.onmidimessage = MIDIMessageEventHandler0;
-			}else if( dev == 1){
+			if( dev == 1){
 				MIDIindev[dev] = useMIDIin;
 				useMIDIin.midi.value.onmidimessage = MIDIMessageEventHandler1;
 			}else if( dev == 2){
@@ -590,7 +606,7 @@ function midiCVOutBit(bit)
 			return;
 		}
 
-		debugmsg("SETVAL CV chanx="+chanx);
+//		debugmsg("SETVAL CV chanx="+chanx);
 		if( data < 16){
 			note = 0;		// muted
 		}
@@ -600,8 +616,15 @@ function midiCVOutBit(bit)
 		}
 
 		if( grp.midi != 0){
-			mid = grp.outdev.midi.value.id;
-			output = midiAccess.outputs.get(mid);
+			if( grp.outdev.connected){
+				mid = grp.outdev.midi.value.id;
+				output = midiAccess.outputs.get(mid);
+			}else {
+				if( noOutput == null){
+					noOutput = new MIDInoOutput();
+				}
+				output = noOutput;
+			}
 		}else {
 			output = grp.outdev;		// local
 		}
@@ -783,10 +806,18 @@ function midiCCOutBit(bit)
 		}
 
 		if( grp.midi != 0){
-			mid = grp.outdev.midi.value.id;
-			output = midiAccess.outputs.get(mid);
+			if( grp.outdev.connected){
+				mid = grp.outdev.midi.value.id;
+				output = midiAccess.outputs.get(mid);
+			}else {
+				if( noOutput == null){
+					noOutput = new MIDInoOutput();
+				}
+				debugmsg("CC out no output");
+				output = noOutput;
+			}
 		}else {
-			output = grp.outdev;
+			output = grp.outdev;		// local
 		}
 
 		note += (this.offset - 128) / 16;

@@ -1382,23 +1382,31 @@ function seqBit(bit)
 	this.setValue = function(data, chan)
 	{	let t = 1;
 
-		if( data == 0){
-			this.bit.value = this.values[this.getstep()];
+		if( chan == 0){
+			if( data == 0){
+				this.bit.value = this.values[this.getstep()];
+				return;
+			}
+			if( data == 255){
+				this.motion.step();
+				this.step = this.motion.counter;
+				if( this.motion.getgated()){
+					this.bit.value = this.values[this.getstep()];
+				}else {
+					this.bit.value = 0;
+				}
+			}else {
+				this.step = data;
+				this.bit.value = this.values[this.getstep()];
+			}
 			return;
 		}
-		if( data == 255){
-			this.motion.step();
-			this.step = this.motion.counter;
-			if( this.motion.getgated()){
-				this.bit.value = this.values[this.getstep()];
-			}else {
-				this.bit.value = 0;
+		if( chan > 1){
+			this.values[chan-2] = checkRange(data+data);
+			if( bitformaction == this){
+				this.setData();
 			}
-		}else {
-			this.step = data;
-			this.bit.value = this.values[this.getstep()];
 		}
-		// which sequencer ?
 	}
 
 	this.getstep = function()
