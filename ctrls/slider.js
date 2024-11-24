@@ -66,6 +66,17 @@ function sliderBit(bit)
 		}
 	}
 
+	this.setValue = function(data, func)
+	{	let b = this.bit;
+
+		if( func == 2){
+			b.value = checkRange(data+data);
+		}
+		return;
+
+	}
+
+
 	this.HitTest = function(x, y)
 	{	var res = null;
 		var i;

@@ -130,6 +130,19 @@ function UIlearn(grpname)
 	bitformaction.setData();		// refresh
 }
 
+// add to the interface target list
+function UIlearnCC()
+{
+	if( bitformaction == null){
+		return;
+	}
+	if( miditargeting != null){
+		// use knob value of -1 to mark special case.
+		midiAddTarget(bitformaction, -1);
+	}
+
+}
+
 // midi target list handling.
 // used to allow learn functionality.
 // used to id entries in the list.
@@ -660,6 +673,7 @@ function midiinsetvalues( op, chan, arg, arg2, dev)
 	if( md != null && op == 2){		// CC learnmodes.
 		let obj;
 		let o = md.learnlist.head;
+		let on;
 
 		// run through the filter list
 		if( md.learn == 2){		// armed?
@@ -678,11 +692,18 @@ function midiinsetvalues( op, chan, arg, arg2, dev)
 		// run through the filter list
 		while(o != null){
 			obj = o.ob;
+			on = o.next;
 			if( obj.val == arg && (obj.channel == 0 || obj.channel == chan)){
-				debugmsg("map cc "+obj.bit.name+" "+obj.knob+" "+arg+" "+arg2);
-				obj.bit.setValue(arg2, obj.knob+2);
+//				debugmsg("map cc "+obj.bit.name+" "+obj.knob+" "+arg+" "+arg2);
+				if( obj.knob < 0){
+					// special knob for CC learning
+					obj.bit.setValue(arg, 2);
+					md.learnlist.removeobj(o);
+				}else {
+					obj.bit.setValue(arg2, obj.knob+2);
+				}
 			}
-			o = o.next;
+			o = on;
 		}
 		return;
 	}

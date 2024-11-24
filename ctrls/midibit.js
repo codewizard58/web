@@ -397,6 +397,7 @@ function midiCCBit(bit)
 	this.cc = 0;
 	this.data = 0;
 	this.groupobj = findGroupDefault(1);
+	this.name = "MidiCC";
 
 
     // Midi control code bit self draw
@@ -417,6 +418,20 @@ function midiCCBit(bit)
 	}
 
 	// midicc
+	this.setValue = function(data, func)
+	{
+		if( func == 2){
+			// func 2 is CC learn mode.
+			debugmsg("CC IN learn "+data+" old"+this.cc);
+			this.cc = data;
+			// remove from target list..
+		}
+		return;
+
+	}
+
+
+	// midicc
     this.setData = function()
 	{	let msg="";
 		const grp = this.groupobj;
@@ -432,6 +447,9 @@ function midiCCBit(bit)
 			msg += "<tr><th>Configure</th><td>Action/midi_group_in</td></tr>\n";
 			msg += "<tr><th>Channel</th><td><input type='text' value='"+grp.channel+"' /></td></tr>\n";
 			msg += "<tr><th>Control Code</th><td>"+showMidiControlCodes(this.cc);
+			if( miditargeting != null){
+				msg += "<input type='button' value='learn' onclick='UIlearnCC();' />\n";
+			}
 			msg += "</td></tr>";
 			msg += "</table>\n";
 
@@ -675,23 +693,6 @@ function midiCVOutBit(bit)
 		}
 	}
 
-	// midi cv out used by learn.
-	this.filter = function(op, chan, arg2, arg3, dev)
-	{	const b = this.bit;
-		const channel = this.groupobj.channel;
-
-		chan++;		// 1 based
-
-		if( op == 2){
-			// if not OMNI and not this channel
-			if( channel != 0 && channel != chan){
-				debugmsg("FILT CV OUT "+channel+" chan="+chan);
-				return false;
-			}
-		}
-		return true;
-	}
-	
 	// finish init.
 	midicvout_list.adduniq( this, null);
 
@@ -713,6 +714,7 @@ function midiCCOutBit(bit)
     let imagename = "midicc";		
 	this.bitimg =this.bit.findImage(imagename);
 	this.bitname = "midiccout";
+	this.name = "MidiCCout";
 
     // Midi note out bit self draw
 	this.Draw = function( )
@@ -745,6 +747,7 @@ function midiCCOutBit(bit)
 		let output = null;
 		const grp = this.groupobj;
 		let chanx = grp.channel-1;		// 0 based
+		let old;
 
 		if( func == 1){
 			if(this.mod == 0){			// see this.modnames
@@ -760,6 +763,18 @@ function midiCCOutBit(bit)
 		}
 
 		if( func != 0){		// use input snap 0 only
+			if( func == 2){
+				// func 2 is CC learn mode.
+				old = this.cc;
+				debugmsg("CC learn "+data+" old"+old);
+				this.cc = data;
+				if( old != data){
+					if( bitformaction == this){
+						this.setData();		// refresh
+					}
+				}
+				// remove from target list..
+			}
 			return;
 		}
 
@@ -819,6 +834,9 @@ function midiCCOutBit(bit)
 			msg += "<tr><th>Configure</th><td>Action/midi_group_out</td></tr>\n";
 			msg += "<tr><th>Channel</th><td><input type='text' value='"+grp.channel+"' /></td></tr>\n";
 			msg += "<tr><th>Control Code</th><td>"+showMidiControlCodes(this.cc);
+			if( miditargeting != null){
+				msg += "<input type='button' value='learn' onclick='UIlearnCC();' />\n";
+			}
 			msg += "</td></tr>";
 			msg += "<tr><th align='right'>Modulation</th><td >"+showModulation(this.mod, this.modnames)+"</td></tr>\n";
 			msg += "<tr><th>Offset</th><td><input type='text' id='offset' value='"+this.offset+"' /></td></tr>\n";
@@ -867,22 +885,6 @@ function midiCCOutBit(bit)
 			this.offset = f.value;		// modulation routing
 		}
 
-	}
-
-	this.filter = function(op, chan, arg2, arg3, dev)
-	{	const b = this.bit;
-		const channel = this.groupobj.channel;
-
-		chan++; 		// make 1 based
-
-		if( op == 2){
-			// if not OMNI and not this channel
-			if( channel != 0 && channel != chan){
-				debugmsg("FILT CC OUT"+channel+" chan="+chan);
-				return false;
-			}
-		}
-		return false;
 	}
 
 	// finish init.
