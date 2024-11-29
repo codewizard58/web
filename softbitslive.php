@@ -1,5 +1,6 @@
 ﻿<?php
   // 11/16/24
+  // 11/24/24
   $port = "";
   $nonet = 0;
   $loaddata="";
@@ -99,7 +100,8 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" >
 <head>
-  <title>Softbits Live 2024.11</title>
+  <title>Softbits Live 2024.1124</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 </head>
   
 <body onload="sketchinit();">
@@ -210,7 +212,7 @@
         <tr>
           <td valign="top">
             <div id="canvasbox">
-              <canvas width ="800" height="600" tabindex="1" id="canvas">
+              <canvas width ="1024" height="768" tabindex="1" id="canvas">
               </canvas>
             </div>
           </td>
@@ -225,7 +227,7 @@
             </div>
             <table>
               <tr>
-                <td colspan="2">
+                <td colspan="3">
                   <div id="bitprops">
                     <form id="bitform">
                     </form>
@@ -233,7 +235,7 @@
                 </td>
               </tr>
               <tr>
-                <td colspan="3" id="showbittype" >Basic/Power</td>
+                <td colspan="4" id="showbittype" >Basic/Power</td>
               </tr>
               <tr>
                 <td valign="top" rowspan="2">

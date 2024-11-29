@@ -26,8 +26,17 @@ const MIDICC=5;
 const MIDICVOUT=6;
 const MIDICCOUT=7;
 const MIDICLOCK=8;
+const PATCHIN=9;
+const PATCHOUT=10;
+const WIRESPLIT=12;
 const AINVERT = 13;
 const DIMMER = 14;
+const LOGICAND=16;
+const LOGICNOT=15;
+const LOGICOR=17;
+const ARITHSET=18;
+const LOGICNAND = 19;
+const LOGICNOR = 20;
 const ENDPROG=255;
 const WIRE = 109;
 const CORNER = 110;
@@ -233,8 +242,8 @@ function bitRemove()
 
 	rem = selected.getDrag();		// drag is always the bit.
 	if( rem != null && rem.ctrl != null){
-		rem.ctrl.getData();
-		rem.ctrl.onRemove();
+		rem.ctrl.getData();			// clears the form
+		rem.ctrl.onRemove();		// cleans up
 	}
 
 	if( sketch.delBit( rem ) != 0){
@@ -1240,7 +1249,7 @@ function Program()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 		// these codes do not run if curchain == 0.
 		// two byte codes. 
-				}else if(code == 12){	// wire_split
+				}else if(code == WIRESPLIT){	// wire_split
 					arg2 = prog[bp];
 					bp++;
 					if( curchain != 0){
@@ -1259,7 +1268,7 @@ function Program()
 							}
 						}
 					}
-				}else if(code == 16){	// and
+				}else if(code == LOGICAND){	// and
 					arg2 = prog[bp];
 					bp++;
 					if(arg2 == 0){
@@ -1275,7 +1284,7 @@ function Program()
 						osnap.indcolor = "#00ff00";
 						osnap.indval = this.chains[ curchain].data;
 					}
-				}else if(code == 19){	// nand
+				}else if(code == LOGICNAND){	// nand
 					arg2 = prog[bp];
 					bp++;
 					if(arg2 == 0){
@@ -1291,7 +1300,7 @@ function Program()
 						osnap.indcolor = "#00ff00";
 						osnap.indval = this.chains[ curchain].data;
 					}
-				}else if(code == 17){	// or
+				}else if(code == LOGICOR){	// or
 					arg2 = prog[bp];
 					bp++;
 					if(arg2 == 0){
@@ -1307,7 +1316,7 @@ function Program()
 						osnap.indcolor = "#00ff00";
 						osnap.indval = this.chains[ curchain].data;
 					}
-				}else if(code == 20){	// Nor
+				}else if(code == LOGICNOR){	// Nor
 					arg2 = prog[bp];
 					bp++;
 					if(arg2 == 0){
@@ -2791,6 +2800,9 @@ function Sketch() {
 		let ahit = null;
 		let tmp;
 		let i;
+		if( hidetouch){
+			UIhidetouch();		// free up screen space
+		}
 
 		if( selected != null){
 			ahit = selected.getDrag();

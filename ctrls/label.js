@@ -261,3 +261,21 @@ function mapBit(bit)
 
 }
 
+
+patchinBit.prototype = Object.create(control.prototype);
+
+function patchinBit(bit)
+{	control.call(this, bit);
+	this.bit = bit;
+
+}
+
+
+patchoutBit.prototype = Object.create(control.prototype);
+
+function patchoutBit(bit)
+{	control.call(this, bit);
+	this.bit = bit;
+
+}
+

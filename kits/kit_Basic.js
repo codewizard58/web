@@ -31,9 +31,9 @@ function kit_basic()
 		"split",   "wire_split", 100, 50,	"wirein",  "wireout" ,null,  "wireout",	// 2	
 				0,	0, "Wire Split",	"Split one output into two",	0x3033, "Wire", 0, 1,		// 2	"split",   "wire_split"
 		"patchout",   "patch_out", 50, 50,	null,  "wireout" ,null,  null,	// 2	
-				0,	0, "Patch Out",	"Patch out",	0x0010, "Wire", 0, 1,		// 2	patch cable
+				0,	1, "Patch Out",	"Patch out",	0x0010, "Wire", 0, 1,		// 2	patch cable
 		"patchin",   "patch_in", 50, 50,	"wirein",  null ,null,  null,	// 2	
-				0,	0, "Patch In",	"Patch in",		0x0001, "Wire", 0, 1,		// 2	patch cable
+				0,	1, "Patch In",	"Patch in",		0x0001, "Wire", 0, 1,		// 2	patch cable
 		"invert", "a_invert", 50, 50,		"actionin", "actionout" , null,  null,	// 3
 				0,	0, "Analog Invert",	"Turn value upside down",		 0x0011, "Action", 0, 1,		// 3
 		"control", "a_dimmer", 100, 50,		"actionin", "actionout" , null,  null,	// 4
@@ -100,6 +100,9 @@ function kit_basic()
 		"control", "seq16", 200, 200,	"inputin", "inputout" ,null,  null,		// 0
 		0,	1, "Seq16",	"16 step sequencer",	 0x0011, "Input", 0, 1,	// 0
 
+		"control", "piano", 200, 100,	"inputin", "inputout" ,null,  null,		// 0
+		0,	1, "Piano",	"Two octave piano",	 0x0011, "Input", 0, 1,	// 0
+
 		null, null, null, null,				null, null, null, null
 	];
 
@@ -119,6 +122,9 @@ function kit_basic()
 	"seq", 3, 17,		// sequencer
 	"seq8", 3, 18,		// sequencer 8 step
 	"seq16", 3, 19,		// sequencer 16 step
+	"piano", 3, 20,		// sequencer 16 step
+	"patchin", 3, 21,
+	"patchout", 3, 22,
 null, 0, 0, 0, 0	// end of table
 ];
 
@@ -244,6 +250,27 @@ this.kitctrlcodes = [
 					bit.ctrl = ct;
 					ct.setData();
 					return ct;
+				}else if( this.ctrltab[i+2] == 20){
+					// piano
+					ct = new pianoBit( bit);
+					ct.values = [];
+					bit.ctrl = ct;
+					ct.setData();
+					return ct;
+				}else if( this.ctrltab[i+2] == 21){
+					// patch cable
+					ct = new patchinBit( bit);
+					ct.values = [];
+					bit.ctrl = ct;
+//					ct.setData();
+					return ct;
+				}else if( this.ctrltab[i+2] == 21){
+					// patch cable
+					ct = new patchoutBit( bit);
+					ct.values = [];
+					bit.ctrl = ct;
+//					ct.setData();
+					return ct;
 				}else {
 					message("Unknown control "+this.ctrltab[i+2]);
 				}
@@ -280,32 +307,26 @@ this.kitctrlcodes = [
 		"poweron",		0xd,
 		"poweroff",		0xd,
 		"default",		0xd,
-		"defaulta",		1,
-		"defaulta-v",	1,
-		"corner",		1,
-		"corner-v",		1,
-		"straight",		1,
-		"straight-v",	1,
-		"control",		1,
-		"control-v",	1,
+		"defaulta",		0xd,
+		"corner",		0xd,
+		"straight",		0xd,
+		"control",		0xd,
 		"wiresend",		1,
 		"wiresend-v",	1,
 		"wirerecv",		1,
 		"wirerecv-v",	1,
 		"short",		1,
 		"short-v",		1,
-		"and",			1,
-		"and-v",		1,
+		"and",			0xd,
 
 		"knob", 		2,
 		"knob-v", 		2,
 		"invert", 		1,
 		"invert-v",		1,
-		"patchin", 		1,
-		"patchin-v",	1,
-		"patchout",		1,
-		"patchout-v",	1,
+		"patchin", 		0xd,
+		"patchout",		0xd,
 		"imagetile",	1,
+		"piano",		1,
 		null, null
 	];
 

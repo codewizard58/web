@@ -25,8 +25,11 @@ var pianomap = [
 	0, 0, 0, 0
 ];
 
+pianoBit.prototype = Object.create(control.prototype);
+
 function pianoBit(bit)
-{	this.bit = bit;
+{	control.call(this, bit);
+	this.bit = bit;
 	this.l = 0;
 	this.r = 0;
 	this.t = 0;
@@ -34,6 +37,10 @@ function pianoBit(bit)
 	this.sx = 0;
 	this.sy = 0;
 	this.sval = 0;
+    let imagename = "piano";
+	this.bitimg =this.bit.findImage(imagename);
+	this.bitname = imagename;
+	this.name = "Piano";
 
 	this.setBounds = function()
 	{	var b = this.bit;
@@ -90,7 +97,7 @@ function pianoBit(bit)
 			ctx.translate( 0, b.h);
 			ctx.rotate(- Math.PI/2);
 		}
-        ctx.drawImage(bitpics[ "piano" ], 0, 0);
+        ctx.drawImage(bitpics[ this.bitimg ], 0, 0);
 
 		if( b.value >= 48 && b.value <= 64){
 	        ctx.fillStyle = "#0000ff";
@@ -146,7 +153,7 @@ function pianoBit(bit)
 		var b = this.bit;
 
 		if( b.chain == 0){
-		message("Piano not powered");
+			message("Piano not powered");
 			return;
 		}
 

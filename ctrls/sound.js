@@ -338,7 +338,7 @@ function oscBit(bit)
 				}else {
 					this.gain = actx.createGain();
 				}
-				this.gain.gain.setValueAtTime( this.val/ 255, 0.01);
+				this.gain.gain.setTargetAtTime( this.val/ 255, 0, 0.01);
 				this.osc.connect( this.gain);
 				this.setoscwave(this.wave);
 		
@@ -395,7 +395,7 @@ function oscBit(bit)
 
 		if( this.prevmix.changed(mix)){
 			if( this.gain != null){
-				this.gain.gain.setValueAtTime( mix, 0.01);
+				this.gain.gain.setTargetAtTime( mix, 0, 0.01);
 			}
 		}
 
@@ -591,7 +591,7 @@ function speakerBit(bit)
 		}
 		if( this.prevmix.changed(mix)){
 			if(this.gain != null){
-				this.gain.gain.setValueAtTime( mix, 0.01);
+				this.gain.gain.setTargetAtTime( mix, 0, 0.1);
 			}
 		}
 	}
@@ -640,7 +640,7 @@ function speakerBit(bit)
 				}else {
 					this.gain = actx.createGain();
 				}
-				this.gain.gain.setValueAtTime( 0, 0.01);
+				this.gain.gain.setTargetAtTime( 0, 0, 0.01);
 				this.gain.connect( actx.destination); // debug
 			}
 			debugmsg("Setup speaker");
@@ -1110,8 +1110,8 @@ function delayBit(bit)
 			this.wet = data;
 			this.values[1] = data;
 			dry = 1.0 - wet;
-			this.wetNode.gain.setValueAtTime(wet, 0.05);
-			this.dryNode.gain.setValueAtTime(dry+0.2, 0.05);
+			this.wetNode.gain.setTargetAtTime(wet, 0, 0.05);
+			this.dryNode.gain.setTargetAtTime(dry+0.2, 0, 0.05);
 //			debugmsg("WET "+wet);
 		}
 	}

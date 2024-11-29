@@ -54,10 +54,6 @@
 'image','knob',410,135,27,55,
 'image','invert',437,135,50,50,
 'image','invert-v',487,135,50,50,
-'image','patchin',537,135,50,50,
-'image','patchin-v',587,135,50,50,
-'image','patchout',637,135,50,50,
-'image','patchout-v',0,195,50,50,
 'image','speaker',50,195,97,51,
 'image','osc',147,195,99,57,
 'image','filter',246,195,100,53,
@@ -89,10 +85,15 @@
 'image','wirerecv-v',358,332,50,100,
 'image','and-v',408,332,50,100,
 'image','filter-v',458,332,53,100,
-'image','delay-v',511,332,53,100
+'image','delay-v',511,332,53,100,
+'image','patchin-v',587,135,50,50,
+'image','patchout-v',0,195,50,50,
+// 'image','patchout',637,135,50,50,
+// 'image','patchin',537,135,50,50,
 //'image','seq8',0,432,200,100,
 //'image','midiin-v',200,432,52,100,
 //'image','seq-v',252,432,50,200,
 //'image','seq8-v',302,432,98,200,
 //'image','seq16',400,432,200,200,
 //'image','seq16-v',0,632,193,200
+'image','dummy', 0, 0, 0,0
