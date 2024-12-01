@@ -139,6 +139,8 @@ function sliderBit(bit)
 		if( miditargeting != null){
 			o = midiAddTarget(this, 0);
 		}
+		
+		execmode++;
 	}
 
 	this.startMove = function()

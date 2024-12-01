@@ -510,7 +510,7 @@ function MIDIslowTimer()
 		}
 
 	}
-
+	return false;	// call again.
 }
 
 slowTimer_list.addobj(new MIDIslowTimer());
@@ -772,6 +772,7 @@ function MIDIMessageEventHandler( e, dev){
 		// 
 		if( e.data[0] == 0xf8 || e.data[0] == 0xfa || e.data[0] == 0xfb || e.data[0] == 0xfc ){
 			doMidiClock(e.data[0], dev);
+			softprogram.runProgram();
 			return;
 		}
 
@@ -810,6 +811,8 @@ function midiinsetvalues( op, chan, arg, arg2, dev)
 		f.ob.filter(op, chan, arg, arg2, dev);
 		f = f.next;
 	}
+
+	softprogram.runProgram();
 }
 
 
@@ -1175,7 +1178,7 @@ function noteGroup(idx)
 			return false;
 		}
 
-		debugmsg("NGFilt "+this.name+" "+op+" "+chan+" "+arg);
+		// debugmsg("NGFilt "+this.name+" "+op+" "+chan+" "+arg);
 		// notemode 0: round robin
 		// notemode 1: unison, send note to all listeners.
 
@@ -1203,7 +1206,7 @@ function noteGroup(idx)
 			}else if( this.notemode == 1){
 				// unison
 				for(n=0; n < this.notes.length; n++){
-					debugmsg("unison "+arg+" "+this.notes[n]);
+//					debugmsg("unison "+arg+" "+this.notes[n]);
 					this.noteon(n, op, chan, arg, arg2, dev);
 				}
 			}

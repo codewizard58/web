@@ -11,6 +11,7 @@ function doBitFormAction()
 		bitform.innerHTML = "";
 		bitformaction = null;
 	}
+	showSettings();
 
 	bitform = null;
 }

@@ -18,6 +18,10 @@ var getimagemap = false;
 var activedomains = 1;		// which domains are active  1 == basic, 2 = sound, 4 = midi
 var hidetouch = true;		
 var curtab = "progtab";
+// 11/29/24
+var execmode = 0;
+var drawmode = 1;
+var drawspeed = 1;			// fast
 
 const POWERON=0;
 const POWEROFF=1;
@@ -40,6 +44,7 @@ const LOGICNOR = 20;
 const ENDPROG=255;
 const WIRE = 109;
 const CORNER = 110;
+const COUNTER = 111;
 const ROTARY = 114;
 const GRAPH = 115;
 const OSC = 120;
@@ -121,6 +126,43 @@ function UIshowdiv(div)
 			}
 		}
 	}
+}
+
+function UIdrawspeed()
+{	let f = document.getElementById("drawspeed");
+	let speed = 4;
+
+	if( f != null){
+		speed = f.value * 1;
+	}
+	if( speed < 1){
+		speed = 1;
+	}
+	if( speed > 4){
+		speed = 4;
+	}
+
+	drawspeed = speed;
+	drawmode = 2;
+}
+
+
+function showSettings()
+{	let f = document.getElementById("bitform");
+	let msg = "";
+
+	if( f == null){
+		return;
+	}
+	msg += "<h2>Settings</h2>\n";
+	msg += "<table><tr><th>Draw speed</th><td>";
+	msg += "<select id='drawspeed' onchange='UIdrawspeed();'><option value='3' "+isSelected(drawspeed, 3)+">Slow</option>";
+	msg += "<option value='2' "+isSelected(drawspeed, 2)+">Med</option>";
+	msg += "<option value='1' "+isSelected(drawspeed, 1)+">Fast</option></select>";
+	msg += "</td></tr>\n";
+
+	f.innerHTML = msg;
+
 }
 
 function UIsettrace()
@@ -1510,6 +1552,7 @@ function Program()
 					arg2 = prog[bp];
 					bp++;
 					if( curchain != 0){
+						drawmode = 2;
 						data2 = data;
 						progbits[ ibp].ctrl.setValue(data, 0);
 						if( arg2 > 0 && arg2 < 20){
@@ -1520,6 +1563,10 @@ function Program()
 					}else {
 						osnap.indcolor = "";
 					}
+					if( progbits[ ibp].ctrl.mode == 2){		// replay
+						data = progbits[ ibp].value;
+					}
+					this.chains[ curchain].data = data;
 					osnap.indval = this.chains[ curchain].data;
 				}else if(code == MIDICCOUT){		// midi control code
 					arg2 = prog[bp];
@@ -1588,7 +1635,7 @@ function Program()
 					}else if(code == 15){
 						this.chains[ curchain].data = this.getValue( progbits, ibp, 255);	// arith_setvalue
 
-					}else if(code == 111){
+					}else if(code == COUNTER){
 						this.chains[ curchain].data = this.getValue( progbits, ibp, 255);	// arith_counter
 						if( data > 128){
 							progbits[ibp].value++;
@@ -1602,6 +1649,8 @@ function Program()
 						}
 						osnap.indcolor = "#ffffff";
 						osnap.indval = this.chains[ curchain].data;
+						execmode = 2;
+						drawmode = 2;
 
 					}else if(code == 112 || code == 113){			// push switch or toggle switch
 						if( this.getValue( progbits, ibp, 0) < 127){
@@ -1818,6 +1867,7 @@ function Snap(bit, side, x, srx, y, sry, w, h, idx)
 		b.unMark();
 	
 		reLabel(sketch.blist);
+		EXECMODE = 2;
 	}
 
 	//snap
@@ -1955,6 +2005,9 @@ function Snap(bit, side, x, srx, y, sry, w, h, idx)
 // snap
 	this.Animate = function( t)
 	{
+		if( t > 9){
+			t = 9;
+		}
 		t = 9 - t;
 
 		if( repel == 1){
@@ -2451,6 +2504,9 @@ function Bit( btype, x, y, w, h, k) {
 	// bit
 	this.Animate = function( t)
 	{
+		if( t > 9){
+			t = 9;
+		}
 		t = 9 - t
         ctx.lineWidth = 2;
         ctx.strokeStyle = "#ff0000";
@@ -3009,6 +3065,7 @@ function Sketch() {
 			sx = 0;				// if control selected then not dragging...
 			sy = 0;
 			ldrag = null;
+			drawmode = 2;
 		}
 
 		if( ldrag != null){
@@ -3033,6 +3090,7 @@ function Sketch() {
 				autoy = my;
 			}
 			cname = "move";
+			drawmode = 2;
 
 		}else if( sx != 0 && sy != 0){
 			// pan 
@@ -3053,6 +3111,7 @@ function Sketch() {
 				sy = my;
 			}
 			cname = "all-scroll";
+			drawmode = 2;
 		}else {
 			i = sketch.blist;
 			while( i != null ) {
@@ -3362,12 +3421,17 @@ function Sketch() {
 function doAnimate()
 {
 	if( drawing == 0){
-		sketch.Draw();
+		if( drawmode > 0){
+			sketch.Draw();
+			drawmode--;
+		}
 		if( selected != null){
 			selected.Animate( tick);
+			drawmode = 2;
 		}
 		if( docktarget != null){
 			docktarget.Animate( tick);
+			drawmode = 2;
 		}
 		drawing = 0;
 	}
@@ -3445,19 +3509,23 @@ function doTimer()
 	}
 	timer_list.head = tafter;
 
-	softprogram.runProgram();
+	if( execmode > 0 || drawspeed == 1){
+		softprogram.runProgram();
+		if( execmode > 0){
+			execmode--;
+		}
+	}
 
 	tock++;
-	if( tock == 4){
+	if( tock >= 4*drawspeed){
 		tock = 0;
-
 
 		if( docking != null){
 			doDocking();
 		}
 		doAnimate();
-		tick++;
-		if(tick == 10){
+		tick = tick + drawspeed;
+		if(tick >= 10){
 			tick = 0;
 		}
 	}

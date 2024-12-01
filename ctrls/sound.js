@@ -1381,13 +1381,12 @@ function seqBit(bit)
 	// seq
 	this.setValue = function(data, chan)
 	{	let t = 1;
+		let prevval = this.bit.value;
 
 		if( chan == 0){
 			if( data == 0){
 				this.bit.value = this.values[this.getstep()];
-				return;
-			}
-			if( data == 255){
+			}else if( data == 255){
 				this.motion.step();
 				this.step = this.motion.counter;
 				if( this.motion.getgated()){
@@ -1395,17 +1394,19 @@ function seqBit(bit)
 				}else {
 					this.bit.value = 0;
 				}
+				execmode = 2;
 			}else {
 				this.step = data;
 				this.bit.value = this.values[this.getstep()];
 			}
-			return;
-		}
-		if( chan > 1){
+		}else if( chan > 1){
 			this.values[chan-2] = checkRange(data+data);
 			if( bitformaction == this){
 				this.setData();
 			}
+		}
+		if( this.bit.value != prevval){
+			drawmode = 2;		// something changed.
 		}
 	}
 
@@ -1768,9 +1769,7 @@ function scopeBit( bit )
 	//scope
 	this.setValue = function(data, chan)
 	{
-		if( chan == 0){
-			this.Draw();
-		}
+
 	}
 
 	// initialize

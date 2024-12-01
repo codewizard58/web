@@ -210,6 +210,14 @@ function isSelected(a, b)
     return "";
 }
 
+function isChecked(a)
+{
+    if( a ){
+        return "checked";
+    }
+    return "";
+}
+
 function MidiChannelSelector(chan, omni)
 {   let sel=chan;
     let i = 1;
@@ -1010,6 +1018,11 @@ function UIrefresh(code, arg)
 				ng = ng.next;
 			}
 
+		}
+	}else if(code == 1){	// draph bit
+		bitformaction.getData();
+		if( arg == 1){				// run
+			bitformaction.curpos = 1;
 		}
 	}
 
