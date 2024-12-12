@@ -41,6 +41,8 @@ const LOGICOR=17;
 const ARITHSET=18;
 const LOGICNAND = 19;
 const LOGICNOR = 20;
+const ARITHPLUS=36;
+const ARITHMINUS=37;
 const ENDPROG=255;
 const WIRE = 109;
 const CORNER = 110;
@@ -316,15 +318,17 @@ function UIaddBit(idx, x, y, kit)
 		return;
 	}
 
-	nbit = new Bit(idx, x, y, k.bitnames[idx+2], k.bitnames[idx+3], k);
-	sketch.addBit( nbit );
-
+	// existing selected bit?
 	if( selected != null){
 		d = selected.getDrag();
 		if( d != null  && d.ctrl != null){
 			d.ctrl.getData();
 		}
 	}
+
+	nbit = new Bit(idx, x, y, k.bitnames[idx+2], k.bitnames[idx+3], k);
+	sketch.addBit( nbit );
+
 	selected = nbit;
 
 	sketch.drawProgram();
@@ -665,6 +669,8 @@ function Program()
 	this.needsend = 0;		// used by wire send and wire recv
 	this.senddata = null;	// used by wire send
 	this.prevdata= null;
+	this.now = performance.now();
+
 
 // program resetData
 	this.resetData = function()
@@ -1141,11 +1147,12 @@ function Program()
 
 	////////////////
 
-	this.runProgram = function()
-	{	var i=0;
-
+	this.runProgram = function(now)
+	{	let i=0;
 		var prog = this.current;
 		var progbits = this.currentbits;
+
+		this.now = now;
 
 		curprog = prog;
 
@@ -1414,7 +1421,7 @@ function Program()
 							this.chains[ arg3 ].startvalue = data;
 						}
 					}
-				}else if(code == 36){	// plus
+				}else if(code == ARITHPLUS){	// plus
 					arg2 = prog[bp];
 					bp++;
 					if(arg2 == 0){
@@ -1429,7 +1436,7 @@ function Program()
 					osnap.indcolor = "#ffffff";
 					osnap.indval = this.chains[ curchain].data;
 
-				}else if(code == 37){	// minus
+				}else if(code == ARITHMINUS){	// minus
 					arg2 = prog[bp];
 					bp++;
 					if(arg2 == 0){
@@ -1585,7 +1592,7 @@ function Program()
 					bp++;
 					data2 = data;
 //						progbits[ ibp].ctrl.setValue(data, 0);
-					if( arg2 > 0 && arg2 < 20){
+					if( arg2 > 0 && arg2 < nchains){
 						data2 = this.chains[ arg2].data;
 						progbits[ ibp].ctrl.setValue(data2, 1);	// modfreq
 					}
@@ -1618,7 +1625,7 @@ function Program()
 						osnap.indcolor = "#ffffff";
 						osnap.indval = this.chains[ curchain].data;
 
-					}else if(code == 18){	// not 
+					}else if(code == LOGICNOT){	// not 
 						if( data > 127){
 							this.chains[ curchain].data = 0;
 						}else{
@@ -3491,6 +3498,7 @@ function flash(a, b)
 function doTimer()
 {	let rx = 0;
 	let ry = 0;
+	let now = performance.now();
 
 	let t= timer_list.head;
 	let tn = null;
@@ -3498,7 +3506,7 @@ function doTimer()
 
 	while(t != null){
 		tn = t.next;
-		if( !t.ob.run() ){
+		if( !t.ob.run(now) ){
 			t.next = tafter;
 			tafter = t;
 		}else {
@@ -3510,7 +3518,7 @@ function doTimer()
 	timer_list.head = tafter;
 
 	if( execmode > 0 || drawspeed == 1){
-		softprogram.runProgram();
+		softprogram.runProgram(now);
 		if( execmode > 0){
 			execmode--;
 		}
@@ -3538,7 +3546,7 @@ function doTimer()
 		tafter = null;
 		while(t != null){
 			tn = t.next;
-			if( !t.ob.run() ){
+			if( !t.ob.run(now) ){
 				t.next = tafter;
 				tafter = t;
 			}else {

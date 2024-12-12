@@ -27,6 +27,7 @@ function graphBit(bit)
 	this.background = "#004400";
 	this.grid = 1;
 	this.scroll = 1;	// scroll display
+	this.savemode = false; // used by dosave and getdata.
 
 	
 	this.getDockedBit = function(s)
@@ -217,8 +218,8 @@ function graphBit(bit)
 	{	const b = this.bit;
 		const w = b.w-this.inset;
 		const len = this.hdata.length;
-		const perstep = len / w;
-		const step = Math.floor(this.curpos* perstep );
+		let perstep = len / w;
+		let step = Math.floor(this.curpos* perstep );
 
 //		debugmsg("STEP "+step+" "+this.curpos+" "+w);
 		if( chan == 0){
@@ -267,63 +268,68 @@ function graphBit(bit)
 	}
 
 	this.getData = function()
-	{	let f = document.getElementById("scribble");
+	{	let f;
+		let s = new saveargs();
+		let x;
 
+		s.addnv("control", "'graph'");
+
+		f = document.getElementById("scribble");
 		if( f != null){
-			this.mode = f.value*1;
-
-			if( this.mode == 1){
-				// start scribble
-				this.curpos = 0;
-				this.running = 0;
-			}
+			s.addnv("scribble", f.value*1);
+		}else {
+			s.addnv("scribble", this.mode);
 		}
 		
 		if( this.mode != 0){
 			f = document.getElementById("runmode");
 			if( f != null){
-				this.run = f.value*1;
+				s.addnv("runmode", f.value*1);
+			}else {
+				s.addnv("runmode", this.run);
 			}
 
-			if( this.run == 1){		// once
-				f = document.getElementById("running");
-//				if( f != null){
-//					this.curpos = 1;		// start
-//				}
-			}
-		}else {
-			this.run = 0;  // clear loop / play.
 		}
 		f = document.getElementById("scroll");
-		this.scroll = 1;
+		x = 1;
 		if( f != null){
 			if( !f.checked ){
-				this.scroll = 0;
+				x = 0;
 			}
+			s.addnv("scroll", x);
+		}else {
+			s.addnv("scroll", this.scroll);
 		}
 		f = document.getElementById("grid");
-		this.grid = 1;
+		x = 1;
 		if( f != null){
 			if( !f.checked ){
-				this.grid = 0;
+				x = 0;
 			}
+			s.addnv("grid", x);
+		}else {
+			s.addnv("grid", this.grid);
 		}
 		f = document.getElementById("retrig");
-		this.retrig = 1;
+		x = 1;
 		if( f != null){
 			if( !f.checked ){
-				this.retrig = 0;
+				x = 0;
 			}
+			s.addnv("retrig", x);
+		}else {
+			s.addnv("retrig", this.retrig);
 		}
 		f = document.getElementById("bars");
 		if( f != null){
-			if( f.value != this.bars){
-				this.bars = f.value*1;
-				this.setSize(this.bars);
-			}
+			s.addnv("bars", f.value*1);
+		}else {
+			s.addnv("bars", this.bars);
 		}
-		
-		
+		if( this.savemode){
+			return s.getdata();
+		}
+		this.doLoad(s.getdata(), 0);	
 	}
 
 	this.setData = function()
@@ -398,7 +404,7 @@ function graphBit(bit)
 				step = this.hdata.length;
 			}
 
-			debugmsg("Move: "+x+" "+y+" step="+step);
+//			debugmsg("Move: "+x+" "+y+" step="+step);
 
 			yval = (b.h - y)*3;
 			yval = checkRange(yval)
@@ -458,13 +464,67 @@ function graphBit(bit)
 	}
 
 	this.doSave = function()
-	{	var msg = "1,";
+	{	let msg = "";
+		let s = new saveargs();
+		let cnt;
+		let d;
 
-		return msg;
+		this.savemode = true;
+		d =  this.getData();
+		this.savemode = false;
+		s.setdata(d);
+
+		s.addarg(stringValue("data"));
+		for(cnt = 0; cnt < this.bars; cnt++){
+			s.addarg( this.hdata[cnt]);
+		}
+
+		return s.getargs();
 	}
 		
 	this.doLoad = function(initdata,  idx)
-	{	var i = initdata[idx];
+	{	let i = initdata[idx];
+		let ip = idx;
+		let cnt = 0;
+		let code="";
+
+		debugmsg("DOLOAD "+i+" "+idx+" "+(initdata.length));
+		while( ip+2 < i+idx && ip+2 < initdata.length){
+			debugmsg("__ "+initdata[ip+1]);
+			code = initdata[ip+1];
+			if( code == "'scribble'" || code == "scribble"){
+				this.mode = initdata[ip+2];
+
+				if( this.mode == 1){
+					// start scribble
+					this.curpos = 0;
+					this.running = 0;
+				}else if( this.mode == 0){
+					this.run = 0;  // clear loop / play.
+				}
+			}else if(code == "'scroll'" || code == "scroll"){
+				this.scroll = initdata[ip+2];
+			}else if(code == "'grid'"|| code == "grid"){
+				this.grid = initdata[ip+2];
+			}else if(code == "'retrig'" || code == "retrig"){
+				this.retrig = initdata[ip+2];
+			}else if(code == "'runmode'" || code == "runmode"){
+				this.run = initdata[ip+2];
+			}else if(code == "'bars'" || code == "bars"){
+				if( this.bars != initdata[ip+2]){
+					this.bars = initdata[ip+2];
+					this.setSize(this.bars);
+				}
+			}else if(code == "'data'" || code == "data"){
+				for(cnt = 0; cnt < this.bars; cnt ++){
+					this.hdata[cnt] = initdata[ip+2+cnt];
+				}
+				ip += this.bars-1;
+				this.curpos = 0;
+			}
+			ip += 2;
+		}
+
 	}		
 		
 	this.dock = function(from)

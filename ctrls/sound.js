@@ -147,8 +147,8 @@ function stringValue(s)
 }
 
 function saveargs()
-{	this.data = [];
-	this.count = 0;
+{	this.data = [1];
+	this.count = 1;
 
 	this.addarg = function(data)
 	{
@@ -165,17 +165,34 @@ function saveargs()
 	this.getargs = function()
 	{	let msg = "";
 		let n;
+		let cnt = 0;
 
-
-		msg += (this.count+1)+", ";
-		for(n=0; n < this.count; n++){
+		msg += (this.count)+", ";
+		for(n=1; n < this.count; n++){
 			msg += this.data[n]+", ";
+			cnt++;
+			if( cnt == 8){
+				cnt = 0;
+				msg += "\n  ";
+			}
 		}
 		msg += "\n";
 
 		return msg;
 	}
 
+	this.getdata = function()
+	{
+		this.data[0] = this.count;
+		return this.data;
+	}
+
+	this.setdata = function(d)
+	{
+		this.data = d;
+		this.count = d[0];
+		debugmsg("SETDATA "+this.count);
+	}
 }
 
 /// sound bits
@@ -209,7 +226,7 @@ function oscBit(bit)
 	this.prevfreq = new delta();
 	this.nfreq=0;
 	this.audioin = null;
-	this.wave = 0;		// 
+	this.wave = 128;	// 
 	this.prevwave = new delta();
 	this.prevmix = new delta();
 	this.range = 12; 	// bend range
@@ -358,7 +375,7 @@ function oscBit(bit)
 	}
 
 	this.setoscfreq = function( glide)
-	{	let freq = this.freq+(this.nfreq+this.modfreq-128)/this.range;
+	{	let freq = this.freq+(this.nfreq+(this.modfreq-128) *4)/this.range;
 		if( this.osc == null){
 			return;
 		}
