@@ -485,7 +485,7 @@ function UIdoLoad()
 }
 
 function UIdoShowChains()
-{ var x = document.getElementById("showchains");
+{ let x = document.getElementById("showchains");
 
 	if( x.checked ){
 		showchains = 1;
@@ -546,10 +546,10 @@ function UIimagemap()
 			if( img.height < pass && img.height >= prev){
 				if( bitpicnames[i] != "imagetile"){
 					if( x + img.width > 700){
-					x = 0;
-					y += my;
-					my = pass;
-				}
+						x = 0;
+						y += my;
+						my = pass;
+					}
 					debugmsg("'image','"+bitpicnames[i]+"',"+x+","+y+","+img.width+","+img.height+",");
 					ctx.drawImage(img, x, y);
 					x += img.width;
@@ -714,7 +714,7 @@ function sbmodule( name )
 			}
 		}
 		message("Kitcode: not found "+name);
-		return 254;
+		return 255;
 	}
 
 
@@ -730,9 +730,9 @@ function sbmodule( name )
 		{	if(this.ctrlcodes[n] == name){
 				return this.ctrlcodes[n+1];
 			}
-			debugmsg( "Code: "+name+" notfound");
 		}
-		return 255;
+		debugmsg( "Code: "+name+" notfound");
+		return 253;
 	}
 
 	this.getdomain = function(name)

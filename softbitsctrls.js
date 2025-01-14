@@ -24,6 +24,7 @@ function wireBit(bit)
 
 	this.bit = bit;
 
+
 // wire
 	this.Draw = function( )
 	{	var b = this.bit;
@@ -36,6 +37,9 @@ function wireBit(bit)
 		var suffix;
 
 		if( b == null){
+			return;
+		}
+		if( showsnaps == 0){
 			return;
 		}
 		bt = b.btype & 7;	// 0 = horiz, 1 == vert
@@ -367,6 +371,10 @@ this.undockfrom = function(from, dom)
 
 	}
 
+	this.getValue = function(chan)
+	{
+		return this.bit.value;
+	}
 	//control
 
 	this.startProg = function()

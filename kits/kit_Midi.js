@@ -9,12 +9,13 @@ var midiAccess = null;
 var chosenOutput = 0;
 var midiavail = false;
 var midiinit = true;
-var miditargeting = null;
 var midiclockmode = 0;		// all
+var miditargeting = null;	// if not null this is used to tell that the next knob moved is to be the target.
 
 MIDIoutdev_list = new objlist();
 MIDIindev_list = new objlist();
 MIDIindev = [ null, null, null, null, null];
+miditarget_list = new objlist();
 
 function MIDIremove(list, obj)
 {	let f = list.head;
@@ -146,34 +147,37 @@ function UImidiIndev()
 				md.connect(g);
 			}
 		}
+	}else {
+		debugmsg("UImidiindev getdata");
+		bitformaction.getData();
 	}
 	bitformaction.setData();		// refresh form.
 }
 
 
 // learn mode
-// called from the midigroup bitform.
-// bitformaction will be a midigroup control.
-function UIlearn(grpname)
-{	let f = null;
-	let g = null;
-	let md = null;
+// called from the target bitform.
+// bitformaction will be a target control.
+function UIlearn()
+{	let md = null;
+	let mt = null;
+
 	if( bitformaction == null){
 		return;
 	}
-	f = document.getElementById("learn");
-	if( f != null){
-		g = bitformaction.groupobj;
-		md = MIDIindev[g.midicnt];
-		if( md != null){
-			md.learn = f.value;
-			miditargeting = null;
-			if( f.value > 0){		// targeting
-				miditargeting = md;
-			}
-		}
-	}
-bitformaction.setData();		// refresh
+
+	bitformaction.getData();
+
+	md = findMIDIinterface(bitformaction.midicnt);
+	mt = new midiTarget(null, null, bitformaction.channel);
+	mt.learn = 1;					// learn mode
+	mt.midicnt = bitformaction.midicnt;
+	mt.chantype = bitformaction.chantype;
+	debugmsg("Learn "+mt.midicnt+" "+bitformaction.channel+" type="+mt.chantype);
+	miditargeting = mt;
+	md.connect(mt);
+
+	bitformaction.setData();		// refresh
 }
 
 // add to the interface target list
@@ -182,11 +186,15 @@ function UIlearnCC()
 	if( bitformaction == null){
 		return;
 	}
-	if( miditargeting != null){
-		// use knob value of -1 to mark special case.
-		midiAddTarget(bitformaction, -1);
-	}
 
+	if( miditargeting != null){
+		o = midiAddTarget(bitformaction.bit, -1);
+
+		bitform.innerHTML = "";
+		bitformaction = null;
+		bitform = null;
+	}
+	
 }
 
 // midi target list handling.
@@ -195,79 +203,181 @@ function UIlearnCC()
 var midiTargetcount = 0;
 
 // miditarget_list
+midiTarget.prototype = Object.create( MIDIfilter.prototype);
+
 function midiTarget( bit, knob, chan)
-{	this.bit = bit;
+{	MIDIfilter.call(this);
+	this.bit = bit;
 	this.knob = knob;
 	this.val = 0;
 	this.id = midiTargetcount;
 	this.channel = chan;
+	this.learn = 0;			// 1 = armed.
+	this.midicnt = 0;		// interface.
+	this.chantype = 2;
 
 	midiTargetcount++;
 
+	this.filter = function(op, chan, arg, arg1, dev)
+	{	let chanx = chan+1;
+		let val = 0;
+		let md = null;
+		let t = null;
+		let tar = null;
+
+		if( this.channel > 0 &&  this.channel != chanx){
+			return false;
+		}
+		if( this.learn == 2){
+			if( op == 2 && this.chantype == 2){
+				debugmsg("Target filt: "+op+" "+chan+" "+arg+" knob="+this.knob);
+					this.val = arg;
+					this.learn = 3;		// done learning
+			}else if( op == this.chantype){  // pitchbend or aftertouch
+				debugmsg("Target filt: "+op+" "+chan+" "+arg+" knob="+this.knob);
+				this.learn = 3;
+			}
+			// else learn will still be 2.
+			if( this.learn == 3){
+				if( this.knob == -1){	// common for CC and CCout
+					// cc bit 
+					md = findMIDIinterface(this.midicnt);
+					if( this.chantype == 2){
+						this.bit.ctrl.cc = arg;
+					}else if( this.chantype == 5){		// pitchbend
+						this.bit.ctrl.cc = 131;
+					}else if( this.chantype == 6){		// chan after
+						this.bit.ctrl.cc = 129;
+					}else if( this.chantype == 7){		// poly after
+						this.bit.ctrl.cc = 130;
+					}
+					debugmsg("Set bit "+this.bit.name+" to cc "+this.bit.ctrl.cc);
+
+					// add the bit to the filter and remove the target
+//					debugmsg("Disconnect target");
+					md.disconnect(this);
+//					debugmsg("Remove target");
+					let t = miditarget_list.head;
+					while(t != null){
+						tar = t.ob;
+						if( tar.midicnt == this.midicnt){
+							if(tar.id == this.id){
+//								debugmsg("learncc found "+this.id+" "+tar.midicnt);
+								miditarget_list.removeobj(t);
+								break;
+							}
+						}
+						t = t.next;
+					}
+				}
+				return true;
+			}
+		}else if(this.learn == 3){
+			if( this.chantype == 2 && arg == this.val){
+				this.bit.setValue(arg1+arg1, this.knob*1+2);
+			}else if( this.chantype == op){
+				if( op == 5){
+					val = arg1+arg1+(arg / 64);
+				}else if(op == 6){
+					val = arg+arg;
+				}else {
+					debugmsg("TFilt "+op+" "+val);
+					val = arg;
+				}
+				this.bit.setValue(val, this.knob*1+2);
+			}
+		}
+		return false;
+	}
+
+	miditarget_list.addobj(this);
+
 }
 
+function findTarget(bit, knob)
+{	let t = miditarget_list.head;
 
+	while(t != null){
+		if( t.ob.bit == bit && t.ob.knob == knob){
+			return t.ob;
+		}
+		t = t.next;
+	}
+	return null;
+}
 // returns the list object
 // target can be any control.
 function midiAddTarget(bit, knob)
 {	let chan = 0;
 	let grp = null;
+	let t = miditarget_list.head;
 
-	if( miditargeting == null){
-		return null;
-	}
-	chan = miditargeting.learnchan;
-	let ob = miditargeting.learnlist.head;
-	while(ob != null){
-		if( ob.ob.bit == bit && ob.ob.knob == knob){
-			return ob;	// already in list
+
+	while( t != null){
+		debugmsg("Addtarget "+t.ob.learn);
+		if( t.ob.learn == 1){
+			if( t.ob.bit == null){
+				t.ob.bit = bit;
+				t.ob.knob = knob;
+				t.ob.learn = 2;
+				miditargeting = null;
+				return t.ob;
+			}
+		}else {
+			if( t.ob.bit == null){
+				debugmsg("Addtarget null");
+			}
+
 		}
-		ob = ob.next;
+		t = t.next;
 	}
-	ob = miditargeting.learnlist.addobj(new midiTarget(bit, knob, chan), null);
-	return ob;
+
+	t = new midiTarget(bit, knob, -1);
+	t.learn = 2;
+	miditargeting = t;
+	debugmsg("Add target new "+knob+" "+t.learn);
+
+	return t;
 }
 
 function midiClearTargets()
 {
-	if( miditargeting == null){
-		return null;
-	}
-	let ob = miditargeting.learnlist.head;
-	while(ob != null){
-		miditargeting.learnlist.removeobj(ob);
-		ob = miditargeting.learnlist.head;	
-	}
-	midiTargetcount = 0;
 
 }
 
 
 // used to handle del and clear functions on the targetlist.
 function UImidiTarget(op, id)
-{
-	if( miditargeting == null){
-		return null;
-	}
-	let ob = miditargeting.learnlist.head;
-	while(ob != null){
-		if( ob.ob.id == id){
-			if( op == 0){
-				// del
-				miditargeting.learnlist.removeobj(ob);
-				break;
-			}else if(op == 1){
-				// clear
-				ob.ob.val = 0;
-				debugmsg("Clear "+ob.ob.bit.name+":"+ob.ob.knob);
-				break;
-			}
-		}
-		ob = ob.next;
-	}
+{	let md = null;
+	let grp = null;
+	let t = miditarget_list.head;
+	let tar=null;
+
 	if(bitformaction == null){
 		return;
 	}
+	md = findMIDIinterface(bitformaction.midicnt);
+
+	while(t != null){
+		tar = t.ob;
+
+		if( tar.midicnt == bitformaction.midicnt){
+			if(tar.id == id){
+				debugmsg("MT found "+id+" "+tar.midicnt+" op="+op);
+				if( op == 0){		// del
+					md.disconnect(tar);
+					miditarget_list.removeobj(t);
+					break;
+				}else if(op == 1){	// clear
+					tar.learn = 1;
+					tar.var = 0;
+				}
+			}
+		}
+
+		t = t.next;
+	}
+
 	bitformaction.setData();		// refresh
 
 }
@@ -326,6 +436,7 @@ function midiGroup(n, dir)
 	if(n==1 ){
 		this.name = "Default Input";
 		this.grouptype = 1;	
+		this.midicnt = 0;
 	}else if( n == 2){
 		this.name = "Default Output";
 		this.grouptype = 0;	// output default.
@@ -693,6 +804,7 @@ function rpn()
 }
 
 /////////////////////////////////////////
+// class base
 function MIDIfilter()
 {	this.name = "";
 	this.type = 0;
@@ -713,26 +825,59 @@ function MIDIfilter()
 	}
 }
 
+
+// transport - provide a value that goes from 0-255 in a specified time/tempo
+//
 function transport()
 {
 	this.clock = 0;
 	this.clkstart = performance.now();
 	this.running = 0;
 	this.tempo = 0;
+	this.value = 0;
+	this.delta = 0.0;
+	this.beats = 0;
 
 	// called with current time in milliseconds
-	this.timer = function( now)
+	this.run = function( now)
 	{
 		let millis = now - this.clkstart;
-
 		this.clkstart = now;
 
-		if(this.clock > 0 && millis > 0){
-			this.tempo = (2500*this.clock) / millis;
-			this.clock = 0;
+		this.value += this.delta * millis;
+
+		if( this.delta > 0){
+			while( this.value >= 256){
+				this.value -= 256;
+			}
+		}else {
+			while( this.value < 0 ){
+				this.value += 256;
+			}
 		}
+//		debugmsg("TRANS "+this.value+" "+this.delta+" "+millis);
+		return false;		// keep running.
+	}
 
+	this.timer = function()
+	{
+	
+	}
 
+	this.setTempo = function(tempo, beats)
+	{
+		if( tempo <= 0){
+			this.delta = 0.0;
+		}else {
+			if( beats <= 0){
+				this.delta = 0.256 * tempo/60;
+			}else {
+				this.delta = (0.256 * tempo/60) / beats;
+			}
+		}
+		this.tempo = tempo;
+		this.beats = beats;
+//	    debugmsg("Settempo "+tempo+" "+beats+" "+this.delta);
 	}
 
 	// called for a midi clock event
@@ -773,13 +918,11 @@ function MIDIinputobj(m)
 {	MIDIobj.call(this, m);
 	this.filter_list = new objlist();
 	this.transport = null;
-	this.learn = 0;
 	this.status = 0;			// previous status value.
 	this.rpn = null;			// registered param
 	this.nrpn = null;			// non registered param
 	this.mpe = 0;
 	this.index = 0;
-
 
 	// MIDIinputobj
 	this.setup = function(name)
@@ -1002,6 +1145,7 @@ function MIDIMessageEventHandler0( e){
 }
 
 function MIDIMessageEventHandler1( e){
+//	debugmsg(printMidiEvent(e, 1));
 	if( MIDIindev[1] == null){
 		return;
 	}
@@ -1087,7 +1231,6 @@ function MIDIMessageEventHandler( e, dev){
 	let md;
 	let val;
 
-//	printMidiEvent(e, dev);
 
 	switch( code){
 	case 0x90:
@@ -1213,6 +1356,7 @@ function midiinsetvalues( op, chan, arg, arg2, dev)
 	if( md == null){
 		return false;
 	}
+
 	// try the notegroups on the interface.
 	ng = md.filter_list;
 	if( ng != null){
@@ -1262,44 +1406,44 @@ function kit_midi( )
 		"poweron", "power_on", 50, 50,		null, "powerout", null, null,			// 0
 				0,	0, "Power On",		"Start a chain of SoftBits", 0x0010, "Power", 0, 1,	// 0
 		"poweroff", "power_off", 50, 50,	"powerin", null, null, null,			// 1
-				0,	0, "Power Off",		"End of a chain, optional.", 0x0001, "Power", 0, 1,	// 1
+				2,	0, "Power Off",		"End of a chain, optional.", 0x0001, "Power", 0, 1,	// 1
 		"midigroup", "midi_group_in",	50, 50,	null, null ,null,  null, // 24
-				0,	1, "midi_group_in",	"Midi Group Input filter",	 0x0000, "Action", 0, 0,	
+				0,	8, "midi_group_in",	"Midi Group Input filter",	 0x0000, "Action", 0, 0,	
 		"midigroup", "midi_group_out",	50, 50,	null, null ,null,  null, // 24
-				0,	1, "midi_group_out",	"Midi Group Output filter",	 0x0000, "Action", 0, 0,	
+				0,	9, "midi_group_out",	"Midi Group Output filter",	 0x0000, "Action", 0, 0,	
 		"midicv", "midi_cc",	50, 50,	null, "actionout" ,null,  null, // 24
-				0,	1, "midi_cc",	"Midi CV filter",	 0x0010, "Input", 0, 0,	
+				5,	5, "midi_cc",	"Midi CV filter",	 0x0010, "Input", 0, 0,	
 		"midicc", "midi_cv",	50, 50,	null, "actionout" ,null,  null,		// 		images for cv and cc reversed.
-				0,	1, "midi_cv",	"Midi Note filter",	 0x0010, "Input", 0, 0,	
+				4,	4, "midi_cv",	"Midi Note filter",	 0x0010, "Input", 0, 0,	
 		"midicv", "midi_ccout",	50, 50,	"actionin" ,"actionout","logicin",  null, // 24
-				0,	1, "midi_ccout",	"Midi CV output",	 0x0111, "Output", 0, 0,	
+				7,	7, "midi_ccout",	"Midi CV output",	 0x0111, "Output", 0, 0,	
 		"midicc", "midi_cvout",	50, 50,	"actionin" ,"actionout", "logicin",  null,		// 		images for cv and cc reversed.
-				0,	1, "midi_cvout",	"Midi Note output",	 0x0111, "Output", 0, 0,	
+				6,	6, "midi_cvout",	"Midi Note output",	 0x0111, "Output", 0, 0,	
 
 		"midiclk", "midi_clk",	50, 50,	"actionin", "actionout" ,null,  null, // 24
-				0,	1, "midi_clk",	"Midi Clock",	 0x0011, "Input", 0, 0,	
+				8,	10, "midi_clk",	"Midi Clock",	 0x0011, "Input", 0, 0,	
 		"notegroup", "notegroup",	50, 50,	null, null ,null,  null, // 24
-				0,	1, "note_group",	"Note Group filter",	 0x0000, "Action", 0, 0,	
+				0,	11, "note_group",	"Note Group filter",	 0x0000, "Action", 0, 0,	
 		"splitgroup", "splitgroup",	50, 50,	null, null ,null,  null, // 24
-				0,	1, "splitter_group",	"Splitter Group filter",	 0x0000, "Action", 0, 0,	
+				0,	12, "splitter_group",	"Splitter Group filter",	 0x0000, "Action", 0, 0,	
 		"targetgroup", "targetgroup",	50, 50,	null, null ,null,  null, // 24
-				0,	1, "Learn Targets",	"Learn Target filter",	 0x0000, "Action", 0, 0,	
+				0,	13, "Learn Targets",	"Learn Target filter",	 0x0000, "Action", 0, 0,	
 		null, null, null, null,				null, null, null, null
 	];
 
 	this.ctrltab = [
 //  ID, len, args
-	"midi_in", 3, 3,		// 
-	"midi_cv", 3, 4,		// note filter
-	"midi_cc", 3, 5,		// control code filter
-	"midi_cvout", 3, 6,		// note filter
-	"midi_ccout", 3, 7,		// control code filter
-	"midi_group_in", 3, 8,		// Midi group filter
-	"midi_group_out", 3, 9,		// Midi group outputfilter
-	"midi_clk", 3, 10,		// Midi clock filter
-	"notegroup", 3, 11,		// Note group
-	"splitgroup", 3, 12,		// splitter group
-	"targetgroup", 3, 13,		// learn target group
+//	"midi_in", 3, 3,		// 
+//	"midi_cv", 3, 4,		// note filter
+//	"midi_cc", 3, 5,		// control code filter
+//	"midi_cvout", 3, 6,		// note filter
+//	"midi_ccout", 3, 7,		// control code filter
+//	"midi_group_in", 3, 8,		// Midi group filter
+//	"midi_group_out", 3, 9,		// Midi group outputfilter
+//	"midi_clk", 3, 10,		// Midi clock filter
+//	"notegroup", 3, 11,		// Note group
+//	"splitgroup", 3, 12,		// splitter group
+//	"targetgroup", 3, 13,		// learn target group
 
 	null, 0, 0, 0, 0	// end of table
 	];
@@ -1322,11 +1466,11 @@ function kit_midi( )
 	// defines the op codes for the program. softbitslivs:execProgram
 	this.kitctrlcodes = [
 		"power_on", 0,
-		"midi_cv", 4,
-		"midi_cc", 5,
-		"midi_cvout", 6,
-		"midi_ccout", 7,
-		"midi_clk", 8,
+//		"midi_cv", 4,
+//		"midi_cc", 5,
+//		"midi_cvout", 6,
+//		"midi_ccout", 7,
+//		"midi_clk", 8,
 		null, 253
 	];
 
@@ -1398,7 +1542,7 @@ function kit_midi( )
 					ct.setData();
 					return ct;
 				}else if( this.ctrltab[i+2] == 13){
-					// Learn target
+					// Learn target		manage targets
 					ct = new targetGroupBit( bit);
 					bit.ctrl = ct;
 					ct.setData();
@@ -1463,7 +1607,7 @@ function noteGroup(idx)
 		let n = chan;
 	
 		nl = this.notefilters.head;
-		debugmsg("ON "+n+" "+chan+" "+arg);
+//		debugmsg("ON "+n+" "+chan+" "+arg);
 	
 		if( this.notes[n].note == arg){
 			debugmsg("Ignore on "+n+" "+arg);
@@ -1647,7 +1791,8 @@ function noteGroup(idx)
 	{
 		debugmsg("NG DISCONNECT gen");
 	
-		MIDIremove(this.note_list, obj );		
+		MIDIremove(this.notefilters, obj );		
+		MIDIremove(this.ccfilters, obj );		
 	}
 
 	if( idx == 0){

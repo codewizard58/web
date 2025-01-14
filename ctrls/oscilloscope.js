@@ -490,7 +490,6 @@ function graphBit(bit)
 
 		debugmsg("DOLOAD "+i+" "+idx+" "+(initdata.length));
 		while( ip+2 < i+idx && ip+2 < initdata.length){
-			debugmsg("__ "+initdata[ip+1]);
 			code = initdata[ip+1];
 			if( code == "'scribble'" || code == "scribble"){
 				this.mode = initdata[ip+2];
@@ -556,3 +555,38 @@ function graphBit(bit)
 
 }
 
+
+///////////////////////////////
+///
+counterBit.prototype = Object.create(control.prototype);
+
+function counterBit(bit)
+{	control.call(this, bit);
+	this.transport = new transport();
+	this.value = 0;
+
+	this.transport.setTempo(50, 1);
+
+	this.setValue = function(data, chan)
+	{	let now;
+
+		if( chan == 0){
+			if( data > 127){
+				if( this.transport.delta < 0){
+					this.transport.delta = -this.transport.delta;
+				}
+			}else if( data > 0){
+				if( this.transport.delta > 0){
+					this.transport.delta = -this.transport.delta;
+				}
+			}
+
+			if( data > 0){
+				now  = performance.now();
+				this.transport.run(now);
+			}
+		}
+		this.value = this.transport.value;
+		this.bit.value = this.value;
+	}
+}

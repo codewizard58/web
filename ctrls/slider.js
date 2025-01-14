@@ -70,7 +70,7 @@ function sliderBit(bit)
 	{	let b = this.bit;
 
 		if( func == 2){
-			b.value = checkRange(data+data);
+			b.value = checkRange(data);
 		}
 		return;
 

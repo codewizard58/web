@@ -23,6 +23,9 @@ var execmode = 0;
 var drawmode = 1;
 var drawspeed = 1;			// fast
 
+// 12/24/24
+var showsnaps = 1;
+
 const POWERON=0;
 const POWEROFF=1;
 const MIDICV=4;
@@ -35,10 +38,10 @@ const PATCHOUT=10;
 const WIRESPLIT=12;
 const AINVERT = 13;
 const DIMMER = 14;
+const ARITHSET=15;
 const LOGICAND=16;
-const LOGICNOT=15;
 const LOGICOR=17;
-const ARITHSET=18;
+const LOGICNOT=18;
 const LOGICNAND = 19;
 const LOGICNOR = 20;
 const ARITHPLUS=36;
@@ -146,6 +149,19 @@ function UIdrawspeed()
 
 	drawspeed = speed;
 	drawmode = 2;
+}
+
+function UIshowsnaps()
+{	let x = document.getElementById("showsnaps");
+
+	if( x != null){
+		if( x.checked){
+			showsnaps = 1;
+		}else {
+			showsnaps = 0;
+		}
+		drawmode = 2;
+	}
 }
 
 
@@ -533,7 +549,6 @@ function Chain()
 function Source()
 {	this.msg = "";
 	this.chain = 0;
-
 	this.code = null;
 	this.codebits = null;
 	this.codelen = 0;
@@ -564,7 +579,6 @@ function Source()
 
 	this.addCode = function(code)
 	{	let limit;
-		
 
 		if( this.code == null){
 			this.code.debug();
@@ -583,16 +597,11 @@ function Source()
 	}
 
 	this.codeBit = function(bit)
-	{	var bt;
-		var idx;
-		var code;
+	{	var code;
 
 		if( bit == null){
 			return;
 		}
-		bt = bit.btype & 7;
-		idx= bit.btype - bt;
-//		code = idx / 8;
 		code = bit.code;
 
 		this.codebits[this.codeptr] = bit;
@@ -602,15 +611,12 @@ function Source()
 	}
 
 	this.codeBit1 = function(bit, arg1)
-	{	var bt;
-		var idx;
+	{
 		var code;
 
 		if( bit == null){
 			return;
 		}
-		bt = bit.btype & 7;
-		idx= bit.btype - bt;
 		code = bit.code;
 
 		this.codebits[this.codeptr] = bit;
@@ -620,15 +626,11 @@ function Source()
 	}
 
 	this.codeBit2 = function(bit, arg1, arg2)
-	{	var bt;
-		var idx;
-		var code;
+	{	let code;
 
 		if( bit == null){
 			return;
 		}
-		bt = bit.btype & 7;
-		idx= bit.btype - bt;
 		code = bit.code;
 
 		this.codebits[this.codeptr] = bit;
@@ -644,14 +646,359 @@ function Source()
 }
 
 function drawFunction(idx)
-{
-	return "Bit("+(idx+1)+")"  + "();<br>\n";
+{	let code = Math.floor(idx / 8);
+	return "Bit("+(idx+1).toString(16)+":"+code+")"  + "();<br>\n";
 }
 
 function drawFunction1(idx, arg1)
-{
-	return "Bit("+(idx+1)+")" + "(" + arg1 + ");<br>\n";
+{	let code = Math.floor(idx / 8);
+	return "Bit("+(idx+1).toString(16)+":"+code+")" + "(" + arg1 + ");<br>\n";
 }
+
+
+
+var bytecode = [
+	[1, 0],		// 0 POWERON
+	null,
+	null,
+	null,
+
+	[ 1, 3, 0],	// 4 MIDICV
+	[ 1, 3, 0],	// 5 MIDICC
+	[ 4, 11, 12, 9, 7, 0], // MIDICVOUT
+	[ 4, 6, 11, 12, 9, 7, 0 ],	// MIDICCOUT
+
+	[ 5, 0, 9, 3, 28, 0],				// 8 MIDICLK
+	null,
+	null,
+	null,
+
+	[ 4, 16, 0],		// 12 WIRESPLIT
+	[ 5, 0, 37, 20, 21, 0],				// 13 ARITHINVERT
+	[ 5, 0, 39, 20, 29, 0],				// 14 DIMMER
+	null,								// 15 
+
+
+	[ 4, 6, 5, 0, 13, 14, 26, 0 ],		// 16 LOGICAND	arg2 arg2? curchain not if exit fi fetch2 AND 
+	[ 4, 6, 5, 0, 13, 17, 26, 0 ],		// 17 LOGICOR
+	[ 5, 0, 38, 26, 0],					// 18 LOGICNOT  curchain not if exit fi NOT
+	[ 4, 6, 5, 0, 13, 15, 26, 0 ],		// 19 LOGICNAND
+
+	[ 4, 6, 5, 0, 13, 18, 26, 0 ],		// 20 LOGICNOR
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+
+	null,		// 32
+	null,
+	null,
+	null,
+
+	// arg2 arg2==0 if done fetch op store display
+	[ 4, 6, 5, 0, 13, 22, 20, 28, 0],		// 36 ARITHPLUS
+	[ 4, 6, 5, 0, 13, 23, 20, 28, 0],		// 37 ARITHMINUS
+	[ 4, 6, 5, 0, 13, 31, 20, 28, 0],		// 38 ARITHTIMES
+	[ 4, 6, 5, 0, 13, 32, 20, 28, 0 ],		// 39 ARITHDIVIDE
+
+	null,
+	[ 4, 6, 5, 0, 13, 33, 20, 28, 0],		// 41 ARITHDIFF
+	[ 4, 6, 5, 0, 13, 19, 26, 0],			// 42 LOGICXOR
+	[ 4, 6, 5, 0, 13, 34, 20, 28, 0],		// 43 ARITHCOMPARE  (GT)
+
+	[ 4, 6, 5, 0, 13, 35, 36, 20, 26, 0],	// 44 latch
+	null,
+	null,
+	null,
+
+
+	null,		// 48
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+
+	[ 4, 6, 5, 0, 9, 12, 3, 28, 0],		// 64 Mandlebrot  arg2? if exit fi setv 1 setv 2 getv
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+
+
+	null,		// 80
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+
+	null,		// 96
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	[ 4, 5, 0, 3, 43, 0],				// 103 PIANO
+
+	null,
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	[ 5, 0, 9, 3, 28, 40, 41, 0],			// 111 COUNTER   curchain not if exit fi 0 setvalue getvalue white execmode dispmode exit
+
+
+	[ 5, 0, 44, 20, 25, 0],		// 112 SWITCH
+	[ 5, 0, 44, 20, 25, 0],		// 113 switch
+	[ 5, 0, 39, 20, 29, 0],				// 114 rotary
+	[ 4, 5, 0, 9, 12, 41, 43, 20, 28, 0],	// 115 GRAPH
+
+	null,
+	null,
+	null,
+	null,
+
+	[ 4, 24, 12, 8, 11, 25, 0],			// 120 OSC
+	[ 4, 8, 11, 10, 9, 7, 0],			// 121 speaker
+	[ 4, 12, 42, 7, 25, 0],				// 122 FILTER
+	[ 5, 0, 9, 3, 28, 0],				// 123 SEQUENCER
+
+	[ 5, 0, 9, 7, 25, 0],				// 124 SCOPE
+	[ 1, 3, 0],							// 125 MICROPHONE
+	[ 4, 12, 42, 7, 25, 0],				// 126	DELAY
+	[ 4, 12, 42, 7, 25, 0],				// 127	PANNER
+
+
+	null,		// 128
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+
+
+	null,		// 144
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+
+	null,		// 160
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+
+	null,		// 176
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+
+	null,		// 192
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+
+
+	null,		// 208
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+
+	null,		// 224
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+
+	null,		// 240
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	null,
+
+	null,
+	null,
+	null,
+	[2, 0]		// 255 ENDPROG
+
+];
+
 
 function Program()
 {	this.prog = null;
@@ -907,14 +1254,9 @@ function Program()
 	}
 
 	this.drawProgram = function( )
-	{	let pon;
-		let b;
-		let tlnxt;
+	{	let b;
 		let msg="";
 		let bit;
-		let whead, wtail;
-		let ahead, atail;
-		let idx;
 		let progbox;
 		let progdiv;
 
@@ -1195,6 +1537,14 @@ function Program()
 		return def;
 	}
 
+	this.getValue2 = function(progbits, idx, def)
+	{
+		if( progbits != null && progbits[idx] != null){
+			return progbits[idx].value2;		// get the value
+		}
+		return def;
+	}
+
 	this.getchaindata  = function(arg, nchains)
 	{	let data = null;
 		if( arg > 0 && arg < nchains){
@@ -1216,19 +1566,21 @@ function Program()
 	// prog is threaded code. bp is instruction pointer.
 	// this model has chains of execution where a value is passed from function to function.
 	// a chain starts with a power on.
+	// there is common functionality that now has been given byte codes and
+	// a simple interpreter executes the codes.
 	this.execProgram = function(prog, progbits)
 	{	let curchain = 0;
 		let chain = 0;
 		let bp = 0;
 		let code = 0;
 		let ibp = 0;
-		let arg = 0;
 		let arg2, arg3;
 		let data = 0, data2;
 		let nchains = 20;
-		let rchain = curchain;	// result chain
-		let rdata = data;
 		let osnap = null;
+		let ip = 0;
+		let msg = "";
+		let trace = false;
 
 		this.needsend = 0;	
 		this.sendsize = 8;		// allow for 0xf0 S B P 0x06 seqh seql ver
@@ -1237,499 +1589,299 @@ function Program()
 			ibp = bp;
 			code = prog[bp];
 			bp++;
+			// different bit each time through here. Fetch data if curchain is valid.
 			if( curchain > 0 && curchain < nchains){
 				data = this.chains[ curchain].data;
-			}
-			if( progbits[ibp] != null && progbits[ibp].snaps[1] != null){
-				osnap = progbits[ibp].snaps[1];
-			}
-			// first few codes run even if curchain is 0
-			if( code == POWERON){			// power on
-				chain = prog[bp];
-				bp++;
-				if( chain < 0 || chain >= nchains){
-					prog = null;
-				}else {
-					curchain = chain;
-					data = this.chains[curchain].startvalue;
-					this.chains[ curchain].data = data;
-				}
-			}else if(code == ENDPROG){
-				prog = null;		// end of program
-			}else if( code == MIDICV || code == MIDICC || code == MICROPHONE ){			// midicv is power on
-					chain = prog[bp];
-					bp++;
-					if( chain < 0 || chain >= nchains){
-						prog = null;
-					}else {
-						curchain = chain;
-						data = this.chains[curchain].startvalue;
-						this.chains[ curchain].data = data;
-					}
-					if( curchain != 0){
-						this.chains[ curchain].data = this.getValue( progbits, ibp, 255);
-					}
 			}else {
-				if(code == SPEAKER){		// speaker
-					arg2 = prog[bp];
-					bp++;
-					if(curchain  == 0){
-						data = 0;			// silence speaker if not linked in a chain.
-					}else if(  arg2 > 0 && arg2 < nchains){		// modmix ?
-						data2 = this.getchaindata(arg2, nchains);
-						progbits[ ibp].ctrl.setValue(data2, 1);
-					}else {
-						progbits[ ibp].ctrl.setValue(128, 1);
-					}
-					progbits[ ibp].ctrl.setValue(data, 0);		// mute ?
-					progbits[ibp].value = this.chains[ curchain].data;
-				}else if(code == MIDICVOUT){		// midi note out
-					arg2 = prog[bp];
-					bp++;
-					if(curchain  == 0){
-						data = 0;			// note off when disconnected.
-					}else if(  arg2 > 0 && arg2 < nchains){		// modmix ?
-						data2 = this.getchaindata(arg2, nchains);
-						progbits[ ibp].ctrl.setValue(data2, 1);	// modulation
-					}
-					progbits[ ibp].ctrl.setValue(data, 0);		
-					progbits[ibp].value = this.chains[ curchain].data;
+				data = 0;
+			}
+			msg += "["+code+":"+curchain+":"+data+"]";
+			data2 = data;
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////
-		// these codes do not run if curchain == 0.
-		// two byte codes. 
-				}else if(code == WIRESPLIT){	// wire_split
-					arg2 = prog[bp];
-					bp++;
-					if( curchain != 0){
-						this.setchaindata(arg2, nchains, data);
+
+			bytes = bytecode[code];						// is there a bytecode sequence for this?
+			if( bytes != null){
+				ip = 0;
+				while( bytes[ip] != 0){
+					if( trace){
+						msg += bytes[ip]+",";
 					}
-				}else if(code == 103){	// piano
-					arg2 = prog[bp];
-					bp++;
-					if( curchain != 0){
-						this.chains[ curchain].data = this.getValue( progbits, ibp, 255);
-						if(  arg2 > 0 && arg2 < nchains){
-							if( this.chains[ curchain].data != 0){
-								this.chains[ arg2 ].startvalue = 255;
+					switch(bytes[ip]){
+						case 0:							// null, used as end of code.
+							trace = false;
+							break;
+						case 1:							// poweron etc
+							chain = prog[bp];
+							bp++;
+							if( chain < 0 || chain >= nchains){
+								prog = null;
 							}else {
-								this.chains[ arg2 ].startvalue = 0;
+								curchain = chain;
+								data = this.chains[curchain].startvalue;
+								this.chains[ curchain].data = data;
 							}
-						}
-					}
-				}else if(code == LOGICAND){	// and
-					arg2 = prog[bp];
-					bp++;
-					if(arg2 == 0){
-						curchain = 0;
-					}
-					if( curchain != 0){
-						data2 = this.getchaindata(arg2, nchains);
-						if( data > 127 && data2 > 127){
-							this.chains[ curchain].data = 255;
-						}else {
-							this.chains[ curchain].data = 0;
-						}
-						osnap.indcolor = "#00ff00";
-						osnap.indval = this.chains[ curchain].data;
-					}
-				}else if(code == LOGICNAND){	// nand
-					arg2 = prog[bp];
-					bp++;
-					if(arg2 == 0){
-						curchain = 0;
-					}
-					if( curchain != 0){
-						data2 =  this.getchaindata(arg2, nchains);
-						if( data > 127 && data2 > 127){
-							this.chains[ curchain].data = 0;
-						}else {
-							this.chains[ curchain].data = 255;
-						}
-						osnap.indcolor = "#00ff00";
-						osnap.indval = this.chains[ curchain].data;
-					}
-				}else if(code == LOGICOR){	// or
-					arg2 = prog[bp];
-					bp++;
-					if(arg2 == 0){
-						curchain = 0;
-					}
-					if( curchain != 0){
-						data2 =  this.getchaindata(arg2, nchains);
-						if( data > 127 || data2 > 127){
-							this.chains[ curchain].data = 255;
-						}else {
-							this.chains[ curchain].data = 0;
-						}
-						osnap.indcolor = "#00ff00";
-						osnap.indval = this.chains[ curchain].data;
-					}
-				}else if(code == LOGICNOR){	// Nor
-					arg2 = prog[bp];
-					bp++;
-					if(arg2 == 0){
-						curchain = 0;
-					}
-					if( curchain != 0){
-						// 
-						data2 =  this.getchaindata(arg2, nchains);
-						if( data > 127 || data2 > 127){
-							this.chains[ curchain].data = 0;
-						}else {
-							this.chains[ curchain].data = 255;
-						}
-						osnap.indcolor = "#00ff00";
-						osnap.indval = this.chains[ curchain].data;
-					}
-
-				}else if(code == 42){	// Xor
-					arg2 = prog[bp];
-					bp++;
-					if(arg2 == 0){
-						curchain = 0;
-					}
-					if( curchain != 0){
-						data2 =  this.getchaindata(arg2, nchains);
-						if( data > 127 && data2 > 127){
-							this.chains[ curchain].data = 0;
-						}else if( data <= 127 && data2 <= 127){
-							this.chains[ curchain].data = 0;
-						}else {
-							this.chains[ curchain].data = 255;
-						}
-						osnap.indcolor = "#00ff00";
-						osnap.indval = this.chains[ curchain].data;
-					}
-
-				}else if(code == 23){	// midi_gate	
-					arg2 = prog[bp];
-					bp++;
-					if(arg2 == 0){
-						curchain = 0;
-					}
-					if( curchain != 0 ){
-						this.chains[ arg2 ].startvalue = data;
-					}
-				}else if(code == 24){	// midi_cc	
-					arg2 = prog[bp];
-					bp++;
-					arg3 = prog[bp];
-					bp++;
-					if( curchain != 0){
-						if(arg3 > 0 && arg3 < nchains){
-							this.chains[ arg3 ].startvalue = data;
-						}
-					}
-				}else if(code == ARITHPLUS){	// plus
-					arg2 = prog[bp];
-					bp++;
-					if(arg2 == 0){
-						curchain = 0;
-					}
-					if( curchain != 0){
-						data2 =  this.getchaindata(arg2, nchains);
-						data = data+data2;
-						data = checkRange(data);
-						this.chains[ curchain].data = data;
-					}
-					osnap.indcolor = "#ffffff";
-					osnap.indval = this.chains[ curchain].data;
-
-				}else if(code == ARITHMINUS){	// minus
-					arg2 = prog[bp];
-					bp++;
-					if(arg2 == 0){
-						curchain = 0;
-					}
-					if( curchain != 0){
-						data2 =  this.getchaindata(arg2, nchains);
-						data = data-data2;
-						data = checkRange(data);
-						this.chains[ curchain].data = data;
-					}
-					osnap.indcolor = "#ffffff";
-					osnap.indval = this.chains[ curchain].data;
-
-				}else if(code == 38){	// times
-					arg2 = prog[bp];
-					bp++;
-					if(arg2 == 0){
-						curchain = 0;
-					}
-					if( curchain != 0){
-						data2 =  this.getchaindata(arg2, nchains);
-						data = data * data2;
-						data = checkRange(data);
-						this.chains[ curchain].data = data;
-					}
-					osnap.indcolor = "#ffffff";
-					osnap.indval = this.chains[ curchain].data;
-
-				}else if(code == 39){	// divide
-					arg2 = prog[bp];
-					bp++;
-					if(arg2 == 0){
-						curchain = 0;
-					}
-					if( curchain != 0){
-						data2 =  this.getchaindata(arg2, nchains);
-						if( data2 != 0){
-							data = data * 128;
-							data = Math.floor(( data / data2) / 128);
-						}else {
-							data = 255;
-						}
-						data = checkRange(data);
-						this.chains[ curchain].data = data;
-						osnap.indval = this.chains[ curchain].data;
-					}
-					osnap.indcolor = "#ffffff";
-
-				}else if(code == 41){	// diff
-					arg2 = prog[bp];
-					bp++;
-					if(arg2 == 0){
-						curchain = 0;
-					}
-					if( curchain != 0){
-						data2 =  this.getchaindata(arg2, nchains);
-						if( data > data2){
-							data = data - data2;
-						}else {
-							data = data2 - data;
-						}
-
-						data = checkRange(data);
-						this.chains[ curchain].data = data;
-						osnap.indcolor = "#ffffff";
-						osnap.indval = this.chains[ curchain].data;
-					}else {
-						osnap.indcolor = "";
-					}
-
-				}else if(code == 43){	// compare
-					arg2 = prog[bp];
-					bp++;
-					if(arg2 == 0){
-						curchain = 0;
-					}
-					if( curchain != 0){
-						data2 =  this.getchaindata(arg2, nchains);
-
-						if( data > data2){
-							data = 255;
-						}else {
-							data = 0;
-						}
-						this.chains[ curchain].data = data;
-						osnap.indcolor = "#ffffff";
-						osnap.indval = this.chains[ curchain].data;
-					}else {
-						osnap.indcolor = "";
-					}
-
-				}else if(code == 44){	// latch
-					arg2 = prog[bp];
-					bp++;
-					if(arg2 == 0){
-						curchain = 0; // needs both inputs.
-					}
-					if( curchain != 0){
-						data2 =  this.getchaindata(arg2, nchains);
-						if( data2 > 127 && progbits[ ibp].prevvalue < 128){
-							progbits[ ibp].value = data;
-						}
-						data = progbits[ ibp].value;
-						progbits[ ibp].prevvalue = data2;
-
-						if( data > 128){
-							data = 255;
-						}else {
-							data = 0;
-						}
-						this.chains[ curchain].data = data;
-						osnap.indcolor = "#00ff00";
-						osnap.indval = this.chains[ curchain].data;
-					}else {
-						osnap.indcolor = "";
-					}
-
-				}else if(code == GRAPH){	// graph
-					arg2 = prog[bp];
-					bp++;
-					if( curchain != 0){
-						drawmode = 2;
-						data2 = data;
-						progbits[ ibp].ctrl.setValue(data, 0);
-						if( arg2 > 0 && arg2 < 20){
-							data2 = this.chains[ arg2].data;
-							progbits[ ibp].ctrl.setValue(data2, 1);
-						}
-						osnap.indcolor = "#ffffff";
-					}else {
-						osnap.indcolor = "";
-					}
-					if( progbits[ ibp].ctrl.mode == 2){		// replay
-						data = progbits[ ibp].value;
-					}
-					this.chains[ curchain].data = data;
-					osnap.indval = this.chains[ curchain].data;
-				}else if(code == MIDICCOUT){		// midi control code
-					arg2 = prog[bp];
-					bp++;
-					if(curchain  == 0){
-						data = 0;			// note off when disconnected.
-					}else if(  arg2 > 0 && arg2 < nchains){		
-						data2 = this.getchaindata(arg2, nchains);
-						progbits[ ibp].ctrl.setValue(data2, 1);	// modulation
-					}
-					progbits[ ibp].ctrl.setValue(data, 0);	
-					progbits[ibp].value = this.chains[ curchain].data;
-
-				}else if(code == OSC){		// osc
-					arg2 = prog[bp];
-					bp++;
-					data2 = data;
-//						progbits[ ibp].ctrl.setValue(data, 0);
-					if( arg2 > 0 && arg2 < nchains){
-						data2 = this.chains[ arg2].data;
-						progbits[ ibp].ctrl.setValue(data2, 1);	// modfreq
-					}
-					if(curchain  == 0){
-						data = 0;			// silence osc if not linked in a chain.
-					}else {
-						progbits[ ibp].ctrl.setValue(data, 0);
-					}
-					osnap.indcolor = "#ff0000";
-					osnap.indval = this.chains[ curchain].data;
-				}else if(code == FILTER || code == DELAY || code == PANNER){		// filter,delay,panner
-					arg2 = prog[bp];
-					bp++;
-					data2 = data;
-					if( arg2 > 0 && arg2 < nchains){
-						data2 = this.getchaindata(arg2, nchains);
-						progbits[ ibp].ctrl.setValue(data2, 1);
-					}
-					if( data < 20){	// effects do not mute output when in is less than 20.
-						data = 20;
-						this.chains[ curchain].data = data;	
-					}
-					progbits[ibp].value = this.chains[ curchain].data;
-					osnap.indcolor = "#ff0000";
-					osnap.indval = this.chains[ curchain].data;
-			}else if( curchain != 0){
-					// single byte codes that do nothing when curchain is 0
-					if(code == AINVERT){
-						this.chains[ curchain].data = 255 - data;	// arith_invert
-						osnap.indcolor = "#ffffff";
-						osnap.indval = this.chains[ curchain].data;
-
-					}else if(code == LOGICNOT){	// not 
-						if( data > 127){
-							this.chains[ curchain].data = 0;
-						}else{
-							this.chains[ curchain].data = 255;
-						}
-						osnap.indcolor = "#00ff00";
-						osnap.indval = this.chains[ curchain].data;
-
-					}else if(code == DIMMER || code == ROTARY){	// dimmer or rotary
-						this.chains[ curchain].data = Math.floor( ( data * this.getValue( progbits, ibp, 255) ) / 256);	// arith_dimmer
-						osnap.indcolor = "#ffffff";
-						osnap.indval = this.chains[ curchain].data;
-
-					}else if(code == 15){
-						this.chains[ curchain].data = this.getValue( progbits, ibp, 255);	// arith_setvalue
-
-					}else if(code == COUNTER){
-						this.chains[ curchain].data = this.getValue( progbits, ibp, 255);	// arith_counter
-						if( data > 128){
-							progbits[ibp].value++;
-						}else {
-							progbits[ibp].value--;
-						}
-						if( progbits[ibp].value > 255){
-							progbits[ibp].value = 0;
-						}else if(progbits[ibp].value < 0){
-							progbits[ibp].value = 255;
-						}
-						osnap.indcolor = "#ffffff";
-						osnap.indval = this.chains[ curchain].data;
-						execmode = 2;
-						drawmode = 2;
-
-					}else if(code == 112 || code == 113){			// push switch or toggle switch
-						if( this.getValue( progbits, ibp, 0) < 127){
-							data = 0;
-						}
-						this.chains[ curchain].data = data;
-						osnap.indcolor = "#00ff00";
-						osnap.indval = this.chains[ curchain].data;
-
-					}else if(code == 104){
-						if( curnote != data){
-							if( data == 0){
-								noteOn(curnote, 0);
-								curnote = 0;
+							break;
+						case 2:
+							prog = null;				// endprog
+							break;
+						case 3:							// getvalue
+							if( curchain != 0){
+								this.chains[ curchain].data = this.getValue( progbits, ibp, 255);
+							}
+							break;
+						case 4:
+							arg2 = prog[bp];		// get arg , literal.
+							bp++;
+							break;
+						case 5:
+							if( curchain != 0){		// if curchain != 0 skip, next code is usually 0 (done )
+								ip++;
+							}
+							break;
+						case 6:
+							if(arg2 == 0){				// 6	if second input is not connected, set curchain to 0 ( invalid )
+								curchain = 0;
+							}
+							break;
+						case 7:
+							progbits[ibp].value = this.chains[ curchain].data;
+							break;
+						case 8:
+							if(curchain  == 0){		// 8
+								data = 0;			// silence speaker if not linked in a chain.
+							}
+							break;
+						case 9:						// control
+							progbits[ ibp].ctrl.setValue(data, 0);		// 9
+							break;
+						case 10:					// control
+							if(  arg2 > 0 && arg2 < nchains){		//  10	get data from another chain.
+								data2 = this.getchaindata(arg2, nchains);
+								progbits[ ibp].ctrl.setValue(data2, 1);
 							}else {
-								curnote = data;
-								noteOn(curnote, 127);
+								progbits[ ibp].ctrl.setValue(128, 1);
 							}
-						}
-						osnap.indcolor = "#ffffff";
-						osnap.indval = this.chains[ curchain].data;
-
-					}else if(code == SEQUENCER){		// seq
-						progbits[ibp].ctrl.setValue(data, 0);
-						this.chains[ curchain].data = this.getValue( progbits, ibp, 255);
-						osnap.indcolor = "#ffffff";
-						osnap.indval = this.chains[ curchain].data;
-					}else if(code == SCOPE){		// scope
-						progbits[ibp].ctrl.setValue(data, 0);		// use setValue to animate
-						progbits[ibp].value = this.chains[ curchain].data;
-						osnap.indcolor = "#ff0000";
-						osnap.indval = this.chains[ curchain].data;
-					}else if(code == MIDICLOCK){		// clock
-						progbits[ibp].ctrl.setValue(data, 0);
-						this.chains[ curchain].data = this.getValue( progbits, ibp, 255);
-						osnap.indcolor = "#ffffff";
-						osnap.indval = this.chains[ curchain].data;
-					}else if(code == 21){
-					}else if(code == 22){
-					}else if(code == 25){
-					}else if(code == 26){
-					}else if(code == 27){
-					}else if(code == 28){
-					}else if(code == 29){
+							break;
+						case 11:					// not 5  if( curchain != 0) X
+							if( curchain == 0){
+								ip++;				// skip
+							}
+							break;
+						case 12:
+							if( arg2 > 0 && arg2 < nchains){		//  12 get data from another chain. pass to  ctrl on chan 2
+								data2 = this.getchaindata(arg2, nchains);
+								progbits[ ibp].ctrl.setValue(data2, 1);	// 
+							}
+							break;
+						case 13:
+							data2 = this.getchaindata(arg2, nchains);		// 13 get data2 from another chain.
+							break;
+						case 14:										// and
+							if( data > 127 && data2 > 127){
+								this.chains[ curchain].data = 255;
+							}else {
+								this.chains[ curchain].data = 0;
+							}
+							break;
+						case 15:										// nand
+							if( data > 127 && data2 > 127){
+								this.chains[ curchain].data = 0;
+							}else {
+								this.chains[ curchain].data = 255;
+							}
+							break;
+						case 16:
+							if( curchain != 0){		 					// 16  write another chain start value.
+								this.setchaindata(arg2, nchains, data);
+							}
+							break;
+						case 17:								// OR
+							if( data > 127 || data2 > 127){
+								this.chains[ curchain].data = 255;
+							}else {
+								this.chains[ curchain].data = 0;
+							}
+							break;
+						case 18:								// NOR
+							if( data > 127 || data2 > 127){
+								this.chains[ curchain].data = 0;
+							}else {
+								this.chains[ curchain].data = 255;
+							}
+							break;
+						case 19:								// xor
+							if( data > 127 && data2 > 127){
+								this.chains[ curchain].data = 0;
+							}else if( data <= 127 && data2 <= 127){
+								this.chains[ curchain].data = 0;
+							}else {
+								this.chains[ curchain].data = 255;
+							}
+							break;
+						case 20:
+							data = checkRange(data);			// 20
+							this.chains[ curchain].data = data;
+							break;
+						case 21:
+							break;
+						case 22:
+							data = data+data2;		// 22
+							break;
+						case 23:
+							data = data-data2;
+							break;
+						case 24:
+							data2 = data;
+							break;
+						case 25:
+							if( progbits[ibp] != null && progbits[ibp].snaps[1] != null){
+								osnap = progbits[ibp].snaps[1];
+								osnap.indcolor = "#ff0000";						// 25	RED
+								osnap.indval = this.chains[ curchain].data;
+							}
+							break;
+						case 26:
+							if( progbits[ibp] != null && progbits[ibp].snaps[1] != null){
+								osnap = progbits[ibp].snaps[1];
+								osnap.indcolor = "#00ff00";						// 26	GREEN
+								osnap.indval = this.chains[ curchain].data;
+							}
+							break;
+						case 27:
+							if( progbits[ibp] != null && progbits[ibp].snaps[1] != null){
+								osnap = progbits[ibp].snaps[1];
+								osnap.indcolor = "#0000ff";						// 27	BLUE
+								osnap.indval = this.chains[ curchain].data;
+							}
+							break;
+						case 28:
+							if( progbits[ibp] != null && progbits[ibp].snaps[1] != null){
+								osnap = progbits[ibp].snaps[1];
+								osnap.indcolor = "#ffffff";						// 28	WHITE
+								osnap.indval = this.chains[ curchain].data;
+							}
+							break;
+						case 29:
+							if( progbits[ibp] != null && progbits[ibp].snaps[1] != null){
+								osnap = progbits[ibp].snaps[1];
+								osnap.indcolor = "#000000";						// 29	BLACK
+								osnap.indval = this.chains[ curchain].data;
+							}
+							break;
+						case 30:
+							if( progbits[ibp] != null && progbits[ibp].snaps[1] != null){
+								osnap = progbits[ibp].snaps[1];
+								osnap.indcolor = "#ffff00";						// 30	YELLOW
+								osnap.indval = this.chains[ curchain].data;
+							}
+							break;
+						case 31:
+							data = data * data2;	// 31
+							break;
+						case 32:											// 32 divide
+							if( data2 != 0){							// 32
+								data = data * 128;
+								data = Math.floor(( data / data2) / 128);
+							}else {
+								data = 255;
+							}
+							break;
+						case 33:
+							if( data > data2){					// 33	diff
+								data = data - data2;
+							}else {
+								data = data2 - data;
+							}
+							break;
+						case 34:						// GT
+							if( data > data2){			// 34
+								data = 255;
+							}else {
+								data = 0;
+							}
+							break;
+						case 35:
+							if( data2 > 127 && progbits[ ibp].prevvalue < 128){	// 35
+								progbits[ ibp].value = data;
+							}
+							data = progbits[ ibp].value;
+							progbits[ ibp].prevvalue = data2;
+							break;
+						case 36:
+							if( data > 128){				// boolean
+								data = 255;
+							}else {
+								data = 0;
+							}
+							break;
+						case 37:
+							data = 255 - data;				// invert
+							break;
+						case 38:
+							if( data > 127){					// 38 NOT
+								this.chains[ curchain].data = 0;
+							}else{
+								this.chains[ curchain].data = 255;
+							}
+							break;
+						case 39:
+							data = Math.floor( ( data * this.getValue( progbits, ibp, 255) ) / 256);
+							break;
+						case 40:
+							execmode = 2;
+							break;
+						case 41:
+							drawmode = 2;
+							break;
+						case 42:
+							if( data < 20){	// effects do not mute output when in is less than 20.
+								data = 20;
+								this.chains[ curchain].data = data;	
+							}
+							break;
+						case 43:
+							if(  arg2 > 0 && arg2 < nchains){
+								if( this.chains[ curchain].data != 0){
+									this.chains[ arg2 ].startvalue = 255;
+								}else {
+									this.chains[ arg2 ].startvalue = 0;
+								}
+							}
+							break;
+						case 44:
+							data2 = this.getValue( progbits, ibp, 0);	// 44
+							if( data2 < 128){
+								data = 0;
+							}
+							break;
+						case 45:
+							debugmsg(msg);
+							break;
+						case 46:
+							trace= true;
+							msg = "Trace: ";
+							break;
+						case 47:							// getvalue2
+							if( curchain != 0){
+								this.chains[ curchain].data = this.getValue2( progbits, ibp, 255);
+							}
+							break;
+	
 					}
+					ip++;
 				}
+//			}else {
+//				debugmsg("No bytes "+msg);
 			}
-			if( progbits != null && progbits[ibp] != null && curchain > 0 && curchain < 20){
-				progbits[ibp].data = this.chains[curchain].data;		// update the value
-			}
-		}
-		if( this.needsend != 0){
-			this.sendsize++;
-			if( this.senddata == null){
-				this.senddata = new Uint8Array( this.sendsize);
-				this.senddata[0] = 0xf0;
-				this.senddata[1] = 0x53;
-				this.senddata[2] = 0x42;
-				this.senddata[3] = 0x4c;
-				this.senddata[4] = 0x06;
-				this.senddata[5] = seqh;
-				this.senddata[6] = seql;
-				this.senddata[7] = 1;
-				this.senddata[this.sendsize -1] = 0xf7;
-			}else {
-				if( arduino != null && arduino.senddata == null){
-					arduino.senddata = this.senddata;
-					arduino.sendcnt = this.sendsize;
-					this.senddata = null;
+
+			if( progbits != null && progbits[ibp] != null){
+				if( curchain > 0 && curchain < nchains){
+					progbits[ibp].data = this.chains[curchain].data;		// update the value
+//					debugmsg("EXC "+progbits[ibp].data);
 				}
 			}
 		}
+//		debugmsg(msg);
 	}
 }
 
@@ -2085,6 +2237,7 @@ function Bit( btype, x, y, w, h, k) {
 	this.chain = 0;				// the chain this bit is in and used as a marker.
 	this.data = 255;
 	this.value = 255;
+	this.value2 = 255;
 	this.prevvalue = 255;
 	this.net = 0;				// for labeling nets used in dock/undock.
 	this.addr = 0;				// offset of this bit in the codebyte array. 
@@ -2149,7 +2302,12 @@ function Bit( btype, x, y, w, h, k) {
 	let imagename = this.kit.bitnames[bidx];
 	this.bitimg =this.findImage(imagename);
 	this.name = this.kit.bitnames[bidx+1];
-	this.code = this.kit.findcode( this.name);
+	if( this.kit.bitnames[bidx+8] > 0){
+		this.code = this.kit.bitnames[bidx+8];
+		debugmsg("BIT "+this.name+" code="+this.code);
+	}else {
+		this.code = this.kit.findcode( this.name);
+	}
 	this.bitname = imagename;
 	this.domain = this.kit.bitnames[bidx+12];
 
@@ -2193,7 +2351,7 @@ function Bit( btype, x, y, w, h, k) {
 	}
 
 
-	if( this.kit.bitnames[bidx] == "control" || this.kit.bitnames[bidx+9] == 1){
+	if( this.kit.bitnames[bidx] == "control" || this.kit.bitnames[bidx+9] > 0){
 		this.addCtrl( bidx );
 	}
 
@@ -2201,11 +2359,12 @@ function Bit( btype, x, y, w, h, k) {
 
 // bit  move the bit relative
 	this.relXY = function( dx, dy)
-	{	var i;
+	{	let i;
+		const len = this.snaps.length;
 
 		this.x += dx;
 		this.y += dy;
-		 for(i=0; i < 4; i++){
+		 for(i=0; i < len; i++){
 			if( this.snaps[i] != null)this.snaps[i].relXY(dx, dy);
 		}
 	}
@@ -2213,14 +2372,15 @@ function Bit( btype, x, y, w, h, k) {
 	// move bit and docked bits relative
 	this.relXYlinked = function( dx, dy)
 	{	// move paired bits
-		var i;
-		var s;
-		var p;
+		let i;
+		let s;
+		let p;
+		const len = this.snaps.length;
 
 		if( this.mflag == 0)
 		{
 			this.mflag = 1;	// mark me
-			for(i=0; i < 4; i++){
+			for(i=0; i < len; i++){
 				s = this.snaps[i];
 				if( s != null && s.paired != null){
 					p = s.paired;
@@ -2234,7 +2394,7 @@ function Bit( btype, x, y, w, h, k) {
 
 	// set the position of the bit absolute
 	this.setXY = function( x, y)
-	{	var dx, dy;
+	{	let dx, dy;
 
 		dx = x - this.x
 		dy = y - this.y;
@@ -2244,7 +2404,7 @@ function Bit( btype, x, y, w, h, k) {
 
 
 	this.setXYlinked = function( x, y)
-	{	var dx, dy;
+	{	let dx, dy;
 
 		dx = x - this.x
 		dy = y - this.y;
@@ -2301,7 +2461,6 @@ function Bit( btype, x, y, w, h, k) {
 	// used to draw the bit's label.
 	this.drawText = function( ctx, msg)
 	{	var btmp = this.btype & 7;
-		var idx = this.btype - btmp;
 
 		if( this.color != ""){
 	        ctx.fillStyle = this.color;
@@ -2322,16 +2481,16 @@ function Bit( btype, x, y, w, h, k) {
 
 // bit drawdata
 	this.drawData = function( ctx)
-	{	var btmp = this.btype & 7;
-		var idx = this.btype - btmp;
+	{	let btmp = this.btype & 7;
+		let data = Math.floor(this.data);
 
         ctx.fillStyle = this.color;
 		if( btmp == 0){
-			ctx.fillText(""+this.data, this.x+this.w-30, this.y+this.h-10 );
+			ctx.fillText(""+data, this.x+this.w-30, this.y+this.h-10 );
 		}else {
 			ctx.translate( this.x+this.w-20, this.y+this.h-30);
 			ctx.rotate( Math.PI/2);
-			ctx.fillText(""+this.data, 0, 0 );
+			ctx.fillText(""+data, 0, 0 );
 		}
 	}
 
@@ -2339,7 +2498,6 @@ function Bit( btype, x, y, w, h, k) {
 	this.Draw = function( pass)
 	{	var snapname = null;
 		const btmp = this.btype & 7;
-		const idx = this.btype - btmp;
 		let img = 0;
 
         if( pass == 0){
@@ -2361,7 +2519,7 @@ function Bit( btype, x, y, w, h, k) {
 					ctx.strokeRect(this.x-2, this.y-2, this.w+4, this.h+4);
 				}
 			}
-		}else if( pass == 2){	// input snaps
+		}else if( pass == 2 && showsnaps == 1){	// input snaps
 			snapname = this.snapnames[0];
 			if( this.code != WIRE || this.snaps[1].paired == null){		// wire then ctrl draws if paired.
 				if( snapname != null){	
@@ -2374,7 +2532,7 @@ function Bit( btype, x, y, w, h, k) {
 				drawImage(snapname, this.x+this.coords[4], this.y+this.coords[5]);
 				this.snaps[2].drawIndicator( this.suffix[2], this.x+this.coords[4], this.y+this.coords[5]);
 			}
-		}else if( pass == 1){	// output snaps
+		}else if( pass == 1 && showsnaps == 1){	// output snaps
 			snapname = this.snapnames[1];
 			if( this.code != WIRE || this.snaps[0].paired == null){		// wire
 				if( snapname != null){
@@ -2409,9 +2567,10 @@ function Bit( btype, x, y, w, h, k) {
 
 // bit isDocked()
 	this.isDocked = function()
-	{	var i;
+	{	let i;
+		const len = this.snaps.length;
 
-		for(i=0; i < 4; i++){
+		for(i=0; i < len; i++){
 			if( this.snaps[i] != null && this.snaps[i].paired != null){
 				return true;		// cannot flip if it is docked
 			}
@@ -2466,10 +2625,11 @@ function Bit( btype, x, y, w, h, k) {
 	//
 	this.flip = function()
 	{
-		var btmp = this.btype & 7;
-		var idx = this.btype - btmp;
-		var i, tmp;
-		var nx, ny;
+		const btmp = this.btype & 7;
+		let idx = this.btype - btmp;
+		let i, tmp;
+		let nx, ny;
+		const len = this.snaps.length;
 
 		if( this.isDocked() ){
 			return false;
@@ -2485,8 +2645,7 @@ function Bit( btype, x, y, w, h, k) {
 		this.setOrientation( i);
 
 		// re orientate the snaps
-		var msg = "";
-		for(i=0; i < 4; i++){
+		for(i=0; i < len; i++){
 			if( this.snaps[i] != null){
 				
 				tmp = this.snaps[i].w;
@@ -2532,12 +2691,13 @@ function Bit( btype, x, y, w, h, k) {
 	}
 
 	this.print = function()
-	{	var msg = "bit "+this.bitname+"("+this.code+") ";
-		var i;
+	{	let msg = "bit "+this.bitname+"("+this.code+") ";
+		let i;
+		const len = this.snaps.length;
 
 		msg += "["+this.x+","+this.y+","+this.w+","+this.h+","+this.initw+","+this.inith+"] ";
 
-		for(i=0; i < 4; i++){
+		for(i=0; i < len; i++){
 			if( this.snaps[i] != null){
 				msg = msg + i+":";
 				if( this.snaps[i].paired != null){
@@ -2551,11 +2711,11 @@ function Bit( btype, x, y, w, h, k) {
 	}
 
 	this.autoSelect = function(arx, ary)
-	{	var tx = arx;
-		var ty = ary;
-		var xsnap = null;
-		var abt = this.btype & 7;
-		var snaporder = [0, 1, 2, 3];
+	{	let tx = arx;
+		let ty = ary;
+		let xsnap = null;
+		let abt = this.btype & 7;
+		let snaporder = [0, 1, 2, 3];
 
 		if( abt == 1){
 			snaporder = [2, 3, 0, 1];
@@ -2599,11 +2759,12 @@ function Bit( btype, x, y, w, h, k) {
 	//
 // bit
 	this.markConnected = function( n )
-	{	var i;
-		var s, p;
+	{	let i;
+		let s, p;
+		const len = this.snaps.length;
 
 		this.net = n;
-		for(i=0; i < 4; i++){
+		for(i=0; i < len; i++){
 			s = this.snaps[i];
 			if( s != null ){
 				p = s.paired;
@@ -2620,12 +2781,13 @@ function Bit( btype, x, y, w, h, k) {
 	//
 // bit
 	this.unMark = function( )
-	{ var i;
-	  var s;
+	{ let i;
+	  let s;
+	  const len = this.snaps.length;
 
 		if( this.mflag != 0){
 			this.mflag = 0;
-			for(i=0; i < 4; i++){
+			for(i=0; i < len; i++){
 				s = this.snaps[i];
 				if( s != null ){
 					p = s.paired;
@@ -2637,6 +2799,21 @@ function Bit( btype, x, y, w, h, k) {
 			}
 		}
 	}
+
+	// bit
+	this.setValue = function(data, chan)
+	{
+
+	}
+
+	// bit
+	this.getValue = function(chan)
+	{	if(chan == 0){
+			return this.value;
+		}
+		return this.value2;
+	}
+
 
 
 }
@@ -2718,8 +2895,8 @@ function Bitlist( xbit )
 }
 
 function reLabel( bl)
-{	var l = bl;
-	var n = 0;
+{	let l = bl;
+	let n = 0;
 
 	// part 1. set net to 0
 	while( l != null){
@@ -2762,9 +2939,7 @@ function Keyboard(){
 }
 
 function Sketch() {
-	var idx;
 	this.blist = null;			// list of bits.
-	var i;
 	this.bll = 0;
 	this.blr = 0;
 	this.blt = 0;
@@ -2803,8 +2978,6 @@ function Sketch() {
     this.Draw = function() 
 	{	let cx, cy;
 		let ix, iy;
-		let bt;
-		let idx;
 		let i;
 
         if (!this.canvas || !this.canvas.getContext) {
@@ -2829,8 +3002,6 @@ function Sketch() {
 		for(pass=0; pass < 4; pass++){
 	        for (i = this.blist ; i != null ; i = i.next) {
 				i.bit.Draw(pass);
-				bt = i.bit.btype & 7;
-				idx = i.bit.btype - bt;
 
 				if( pass == 3){
 					if( i.bit.bitname == "default" || i.bit.bitname == "defaulta"){
@@ -2985,6 +3156,7 @@ function Sketch() {
 		let ahit;
 		let cname = "default";
 		let ldrag = dragging;
+		let i;
 
 //		message("Mouse Move "+mx+" "+my);
 		cw = sketch.canvas.width;
@@ -3238,7 +3410,7 @@ function Sketch() {
 
 	// sketch.addBit
 	this.addBit = function( xbit)
-	{	var bitl;
+	{	let bitl;
 
 		bitl = new Bitlist( xbit);
 //		bitl.bit = xbit;
@@ -3325,9 +3497,9 @@ function Sketch() {
 
 	// sketch.Init()
     this.Init = function() {
-		var nam;
 		var cw, ch;
 		this.start = Date.now();
+		let k;
 
 		drawing = 1;
         background = document.getElementById("background");
@@ -3336,7 +3508,7 @@ function Sketch() {
 		k = kitlist;
 		if( k != null){
 			while(k != null){
-				k.init();
+				k.init();			// init each kit.
 				k = k.next;
 			}
 		}
@@ -3355,50 +3527,50 @@ function Sketch() {
 		this.canvas.onkeydown = this.KeyDown;
 
 		this.canvas.addEventListener('touchstart', function(e){
-				var touchobj = e.changedTouches[0]; // reference first touch point (ie: first finger)
-				let rect=this.getBoundingClientRect();
-				let ox = rect.left + window.scrollX;
-				let oy = rect.top + window.scrollY;
-				if( hidetouch){
-					UIhidetouch();
-				}
-				e.preventDefault();
-				if( e.touches.length == e.targetTouches.length){
-					mx = touchobj.pageX-ox;
-					my = touchobj.pageY-oy;
-					sketch.doMouseDown();
-				}
-			 }, false);
+			let touchobj = e.changedTouches[0]; // reference first touch point (ie: first finger)
+			let rect=this.getBoundingClientRect();
+			let ox = rect.left + window.scrollX;
+			let oy = rect.top + window.scrollY;
+			if( hidetouch){
+				UIhidetouch();
+			}
+			e.preventDefault();
+			if( e.touches.length == e.targetTouches.length){
+				mx = touchobj.pageX-ox;
+				my = touchobj.pageY-oy;
+				sketch.doMouseDown();
+			}
+			}, false);
  
 		this.canvas.addEventListener('touchmove', function(e){
-				var touchobj = e.changedTouches[0];
-				let rect=this.getBoundingClientRect();
-				let ox = rect.left + window.scrollX;
-				let oy = rect.top + window.scrollY;
-				if( hidetouch){
-					UIhidetouch();
-				}
-				e.preventDefault();
+			var touchobj = e.changedTouches[0];
+			let rect=this.getBoundingClientRect();
+			let ox = rect.left + window.scrollX;
+			let oy = rect.top + window.scrollY;
+			if( hidetouch){
+				UIhidetouch();
+			}
+			e.preventDefault();
 
-				mx = touchobj.pageX-ox;
-				my = touchobj.pageY-oy;
-				sketch.doMouseMove();
-			}, false);
+			mx = touchobj.pageX-ox;
+			my = touchobj.pageY-oy;
+			sketch.doMouseMove();
+		}, false);
  
 		this.canvas.addEventListener('touchend', function(e){
-				var touchobj = e.changedTouches[0] // reference first touch point for this event
-				let rect=this.getBoundingClientRect();
-				let ox = rect.left + window.scrollX;
-				let oy = rect.top + window.scrollY;
-				if( hidetouch){
-					UIhidetouch();
-				}
-				e.preventDefault();
+			var touchobj = e.changedTouches[0] // reference first touch point for this event
+			let rect=this.getBoundingClientRect();
+			let ox = rect.left + window.scrollX;
+			let oy = rect.top + window.scrollY;
+			if( hidetouch){
+				UIhidetouch();
+			}
+			e.preventDefault();
 
-				mx = touchobj.pageX-ox;
-				my = touchobj.pageY-oy;
-				sketch.doMouseUp();
-			}, false);
+			mx = touchobj.pageX-ox;
+			my = touchobj.pageY-oy;
+			sketch.doMouseUp();
+		}, false);
  
 
 		document.getElementById("canvasbox").style.cursor = "default";
@@ -3416,7 +3588,7 @@ function Sketch() {
 
 		if( window.location.protocol == "file:"){
 			canNetwork = 0;
-			var b = document.getElementById("loadbutton");
+			let b = document.getElementById("loadbutton");
 			b.disabled = true;
 			b = document.getElementById("savebutton");
 			b.disabled = true;

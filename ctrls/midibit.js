@@ -151,8 +151,10 @@ function selMIDIindev(dev)
 			
 			if( dev == 1){
 				useMIDIin.midiport.onmidimessage = MIDIMessageEventHandler1;
+				debugmsg("Sel 1");
 			}else if( dev == 2){
 				useMIDIin.midiport.onmidimessage = MIDIMessageEventHandler2;
+				debugmsg("Sel 2");
 			}else if( dev == 3){
 				useMIDIin.midiport.onmidimessage = MIDIMessageEventHandler3;
 			}else if( dev == 4){
@@ -167,10 +169,13 @@ function selMIDIindev(dev)
 				useMIDIin.midiport.onmidimessage = MIDIMessageEventHandler8;
 			}else if( dev == 9){
 				useMIDIin.midiport.onmidimessage = MIDIMessageEventHandler9;
+			}else {
+				debugmsg("Sel nothing");
 			}
 			l = null;
 		}else {
 			l = l.next;
+			debugmsg("Sel not "+dev);
 		}
 	}
 
@@ -475,14 +480,7 @@ function midiCCBit(bit)
 	// midicc
 	this.setValue = function(data, func)
 	{
-		if( func == 2){
-			// func 2 is CC learn mode.
-			debugmsg("CC IN learn "+data+" old"+this.cc);
-			this.cc = data;
-			// remove from target list..
-		}
 		return;
-
 	}
 
 
@@ -505,7 +503,9 @@ function midiCCBit(bit)
 			msg += "<tr><th>Group</th><td>"+showMidiGroups(1,grp.name, false)+"</td><th>Channel</th><td>"+channel+"</td></tr>\n";
 			msg += "<tr><th>Configure</th><td>Action/midi_group_in</td></tr>\n";
 			msg += "<tr><th>Control<br />Change</th><td colspan='4'>"+showMidiControlCodes(this.cc);
-			msg += "<input type='button' value='learn' onclick='UIlearnCC();' />\n";
+			if( miditargeting != null){
+				msg += "<br /><input type='button' value='learn' onclick='UIlearnCC();' />\n";
+			}
 			msg += "</td></tr>";
 			msg += "</table>\n";
 
@@ -851,18 +851,6 @@ function midiCCOutBit(bit)
 		}
 
 		if( func != 0){		// use input snap 0 only
-			if( func == 2){
-				// func 2 is CC learn mode.
-				old = this.cc;
-				debugmsg("CC learn "+data+" old"+old);
-				this.cc = data;
-				if( old != data){
-					if( bitformaction == this){
-						this.setData();		// refresh
-					}
-				}
-				// remove from target list..
-			}
 			return;
 		}
 
@@ -910,7 +898,9 @@ function midiCCOutBit(bit)
 			msg += "<tr><th>Group</th><td>"+showMidiGroups(0,grp.name, false)+"</td><th>Channel</th><td>"+grp.channel+"</td></tr>\n";
 			msg += "<tr><th>Configure</th><td>Action/midi_group_out</td></tr>\n";
 			msg += "<tr><th>Control<br />Change</th><td colspan='4' >"+showMidiControlCodes(this.cc);
-			msg += "<input type='button' value='learn' onclick='UIlearnCC();' />\n";
+			if( miditargeting){
+				msg += "<br /><input type='button' value='learn' onclick='UIlearnCC();' />\n";
+			}
 			msg += "</td></tr>";
 			msg += "<tr><th align='right'>Modulation</th><td >"+showModulation(this.mod, this.modnames)+"</td></tr>\n";
 			msg += "<tr><th>Offset</th><td><input type='text' id='offset' value='"+this.offset+"' /></td></tr>\n";
@@ -1244,17 +1234,11 @@ function midiGroupBit(bit)
 
 		f = document.getElementById("learn");
 		if( f != null){
-			if( md != null){
-				md.learn = f.value;
-				if( f.value != 0){
-					miditargeting = md;
-				}
-				md.learnchan = gn.channel;
-			}
 		}
 		// update midi nodes.
 	}
 
+	// groupbit
 	this.doSave = function()
 	{	let msg = "";
 		let s = new saveargs();
@@ -1718,9 +1702,10 @@ targetGroupBit.prototype = Object.create(control.prototype);
 function targetGroupBit(bit)
 {	control.call(this, bit);
 	this.bit = bit;
-	this.groupname = "Default";
-	this.grouptype = 1;		// start as input
+	this.midicnt = 0;
+	this.channel = 0;
 	this.groupobj = null;
+	this.chantype = 2;
 
     let imagename = "target";
 	this.bitimg =this.bit.findImage(imagename);
@@ -1746,40 +1731,27 @@ function targetGroupBit(bit)
 	}
 
 	// targetting editor
-	this.showLearn = function(l)
-	{	let learn= 0;
-		let msg="";
-		let md = null;
-
-		if( this.groupobj != null){
-			md = MIDIindev[this.groupobj.midicnt];
-			if( md != null){
-				learn = md.learn;
-			}
-		}
-		msg += "<select id='learn' onchange='UIlearn("+'"'+this.groupname+'"'+")' >";
-		msg += "<option value='0' "+isSelected(0, learn)+">Off</option>\n";
-		msg += "<option value='1' "+isSelected(1, learn)+">Target</option>\n";
-		msg += "<option value='2' "+isSelected(2, learn)+">Armed</option>\n";
-		msg += "<option value='3' "+isSelected(3, learn)+">Done</option>\n";
-		msg += "</select>\n";
-		return msg;
-	}
 
 	this.showTargets = function(md)
 	{	let msg = "";
 		if( md != null){
-			let t = md.learnlist.head;
+			let t = miditarget_list.head;
 			while(t != null){
 				let ob = t.ob;
-				msg += "<tr><td></td><td>"+ob.bit.name+":"+ob.knob+"</td>";
-				if( learn == 1 ){
-					msg+= "<td></td><td><input type='button' value='Del' onclick='UImidiTarget(0, "+'"'+ob.id+'"'+");' />";
-				}else {
-					msg+= "<td>"+ob.channel+":"+ob.val+"</td><td> <input type='button' value='Clear' onclick='UImidiTarget(1, "+'"'+ob.id+'"'+");' />";
-				}
+				if( ob.midicnt == md){
+					if( ob.bit == null){
+						msg += "<tr><td></td><td>Unset: Unknown</td>";
+					}else {
+						msg += "<tr><td></td><td>"+ob.bit.name+":"+ob.knob+"</td>";
+					}
+					if( ob.learn == 1 ){
+						msg+= "<td></td><td><input type='button' value='Del' onclick='UImidiTarget(0, "+'"'+ob.id+'"'+");' />";
+					}else {
+						msg+= "<td>"+ob.channel+":"+ob.val+"</td><td> <input type='button' value='Clear' onclick='UImidiTarget(1, "+'"'+ob.id+'"'+");' />";
+					}
 
-				msg += "</tr>\n";
+					msg += "</tr>\n";
+				}
 
 				t = t.next;
 			}
@@ -1789,16 +1761,6 @@ function targetGroupBit(bit)
 
 	this.setData = function()
 	{	let msg="";
-		const grp =  this.groupobj;
-		let md = null;
-		let name = "";
-		let channel = 0;
-		
-		if( grp != null){
-			md= MIDIindev[grp.midicnt];
-			name = grp.name;
-			channel = grp.channel;
-		}
 
 		if( bitform != null){
 			bitform.innerHTML="";
@@ -1806,9 +1768,19 @@ function targetGroupBit(bit)
 
 		bitform = document.getElementById("bitform");
 		if( bitform != null){
-			msg += "<tr><th>Group</th><td>"+showMidiGroups(1,name, false)+"</td></tr>\n";
-			msg += "<tr><th align='right'>Channel</th><td > "+MidiChannelSelector(channel, true)+"</td></tr>\n";
-			msg += this.showTargets(md);
+			msg += "<table>\n";
+			msg += "<tr><th>Interface</th><td>"+showMIDIinterfaces(5, this.midicnt)+"</td></tr>\n";
+			msg += "<tr><th align='right'>Channel</th><td > "+MidiChannelSelector(this.channel, true)+"</td></tr>\n";
+			msg += "<tr><th>New</th><td><input type='button' value='Learn' onclick='UIlearn();' /></td><td>";
+			msg += "<select id='chantype' ><option value='2' "+isSelected(this.chantype, 2)+">Control Change</option>\n";
+			msg += "<option value='6'  "+isSelected(this.chantype, 6)+">Chan Aftertouch</option>\n";
+			msg += "<option value='7'  "+isSelected(this.chantype, 7)+">Poly Aftertouch</option>\n";
+			msg += "<option value='5'  "+isSelected(this.chantype, 5)+">Pitchbend</option>\n";
+			msg += "</select>\n";
+			msg += "</td></tr>\n";
+			msg += "<tr><td colspan='4' ><hr /></td></tr>\n";
+			msg += this.showTargets(this.midicnt);
+			msg += "</table>\n";
 
 			bitform.innerHTML = msg;
 			bitformaction = this;
@@ -1816,6 +1788,30 @@ function targetGroupBit(bit)
 
 	}
 
+	// target filter bit
+	this.getData = function()
+	{
+		let f = null;
+		let val = 0;
+
+		f = document.getElementById("midiinsel");
+		if( f != null){
+			val = f.value;
+			this.midicnt = val;
+		}
+
+		f = document.getElementById("midichannel");
+		if( f != null){
+			val = f.value;
+			this.channel = val;
+		}
+		f = document.getElementById("chantype");
+		if( f != null){
+			val = f.value;
+			this.chantype = val;
+		}
+		debugmsg("Target get "+this.midicnt+" "+this.channel);
+	}
 
 }
 

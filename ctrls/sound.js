@@ -319,15 +319,16 @@ function oscBit(bit)
 				this.setoscgain();
 				// debugmsg("OSC "+data);
 			}
-		}else if(chan == 1){
+		}else if(chan > 0){
 			// rel 128
-			if(this.mod == 0){
+//			debugmsg("Osc chan="+chan+" "+data);
+			if((chan ==1 && this.mod == 0) || chan == 2){
 				this.modfreq = checkRange(data);
 				this.setoscfreq(0);
-			}else if( this.mod == 1){
+			}else if( (chan ==1 && this.mod == 1)|| chan == 3){
 				this.modgain = checkRange(data);
 				this.setoscgain();
-			}else if( this.mod == 2){
+			}else if((chan ==1 &&  this.mod == 2) || chan == 4){
 				this.wave = data;
 				if( this.prevwave.changed(data)){
 					this.setoscwave(data);
@@ -451,67 +452,71 @@ function oscBit(bit)
 	{	let i = 0;
 		let f = null;
 		let val = 0;
-		let t=0;
+		let s = new saveargs();
 
 		f = document.getElementById("freq");
 		if( f != null){
-			val = f.value;
-			this.nfreq = val;
-			this.setoscfreq(0);
+			s.addarg("freq");
+			s.addarg(f.value);
 		}
 		f = document.getElementById("wave");
 		if( f != null){
 			val = checkRange(f.value);
-			this.wave = val;
-			this.setoscwave(val);
+			s.addarg("wave");
+			s.addarg( val);
 		}
 		f = document.getElementById("mod");
 		if( f != null){
-			val = f.value;
-			this.mod = val;
+			s.addarg("mod");
+			s.addarg( f.value);
 		}
 
+		this.doLoad(s.getdata(), 0);
 	}
-		// osc
-		this.doSave = function()
-		{	let msg = "";
-			// save osc state.
-			let s = new saveargs();
 
-			s.addnv("control", "'osc'");
-			s.addnv("freq", this.nfreq);
-			s.addnv("wave", this.wave);
-			s.addnv("mod", this.mod);
+	// osc
+	this.doSave = function()
+	{	let msg = "";
+		// save osc state.
+		let s = new saveargs();
 
-			return s.getargs();
+		s.addnv("control", "'osc'");
+		s.addnv("freq", this.nfreq);
+		s.addnv("wave", this.wave);
+		s.addnv("mod", this.mod);
+
+		return s.getargs();
+	}
+
+	// osc
+	this.doLoad = function(initdata, idx)
+	{	let len = initdata[idx];
+		let n = 1;
+		let param="";
+		let val = "";
+
+		debugmsg("OSC doload "+idx+" "+len);
+		for(n = 1; n < len ; n += 2){
+			param = initdata[idx+n];
+			val = initdata[idx+n+1];
+//			debugmsg("OSC "+param+" '"+val+"'");
+
+			if( param == "control"){
+				continue;
+			}
+			if( param == "freq"){
+				this.nfreq = val;
+				this.setoscfreq(0);
+			}else if( param == "wave"){
+				this.wave = val;
+				this.setoscwave(val);
+			}else if( param == "mod"){
+				this.mod = val;
+			}
 		}
 
-		// osc
-		this.doLoad = function(initdata, idx)
-		{	let len = initdata[idx];
-			let n = 1;
-			let param="";
-			let val = "";
+	}		
 
-			debugmsg("OSC doload "+idx+" "+len);
-			for(n = 1; n < len ; n += 2){
-				param = initdata[idx+n];
-				val = initdata[idx+n+1];
-
-				if( param == "control"){
-					continue;
-				}
-				if( param == "freq"){
-					this.nfreq = val;
-				}else if( param == "wave"){
-					this.wave = val;
-				}else if( param == "mod"){
-					this.mod = val;
-				}
-			}
-	
-		}		
-	
 
 	this.onMove = function(x, y)
 	{	let vx = x - this.initx;
@@ -521,7 +526,7 @@ function oscBit(bit)
 		this.setoscfreq(0);
 
 		if( miditargeting != null){
-			midiAddTarget(this, 0);
+			midiAddTarget(this, this.mod);	// 0 = freq, 1 = vol, 2 == wave 
 		}
 
 		if( bitformaction != this){
@@ -551,7 +556,7 @@ function speakerBit(bit)
 	this.webkitstyle = false;
 	this.val = 0;
 	this.audioin = null;
-	this.mix = 0.2;
+	this.mix = 50;
 	this.modmix = 128;
 	this.prevmix = new delta();
 	this.deg = degree;
@@ -596,12 +601,12 @@ function speakerBit(bit)
 				sound = false;
 			}
 		}else if(chan == 2){ // mix
-			this.mix = checkRange(data) / 255;
+			this.mix = checkRange(data);
 		}else if(chan == 1){ // modmix
 			this.modmix = checkRange(data);
 		}
 		if( sound){
-			mix = this.mix + (this.modmix-128) / 255;
+			mix = (this.mix+this.modmix-128) / 255;
 			if( mix < 0){
 				mix = 0;
 			}
@@ -693,16 +698,55 @@ function speakerBit(bit)
 		let f = null;
 		let val = 0;
 		let t=0;
+		let s = new saveargs();
+
 
 		if(bitformaction != this){
 			return;
 		}
+		s.addarg("control");
+		s.addarg( "speaker");
 
 		f = document.getElementById("mix");
 		if( f != null){
-			this.setValue(f.value, 2);		// 0 muting, 2 mix (knob), 1 modmix
+			s.addarg("mix");
+			s.addarg( f.value);
 		}
+
+		this.doLoad(s.getdata(), 0);
 	}
+
+	this.doSave = function()
+	{	let s = new saveargs();
+
+		s.addnv("control", "'speaker'");
+		s.addnv("mix", this.nfreq);
+
+		return s.getargs();
+	}
+
+	// used by getdata and load of saved state
+	this.doLoad = function(initdata, idx)
+	{	let len = initdata[idx];
+		let n = 1;
+		let param="";
+		let val = "";
+
+		debugmsg("SPK doload "+idx+" "+len);
+		for(n = 1; n < len ; n += 2){
+			param = initdata[idx+n];
+			val = initdata[idx+n+1];
+
+			if( param == "control"){
+				continue;
+			}
+			if( param == "mix"){
+				this.setValue(val, 2);
+			}
+		}
+
+	}		
+
 
 	// speaker
 	this.onMove = function(x, y)
@@ -743,14 +787,17 @@ function filterBit(bit)
 	this.webkitstyle = false;
 	this.freq=64;
 	this.infreq=0;
-	this.vcffreq = 60;
-	this.vcfq = 0.9;
-	this.vcfmodfreq = 0;
-	this.knobs = [25, 30, 75, 30];
-	this.values = [128, 250];
+	this.vcffreq = 60;			// chan 0
+	this.vcfq = 128;
+	this.vcfmodfreq = 128;		// chan 2
+	this.vcfmodq = 128;
+	this.knobs = [25, 30, 75, 30];	
+	this.values = [128, 250];	// knobs
 	this.selknob = 0;
 	this.mod = 0;		// mod routing
 	this.deg = degree;
+	this.prevfreq = new delta();
+	this.prevq = new delta();
 
 	let i;
     let imagename = "filter";
@@ -855,32 +902,40 @@ this.Draw = function( )
 
 	this.setvcf = function()
 	{	let note;
+		let freq = this.vcffreq+(this.vcfmodfreq-128)/2;
+		let q = this.vcfq/32;
 		
 		if( notetab == null){
 			setupnotetab();
 		}
-		note = notefreq(this.vcffreq);
+		note = notefreq(freq);
 
 		if( this.vcf != null){
-			this.vcf.frequency.cancelScheduledValues(0);
-			this.vcf.frequency.setTargetAtTime( note, 0, 0.01); 
-			this.vcf.Q.cancelScheduledValues(0);
-			this.vcf.Q.setTargetAtTime( this.vcfq, 0, 0.01); 
+			if( this.prevfreq.changed(note)){
+//				debugmsg("VCF freq "+note);
+				this.vcf.frequency.cancelScheduledValues(0);
+				this.vcf.frequency.setTargetAtTime( note, 0, 0.01); 
+			}
+			if( this.prevq.changed(q)){
+				debugmsg("VCF Q "+q);
+				this.vcf.Q.cancelScheduledValues(0);
+				this.vcf.Q.setTargetAtTime( q, 0, 0.01); 
+			}
 		}
 
 	}
 
+	// filter learn
+	// knobs are independent of modulation
 	this.setValue = function(val, chan)
 	{
 		if( chan == 2 || ( chan == 1 && this.mod == 0)){		// cutoff
-			this.values[0] = val;
-			this.vcffreq = this.values[0];
-			this.setvcf();
+			this.vcfmodfreq = val;
 		}else if( chan == 3 || ( chan == 1 && this.mod == 1)){
-			this.values[1] = val;
-			this.vcfq = val / 16;
-			this.setvcf();
+			this.vcfmodq = val;
 		}
+		this.setvcf();
+
 	}
 
 	this.modnames = [ "cutoff", "resonance"];
@@ -914,7 +969,7 @@ this.Draw = function( )
 	{	let i = 0;
 		let f = null;
 		let val = 0;
-		let t=0;
+		let s = new saveargs();
 
 		if( bitformaction != this){
 			return;
@@ -922,17 +977,23 @@ this.Draw = function( )
 		f = document.getElementById("freq");
 		if( f != null){
 			val = checkRange(f.value);
-			this.setValue(val, 2);
+			s.addnarg("freq");
+			s.addarg( val);
 		}
 		f = document.getElementById("q");
 		if( f != null){
 			val = checkRange(f.value);
-			this.setValue(val, 3);
+			s.addarg("res");
+			s.addarg( val);
 		}
 		f = document.getElementById("mod");
 		if( f != null){
-			this.mod = f.value;
+			s.addarg("mod");
+			s.addarg( f.value);
 		}
+		this.setvcf();
+
+		this.doLoad(s.getdata(), 0);
 	}
 
 	//filter
@@ -966,12 +1027,15 @@ this.Draw = function( )
 			}
 			if( param == "freq"){
 				this.values[0] = val;
+				this.vcffreq = val;
 			}else if( param == "res"){
 				this.values[1] = val;
+				this.vcfq = val;
 			}else if( param == "mod"){
 				this.mod = val;
 			}
 		}
+		this.setvcf();
 
 	}		
 
@@ -987,10 +1051,13 @@ this.Draw = function( )
 		if( this.selknob > 0){
 			val = rotaryvalue(vx, vy, this.ival);
 			if( this.selknob == 1){
-				this.setValue(val, 2);
+				this.values[0] = val;			// draw
+				this.vcffreq = val;
 			}else if( this.selknob == 2){
-				this.setValue(val, 3);
+				this.vcfq = val;
+				this.values[1] = val;			// draw
 			}
+			this.setvcf();
 		}
 		if( miditargeting != null){
 			midiAddTarget(this, this.selknob-1);
@@ -1192,28 +1259,73 @@ function delayBit(bit)
 	
 // delay
 	this.getData = function()
-	{	let i = 0;
-		let f = null;
+	{	let f = null;
 		let val = 0;
-		let t=0;
+		let s = new saveargs();
 
+		s.addarg("control");
+		s.addarg( "delay");
 		f = document.getElementById("wet");
 		if( f != null){
 			val = f.value;
-			this.setValue(val, 3);
+			s.addarg("wet");
+			s.addarg( val);
 		}
 		f = document.getElementById("delay");
 		if( f != null){
 			val = f.value;
-			this.setValue(val, 2);
+			s.addarg("delay");
+			s.addarg( val);
 		}
 		f = document.getElementById("mod");
 		if( f != null){
 			val = f.value;
-			this.mod = val;
+			s.addarg("mod");
+			s.addarg( val);
+		}
+		this.doLoad( s.getdata(), 0);
+	}
+
+	//delay
+	this.doSave = function()
+	{	let msg = "";
+		// save osc state.
+		let s = new saveargs();
+
+		s.addnv("control", "'delay'");
+		s.addnv("wet", this.values[1]);
+		s.addnv("delay", this.values[0]);
+		s.addnv("mod", this.mod);
+
+		return s.getargs();
+	}
+		
+	//delay
+	this.doLoad = function(initdata, idx)
+	{	var len = initdata[idx];
+		let n = 1;
+		let param="";
+		let val = "";
+
+		debugmsg("DLY doload "+idx+" "+len);
+		for(n = 1; n < len ; n += 2){
+			param = initdata[idx+n];
+			val = initdata[idx+n+1];
+
+			if( param == "'control'"){
+				continue;
+			}
+			if( param == "'delay'"){
+				this.setValue(val, 2);
+			}else if( param == "'wet'"){
+				this.setValue(val, 3);
+			}else if( param == "'mod'"){
+				this.mod = val;
+			}
 		}
 
-	}
+	}		
+
 
 // delay
 	this.onMove = function(x, y)
@@ -1221,7 +1333,6 @@ function delayBit(bit)
 		let vy = y - this.inity;
 		let mag = vx *vx + vy * vy;
 		let f = null;
-		let o = null;
 
 		if( this.selknob > 0){
 			this.values[this.selknob-1] = rotaryvalue(vx, vy, this.ival);
@@ -1235,7 +1346,7 @@ function delayBit(bit)
 		}
 
 		if( miditargeting != null){
-			o = midiAddTarget(this, this.selknob-1);
+			midiAddTarget(this, this.selknob-1);
 		}
 		// update bitform
 		if( bitformaction != this){
@@ -1255,49 +1366,6 @@ function delayBit(bit)
 	
 }
 
-function motion(tempo, gate)
-{
-	this.tempo = tempo;
-	this.gate = gate;
-	this.counter = 0;
-	this.stepinc = 1;
-	this.perbeat = 64;
-	this.steprate = 100;
-
-	this.step = function(){
-		this.counter += this.stepinc;
-		if( this.counter >= 256){
-			this.counter = 0;
-		}
-	}
-
-	this.settempo = function(tempo, beats)
-	{
-		let len = beats;
-		this.tempo = tempo;
-		// 64 ticks = 1.0
-		// 120 = 0.5   
-		this.stepinc = ( 4 / len) * (this.steprate/ 64) * tempo / 60 ;
-		this.perbeat = Math.floor(256 / beats);
-
-	}
-
-	this.getgated = function()
-	{
-		let n = Math.floor(this.counter / this.perbeat);
-		let val = this.counter - (n * this.perbeat);
-		let g = val * 100 / this.perbeat;		// percent
-
-		if( g >this.gate){
-			return false;
-		}
-		return true;
-
-	}
-
-
-}
-
 
 seqBit.prototype = Object.create(control.prototype);
 
@@ -1309,18 +1377,19 @@ function seqBit(bit)
 	this.selstep = 0;	// 1-4
 	this.initx = 0;
 	this.inity = 0;
-	this.motion = new motion(120, 75);
 	this.stepinc = 1;
 	this.prog = 0;
 	this.progprev = 0;
 	this.ival = 0;
 	this.clksrc = null;		// midi vs local
+	this.transport = new transport();
 
 	let imagename = "seq";
 	this.bitimg =this.bit.findImage(imagename);
 	this.bitname = imagename;
 	this.name = "Sequencer";
 	roundknobimg =this.bit.findImage("roundknob");
+	timer_list.addobj(this.transport, null);
 
 	this.HitTest = function(mx, my)
 	{	let b = this.bit;
@@ -1404,20 +1473,15 @@ function seqBit(bit)
 			if( data == 0){
 				this.bit.value = this.values[this.getstep()];
 			}else if( data == 255){
-				this.motion.step();
-				this.step = this.motion.counter;
-				if( this.motion.getgated()){
-					this.bit.value = this.values[this.getstep()];
-				}else {
-					this.bit.value = 0;
-				}
+				this.step = this.transport.value;
+				this.bit.value = this.values[this.getstep()];
 				execmode = 2;
 			}else {
 				this.step = data;
 				this.bit.value = this.values[this.getstep()];
 			}
 		}else if( chan > 1){
-			this.values[chan-2] = checkRange(data+data);
+			this.values[chan-2] = checkRange(data);
 			if( bitformaction == this){
 				this.setData();
 			}
@@ -1455,10 +1519,10 @@ function seqBit(bit)
 			}
 			msg += "</tr>\n";
 			if( this.clksrc == null){
-				msg += "<tr><th>Tempo</th><td colspan='2'><input type='text' id='tempo' value='"+this.motion.tempo+"'  size='4' /></td>\n";
+				msg += "<tr><th>Tempo</th><td colspan='2'><input type='text' id='tempo' value='"+this.transport.tempo+"'  size='4' /></td>\n";
 				msg += "</tr>\n";
 			}
-			msg += "<tr><th>Gate</th><td colspan='2'><input type='text' id='gate' value='"+this.motion.gate+"'  size='4' /></td></tr>";
+//			msg += "<tr><th>Gate</th><td colspan='2'><input type='text' id='gate' value='"+this.motion.gate+"'  size='4' /></td></tr>";
 			msg += "</table>\n";
 
 			bitform.innerHTML = msg;
@@ -1475,12 +1539,17 @@ function seqBit(bit)
 		let val = 0;
 		let t=0;
 		let len = this.values.length;
+		let s = new saveargs();
+
+		s.addarg("control");
+		s.addarg( "sequencer");
 
 		if( bitformaction != this){
 			return;
 		}
 		for(i=0; i < len; i++){
-			f = document.getElementById("knob_"+i);
+			k = "knob_"+i;
+			f = document.getElementById(k);
 			if( f != null){
 				val = f.value;
 				if( val < 0){
@@ -1488,7 +1557,9 @@ function seqBit(bit)
 				}else if( val > 255){
 					val = 255;
 				}
-				this.values[i] = val;
+				
+				s.addarg(k);
+				s.addarg( val);
 			}
 		}
 		f = document.getElementById("tempo");
@@ -1499,7 +1570,8 @@ function seqBit(bit)
 			}else if( val > 240){
 				val = 240;
 			}
-			this.settempo(val);
+			s.addarg("tempo");
+			s.addarg( val);
 		}
 		f = document.getElementById("gate");
 		if( f != null){
@@ -1509,22 +1581,25 @@ function seqBit(bit)
 			}else if( val > 100){
 				val = 100;
 			}
-			this.motion.gate = val;
+//			this.motion.gate = val;
 		}
 
+		this.doLoad( s.getdata(), 0);
 	}
 
 	this.doSave = function()
 	{	let msg = "";
 		// save sequencer state.
-		let n = 1+this.values.length+2;
+		let s = new saveargs();
 
-		msg += ""+n+", ";
+		s.addnv("control", "'sequencer'");
+
 		for(i=0; i < this.values.length; i++){
-			msg += ""+this.values[i]+", ";
+			msg = "knob_"+i;
+			s.addnv(msg, this.values[i]);
 		}
-		msg+= ""+this.motion.tempo+", "+this.motion.gate+", ";
-		return msg;
+		s.addnv("tempo", this.transport.tempo);
+		return s.getargs();
 	}
 		
 	this.doLoad = function(initdata, idx)
@@ -1532,22 +1607,32 @@ function seqBit(bit)
 		let n = 1;
 		let param="";
 		let val = "";
+		let k;
+		let i;
 
-		debugmsg("SEQ doload "+idx+" "+len);
+//		debugmsg("SEQ doload "+idx+" "+len);
 		for(n = 1; n < len ; n += 2){
 			param = initdata[idx+n];
 			val = initdata[idx+n+1];
 
-			if( param == "control"){
-				debugmsg("CONTROL "+val);
+			debugmsg("SEQ "+param+":"+val);
+			if( param == "'control'"){
 				continue;
 			}
-			if( param == "freq"){
-				this.values[0] = val;
-			}else if( param == "res"){
-				this.values[1] = val;
-			}else if( param == "mod"){
-				this.mod = val;
+			k = param.substring(0, 5);
+			if( k == "knob_"){
+				k = param.substring(5);
+				i = 1*k;
+				this.values[i] = val;
+//				debugmsg("SEQ"+param+" "+i+" "+val);
+
+			}else if( param == "tempo"){
+				if( val < 40){
+					val = 40;
+				}else if( val > 240){
+					val = 240;
+				}
+				this.setTempo(val);
 			}
 		}
 	}		
@@ -1568,14 +1653,13 @@ function seqBit(bit)
 
 	}
 
-	this.settempo = function(tempo)
+	this.setTempo = function(tempo)
 	{
 		let len = this.values.length;
-		debugmsg("Seq settempo "+tempo+" len "+len);
-		this.motion.settempo(tempo, len);
+		this.transport.setTempo(tempo, len);
 	}
 
-	this.settempo(100);
+	this.setTempo(100);
 
 	// seq
 	this.startProg = function()
