@@ -297,6 +297,8 @@
           <input type="checkbox" id="showprogram" onchange="UIdoShowProgram()" checked="checked"/>
           <span>Show Code:</span>
           <input type="checkbox" id="showcode" onchange="UIdoShowCode()" checked="checked"/>
+          <span>Show Snaps:</span>
+          <input type="checkbox" id="showsnaps" onchange="UIshowsnaps()" checked="checked"/>
       </div>
     </div> <!-- end of progdiv -->
     <div id="playdiv" style="display:none;">
