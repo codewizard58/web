@@ -130,7 +130,7 @@ function kit_sound()
 		let name = this.bitnames[ bit.btype+1];
 		let ctrl = this.bitnames[ bit.btype+9];
 
-		if( ctrl > 1){
+		if( ctrl == 0){
 			for(i=0; this.ctrltab[i] != null; i += this.ctrltab[i+1]){
 				if( this.ctrltab[i] == name){
 					// found control

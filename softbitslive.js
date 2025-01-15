@@ -817,7 +817,7 @@ var bytecode = [
 	null,
 	null,
 
-	[ 4, 24, 12, 8, 11, 25, 0],			// 120 OSC
+	[ 4, 24, 12, 8, 9, 11, 25, 0],			// 120 OSC
 	[ 4, 8, 11, 10, 9, 7, 0],			// 121 speaker
 	[ 4, 12, 42, 7, 25, 0],				// 122 FILTER
 	[ 5, 0, 9, 3, 28, 0],				// 123 SEQUENCER
@@ -1581,6 +1581,7 @@ function Program()
 		let ip = 0;
 		let msg = "";
 		let trace = false;
+		let ctrl = null;
 
 		this.needsend = 0;	
 		this.sendsize = 8;		// allow for 0xf0 S B P 0x06 seqh seql ver
@@ -1652,7 +1653,12 @@ function Program()
 							}
 							break;
 						case 9:						// control
-							progbits[ ibp].ctrl.setValue(data, 0);		// 9
+							ctrl = progbits[ ibp].ctrl;
+							if( ctrl == null){
+								debugmsg("ctrl == null, code="+code+" ibp="+ibp);
+							}else {
+								progbits[ ibp].ctrl.setValue(data, 0);		// 9
+							}
 							break;
 						case 10:					// control
 							if(  arg2 > 0 && arg2 < nchains){		//  10	get data from another chain.

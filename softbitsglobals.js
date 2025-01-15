@@ -437,7 +437,7 @@ function UIdoSave()
 		if( bit.ctrl != null){
 			msg += "  "+bit.ctrl.doSave();
 		}else {
-			msg += "  1,";
+			msg += "  1, // null";
 		}
 		msg += "\n";
 

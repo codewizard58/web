@@ -107,7 +107,7 @@ function kit_basic()
 		0,	13, "RGB Light",		"A colored light", 0x0011, "Output", 0, 1,		
 		"control", "biglight",  100, 100,    "outputin", "outputout" , null,  null,
 		0,	13, "Big RGB Light",		"A colored light", 0x0011, "Output", 0, 1,		
-		"control", "mandle",  200, 200,    "outputin", "outputout" , "outputin",  null,
+		"control", "mandle",  400, 400,    "outputin", "outputout" , "outputin",  null,
 		64,	14, "Mandlebrot",		"A mandlebrot display", 0x0111, "Output", 0, 1,		
 
 		null, null, null, null,				null, null, null, null

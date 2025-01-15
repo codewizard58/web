@@ -1522,7 +1522,6 @@ function seqBit(bit)
 				msg += "<tr><th>Tempo</th><td colspan='2'><input type='text' id='tempo' value='"+this.transport.tempo+"'  size='4' /></td>\n";
 				msg += "</tr>\n";
 			}
-//			msg += "<tr><th>Gate</th><td colspan='2'><input type='text' id='gate' value='"+this.motion.gate+"'  size='4' /></td></tr>";
 			msg += "</table>\n";
 
 			bitform.innerHTML = msg;
@@ -1581,7 +1580,6 @@ function seqBit(bit)
 			}else if( val > 100){
 				val = 100;
 			}
-//			this.motion.gate = val;
 		}
 
 		this.doLoad( s.getdata(), 0);
@@ -1727,6 +1725,47 @@ function seqBit(bit)
 				this.nextprog();
 			}
 		}
+	}
+}
+
+function motion(tempo, gate)
+{
+	this.tempo = tempo;
+	this.gate = gate;
+	this.counter = 0;
+	this.stepinc = 1;
+	this.perbeat = 64;
+	this.steprate = 100;
+
+	this.step = function(){
+		this.counter += this.stepinc;
+		if( this.counter >= 256){
+			this.counter = 0;
+		}
+	}
+
+	this.settempo = function(tempo, beats)
+	{
+		let len = beats;
+		this.tempo = tempo;
+		// 64 ticks = 1.0
+		// 120 = 0.5   
+		this.stepinc = ( 4 / len) * (this.steprate/ 64) * tempo / 60 ;
+		this.perbeat = Math.floor(256 / beats);
+
+	}
+
+	this.getgated = function()
+	{
+		let n = Math.floor(this.counter / this.perbeat);
+		let val = this.counter - (n * this.perbeat);
+		let g = val * 100 / this.perbeat;		// percent
+
+		if( g >this.gate){
+			return false;
+		}
+		return true;
+
 	}
 }
 

@@ -958,7 +958,7 @@ function midiCCOutBit(bit)
 
 
 function UIrefresh(code, arg)
-{	let f = document.getElementById("mode");
+{	let f;
 	let midi = 0;
 	let md = null;
 	let ng;

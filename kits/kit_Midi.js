@@ -826,7 +826,8 @@ function MIDIfilter()
 }
 
 
-// transport - provide a value that goes from 0-255 in a specified time/tempo
+// 
+// rt - provide a value that goes from 0-255 in a specified time/tempo
 //
 function transport()
 {
@@ -837,6 +838,7 @@ function transport()
 	this.value = 0;
 	this.delta = 0.0;
 	this.beats = 0;
+	this.gate = 0;
 
 	// called with current time in milliseconds
 	this.run = function( now)
@@ -849,13 +851,14 @@ function transport()
 		if( this.delta > 0){
 			while( this.value >= 256){
 				this.value -= 256;
+				this.gate++;
 			}
 		}else {
 			while( this.value < 0 ){
 				this.value += 256;
+				this.gate++;
 			}
 		}
-//		debugmsg("TRANS "+this.value+" "+this.delta+" "+millis);
 		return false;		// keep running.
 	}
 
@@ -1432,18 +1435,6 @@ function kit_midi( )
 	];
 
 	this.ctrltab = [
-//  ID, len, args
-//	"midi_in", 3, 3,		// 
-//	"midi_cv", 3, 4,		// note filter
-//	"midi_cc", 3, 5,		// control code filter
-//	"midi_cvout", 3, 6,		// note filter
-//	"midi_ccout", 3, 7,		// control code filter
-//	"midi_group_in", 3, 8,		// Midi group filter
-//	"midi_group_out", 3, 9,		// Midi group outputfilter
-//	"midi_clk", 3, 10,		// Midi clock filter
-//	"notegroup", 3, 11,		// Note group
-//	"splitgroup", 3, 12,		// splitter group
-//	"targetgroup", 3, 13,		// learn target group
 
 	null, 0, 0, 0, 0	// end of table
 	];
@@ -1466,11 +1457,6 @@ function kit_midi( )
 	// defines the op codes for the program. softbitslivs:execProgram
 	this.kitctrlcodes = [
 		"power_on", 0,
-//		"midi_cv", 4,
-//		"midi_cc", 5,
-//		"midi_cvout", 6,
-//		"midi_ccout", 7,
-//		"midi_clk", 8,
 		null, 253
 	];
 
@@ -1478,77 +1464,83 @@ function kit_midi( )
 	this.addCtrl = function( bit)
 	{	let i=0;
 		let ct = null;
-		let name = bit.name;
+		let name = this.bitnames[ bit.btype+1];
+		let ctrl = this.bitnames[ bit.btype+9];
 
-		for(i=0; this.ctrltab[i] != null; i += this.ctrltab[i+1]){
-			if( this.ctrltab[i] == name){
-				// found control
-				if( this.ctrltab[i+2] == 4){
-					// note filter
-					ct = new midiCVBit( bit);
-					bit.ctrl = ct;
-					ct.setData();
-					return ct;
-				}else if( this.ctrltab[i+2] == 5){
-					// Control Cond filter
-					ct = new midiCCBit( bit);
-					bit.ctrl = ct;
-					ct.setData();
-					return ct;
-				}else if( this.ctrltab[i+2] == 6){
-					// note output
-					ct = new midiCVOutBit( bit);
-					bit.ctrl = ct;
-					ct.setData();
-					return ct;
-				}else if( this.ctrltab[i+2] == 7){
-					// Control Cond output
-					ct = new midiCCOutBit( bit);
-					bit.ctrl = ct;
-					ct.setData();
-					return ct;
-				}else if( this.ctrltab[i+2] == 8){
-					// Group filter
-					ct = new midiGroupBit( bit);
-					bit.ctrl = ct;
-					ct.grouptype = 1;
-					ct.groupname = "Default Input";
-					ct.setData();
-					return ct;
-				}else if( this.ctrltab[i+2] == 9){
-					// Group filter
-					ct = new midiGroupBit( bit);
-					bit.ctrl = ct;
-					ct.grouptype = 0;
-					ct.groupname = "Default Output";
-					ct.setData();
-					return ct;
-				}else if( this.ctrltab[i+2] == 10){
-					// Clock filter
-					ct = new midiClockBit( bit);
-					bit.ctrl = ct;
-					ct.setData();
-					return ct;
-				}else if( this.ctrltab[i+2] == 11){
-					// notegroup
-					ct = new noteGroupBit( bit);
-					bit.ctrl = ct;
-					ct.setData();
-					return ct;
-				}else if( this.ctrltab[i+2] == 12){
-					// splitter
-					ct = new splitGroupBit( bit);
-					bit.ctrl = ct;
-					ct.setData();
-					return ct;
-				}else if( this.ctrltab[i+2] == 13){
-					// Learn target		manage targets
-					ct = new targetGroupBit( bit);
-					bit.ctrl = ct;
-					ct.setData();
-					return ct;
+		if( ctrl == 0){
+			for(i=0; this.ctrltab[i] != null; i += this.ctrltab[i+1]){
+				if( this.ctrltab[i] == name){
+					// found control
+					ctrl = this.ctrltab[i+2];
+					break;
 				}
 			}
+		}
+
+		if( ctrl == 4){
+			// note filter
+			ct = new midiCVBit( bit);
+			bit.ctrl = ct;
+			ct.setData();
+			return ct;
+		}else if( ctrl == 5){
+			// Control Cond filter
+			ct = new midiCCBit( bit);
+			bit.ctrl = ct;
+			ct.setData();
+			return ct;
+		}else if( ctrl == 6){
+			// note output
+			ct = new midiCVOutBit( bit);
+			bit.ctrl = ct;
+			ct.setData();
+			return ct;
+		}else if( ctrl == 7){
+			// Control Cond output
+			ct = new midiCCOutBit( bit);
+			bit.ctrl = ct;
+			ct.setData();
+			return ct;
+		}else if( ctrl == 8){
+			// Group filter
+			ct = new midiGroupBit( bit);
+			bit.ctrl = ct;
+			ct.grouptype = 1;
+			ct.groupname = "Default Input";
+			ct.setData();
+			return ct;
+		}else if( ctrl == 9){
+			// Group filter
+			ct = new midiGroupBit( bit);
+			bit.ctrl = ct;
+			ct.grouptype = 0;
+			ct.groupname = "Default Output";
+			ct.setData();
+			return ct;
+		}else if( ctrl == 10){
+			// Clock filter
+			ct = new midiClockBit( bit);
+			bit.ctrl = ct;
+			ct.setData();
+			return ct;
+		}else if( ctrl == 11){
+			// notegroup
+			ct = new noteGroupBit( bit);
+			bit.ctrl = ct;
+			ct.setData();
+			return ct;
+		}else if( ctrl == 12){
+			// splitter
+			ct = new splitGroupBit( bit);
+			bit.ctrl = ct;
+			ct.setData();
+			return ct;
+		}else if( ctrl == 13){
+			// Learn target		manage targets
+			ct = new targetGroupBit( bit);
+			bit.ctrl = ct;
+			ct.setData();
+			return ct;
 		}
 	}
 
