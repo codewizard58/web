@@ -977,7 +977,7 @@ this.Draw = function( )
 		f = document.getElementById("freq");
 		if( f != null){
 			val = checkRange(f.value);
-			s.addnarg("freq");
+			s.addarg("freq");
 			s.addarg( val);
 		}
 		f = document.getElementById("q");
@@ -1918,73 +1918,6 @@ function scopeBit( bit )
 }
 
 
-micBit.prototype = Object.create(control.prototype);
-
-function micBit(bit)
-{	control.call(this, bit);
-	this.deg = degree;
-	this.bit = bit;
-	this.gain = null;
-	this.osc = null;
-	this.webkitstyle = false;
-	this.val = 255;		// debug set initial volume
-	this.freq= 60;		// middle C in Midi
-	this.prevfreq = new delta();
-	this.nfreq=0;
-	this.audioin = null;
-	this.audioout = null;
-	this.wave = -128;		// biased by 128
-	this.prevwave = new delta();
-	this.prevmix = new delta();
-	this.range = 12; 	// bend range
-	this.a440 = 440;
-	this.ival = 0;
-	this.mod = 0;		// modulation routing
-	this.modgain = 128;	// modulation gain
-	this.modfreq = 128;	// modulation freq
-
-    let imagename = "mic";
-	this.bitimg =this.bit.findImage(imagename);
-	this.bitname = imagename;
-	this.name = "Mic";
-
-	this.setup = function(){
-		if( this.audioout == null){
-			const constraints = { audio: true };
-			navigator.mediaDevices
-				.getUserMedia(constraints)
-				.then((stream) => {
-					source = actx.createMediaStreamSource(stream);
-					this.audioout = source;
-					debugmsg("Create microphone");
-				})
-				.catch(function (err) {
-				debugmsg("The following error occured: " + err);
-			});
-		}
-	}
-
-	// microphone
-	this.Draw = function( )
-	{	var b = this.bit;
-
-		if( b == null){
-			return;
-		}
-		bt = b.btype & 7;	// 0 = horiz, 1 == vert
-
-        ctx.fillStyle = "#ffffff";
-		if( bt == 0){
-			drawImage( this.bitimg , b.x, b.y);
-		}else {
-			drawImage( this.bitimg+1 , b.x, b.y);
-		}
-	}
-
-	this.setup();
-
-}
-
 pannerBit.prototype = Object.create(control.prototype);
 
 function pannerBit(bit)
@@ -2128,3 +2061,89 @@ function pannerBit(bit)
 
 	this.setup();
 }
+
+// 1/17/25
+
+noiseBit.prototype = Object.create(control.prototype);
+
+function noiseBit(bit)
+{	control.call(this, bit);
+	this.deg = degree;
+	this.bit = bit;
+	this.source = null;
+	this.audioin = null;
+	this.audioout = null;
+
+    let imagename = "noise";
+	this.bitimg =this.bit.findImage(imagename);
+	this.bitname = imagename;
+	this.name = "Noise";
+	this.duration = 0.0;
+
+	this.Draw = function( )
+	{	const b = this.bit;
+		let bt;
+
+		if( b == null){
+			return;
+		}
+		bt = b.btype & 7;	// 0 = horiz, 1 == vert
+
+
+		ctx.fillStyle = "#ffffff";
+		if( bt == 0){
+			drawImage( this.bitimg , b.x, b.y);
+		}else {
+			drawImage( this.bitimg+1 , b.x, b.y);
+		}
+	}
+
+
+
+	this.setValue = function(data, chan)
+	{	const b = this.bit;
+
+
+		if( b == null){
+			return;
+		}
+	}
+
+
+
+	this.setup = function()
+	{
+		if( this.audioout == null){
+			const myArrayBuffer = actx.createBuffer(
+				2,
+				actx.sampleRate * 3,
+				actx.sampleRate,
+			);
+
+			for (let channel = 0; channel < myArrayBuffer.numberOfChannels; channel++) {
+				// This gives us the actual ArrayBuffer that contains the data
+				const nowBuffering = myArrayBuffer.getChannelData(channel);
+				for (let i = 0; i < myArrayBuffer.length; i++) {
+					// Math.random() is in [0; 1.0]
+					// audio needs to be in [-1.0; 1.0]
+					nowBuffering[i] = Math.random() * 2 - 1;
+				}
+			}
+
+			this.source = actx.createBufferSource();
+			// set the buffer in the AudioBufferSourceNode
+			this.source.buffer = myArrayBuffer;
+			this.source.loop = true;
+			this.duration = Math.floor(this.source.buffer.duration);
+			this.source.loopStart = 0;
+			this.source.loopEnd = this.duration;
+			this.audioout = this.source;
+			this.source.start(0);
+
+			debugmsg("Noise "+this.duration);
+		}
+	}
+
+	this.setup();
+}
+

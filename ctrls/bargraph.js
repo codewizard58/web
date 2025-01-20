@@ -49,32 +49,32 @@ function m_hex(data)
 
 
 function m_color(data, contrast, bright)
-	{	let msg="";
+{	let msg="";
 
-		if( data < 0){
-			data = - data % 256;
-		}else if( data > 255){
-			data = data % 256;
-		}
-
-		data = Math.floor(data);
-		if( data == 0){
-			return "#000000";
-		}else if( data >= 254){
-			return "#ffffff";
-		}
-		if( data < 80){
-			msg = "#00"+m_hex(data*contrast+bright)+m_hex((80-data)*contrast+bright);
-		}else if( data < 160){
-			msg = "#"+m_hex(contrast*(data-80)+bright) +m_hex(contrast*(160-data) +bright)+"00";
-		}else if( data < 240){
-			msg = "#"+m_hex(contrast*(240-data)+bright)+"00"+m_hex(contrast*(data-160) +bright);
-		}else {	// greys
-			msg = "#"+m_hex((data-240)*16)+m_hex((data-240)*16)+m_hex((data-240)*16);
-		}
- // debugmsg("m_color: "+data+" "+bright+" "+contrast+" = "+msg );
-		return msg;
+	if( data < 0){
+		data = - data % 256;
+	}else if( data > 255){
+		data = data % 256;
 	}
+
+	data = Math.floor(data);
+	if( data == 0){
+		return "#000000";
+	}else if( data >= 254){
+		return "#ffffff";
+	}
+	if( data < 80){
+		msg = "#00"+m_hex(data*contrast+bright)+m_hex((80-data)*contrast+bright);
+	}else if( data < 160){
+		msg = "#"+m_hex(contrast*(data-80)+bright) +m_hex(contrast*(160-data) +bright)+"00";
+	}else if( data < 240){
+		msg = "#"+m_hex(contrast*(240-data)+bright)+"00"+m_hex(contrast*(data-160) +bright);
+	}else {	// greys
+		msg = "#"+m_hex((data-240)*16)+m_hex((data-240)*16)+m_hex((data-240)*16);
+	}
+// debugmsg("m_color: "+data+" "+bright+" "+contrast+" = "+msg );
+	return msg;
+}
 
 lightBit.prototype = Object.create(control.prototype);
 
@@ -125,11 +125,94 @@ function mpoint(x, y)
 	this.y = y;
 }
 
+function UImandelReset()
+{
+	if( bitformaction == null){
+		return;
+	}
+	bitformaction.startx = -2.5;
+	bitformaction.starty = -1.5;
+	bitformaction.endx = 0.5;
+	bitformaction.endy = 1.5;
+	bitformaction.initx = 0.0;
+	bitformaction.inity = 0.0;
+	bitformaction.wx = bitformaction.endx-bitformaction.startx;
+	bitformaction.wy = bitformaction.endy-bitformaction.starty;
+
+	UIrefresh(1, 0);
+}
+
+function UImandelDebug()
+{
+	if( bitformaction == null){
+		return;
+	}
+	bitformaction.debug();
+}
+
+// map 0-255 into a color. See m_color()
+var redMap = [];
+var greenMap = [];
+var blueMap = [];
+
+function setColorMaps()
+{	let gen = 0;
+	let data;
+	let r,g,b;
+
+	if( redMap.length == 0){
+		redMap = new Uint8Array(256);
+		gen = 1;
+	}
+	if( greenMap.length == 0){
+		greenMap = new Uint8Array(256);
+		gen = 1;
+	}
+	if( blueMap.length == 0){
+		blueMap = new Uint8Array(256);
+		gen = 1;
+	}
+	if(gen == 0){
+		return;
+	}
+
+	// calculate the color maps
+	for(data = 0; data < 256; data ++){
+		if( data == 0){
+			r = 0;
+			g = 0;
+			b = 0;
+		}else if( data >= 254){
+			return "#ffffff";
+		}
+		if( data < 80){
+			r = 0;
+			g = data;
+			b = 80-data;
+		}else if( data < 160){
+			r = data - 80;
+			g = 160 - data;
+			b = 0;
+		}else if( data < 240){
+			r = 240-data;
+			g = 0;
+			b = data-160;
+		}else {	// greys
+			r = (data-240)*16;
+			g = (data-240)*16;
+			b = (data - 240)*16;
+		}
+		redMap[data] = r;
+		greenMap[data] = g;
+		blueMap[data] = b;
+	}
+}
+
+
 function mandleBit(bit)
 {	control.call(this, bit);
 	this.shape = 0;
-	this.bright = 40;
-	this.contrast = 1.5;
+	this.bright = 0;
 	this.x = 0.0;
 	this.y = 0.0;
 	this.points = [];
@@ -139,11 +222,16 @@ function mandleBit(bit)
 	this.endy = 1.5;
 	this.initx = 0.0;
 	this.inity = 0.0;
+	this.ix = 255;		// chan 0 value, initx is adjusted value
+	this.iy = 255;
+	this.dix = new delta();
+	this.diy = new delta();
 	this.wx = this.endx-this.startx;
 	this.wy = this.endy-this.starty;
 
 	this.cnt = 0;
 	this.image = null;
+	this.data = null;
 	this.tick = 0;
 	this.transport = new transport();
 	this.gate = 128;
@@ -151,8 +239,13 @@ function mandleBit(bit)
 	this.max = 0;
 	this.values = [];
 	this.zoom = 1;
-	this.reps = 200;
+	this.reps = 50;
 	this.beats = 32;
+	this.dir = 1;
+	this.pingpong = false;
+	this.contrast = 255 / this.reps;
+
+	this.power = 2;
 
 
 	timer_list.addobj(this.transport, null);
@@ -182,84 +275,109 @@ function mandleBit(bit)
 
 
 	this.mandle = function()
-	{	let a = this.x * this.x - this.y * this.y + this.initx;
-		let b = 2.0 * this.x * this.y + this.inity;
+	{	let a, b;
+
+		if( this.power == 2){
+			a = this.x * this.x - this.y * this.y + this.initx;
+			b = 2.0 * this.x * this.y + this.inity;
+		}else {
+			a = this.x * this.x* this.x - 3*this.x * this.y * this.y + this.initx;
+			b = 3.0 * this.x * this.x * this.y - this.y* this.y * this.y  + this.inity;
+		}
 
 		if( a < -3.0 || a > 3.0 || b < -3.0 || b > 3.0 || this.cnt > this.reps){
 			this.x = 0.0;
 			this.y = 0.0;
-			this.max = this.cnt;
-			this.cnt = 0;
 			this.done = true;
 //			debugmsg("M "+this.x+" "+this.y);
 		}else {
 			this.x = a;
 			this.y = b;
-
-			if( this.shape == 0){
-				this.values[this.cnt] = this.mapy(this.y);
-
-				this.points[this.cnt] = new mpoint( this.mapx(a), this.mapy(b) );
-			}
-			this.cnt++;
 		}
 	}
 
-	this.doMandle = function()
-	{	let cx,cy,dx,dy;
-		let b = this.bit;
-		let sx,sy;
+	// create the points
+	this.doMandel = function()
+	{	let b = this.bit;
 		let cnt, n;
+		let x;
+		let y;
+		let idx;
+		let dx,dy;
 
 		if( b == null){
 			return;
 		}
 
-		if( this.shape == 0){
-			if( !this.done){
-				this.mandle();
-			}
-		}else if( this.shape == 1){
-			// points on line segment
-			cx = b.w/2;
-			cy = b.h/2;
-
-			dx = ( this.wx)/2.0 + this.startx;
-			dy = ( this.wy)/2.0 + this.starty;		// dx, dy is center 
-
-			sx = (this.initx - dx) / (this.beats -1);
-			sy = (this.inity - dy) / (this.beats -1);
-
-			for(cnt=0; cnt < this.beats; cnt++){
+		if( this.shape == 0){		// mandelbrot path.
+			if( this.dix.changed(this.ix) || this.diy.changed(this.iy)){
+				this.done = false;
 				this.cnt = 0;
 				this.x = 0.0;
 				this.y = 0.0;
-				this.initx = dx;
-				this.inity = dy;
-				this.points[cnt] = new mpoint( this.mapx(dx), this.mapy(dy));
-				this.mandle();
-				n = 1;
-				while(this.cnt != 0 && n < this.reps){
-					n++;
-					this.mandle();
-				}
-				this.values[cnt] = n;
-				dx += sx;
-				dy += sy;
+
+//				debugmsg("Start new path "+this.ix+" "+this.iy);
 			}
-//			debugmsg("sx="+this.startx+" ex="+this.endx+" px="+this.points[this.beats-1].x);
-			this.max = cnt;
-			this.done = true;
-			this.cnt = 0;
+			while( !this.done){
+				this.mandle();
+				if( this.cnt < this.beats){
+					this.values[this.cnt] = this.mapy(this.y);
+					this.points[this.cnt] = new mpoint( this.mapx(this.x), this.mapy(this.y) );
+					this.max = this.cnt;
+				}
+//				debugmsg("XCNT="+this.cnt+" x="+this.x+" y="+this.y);
+				this.cnt++;
+				if( this.done){
+					this.cnt = 0;
+					this.points[this.cnt] = new mpoint( this.mapx(this.initx), this.mapy(this.inity) );
+//					this.debug();
+				}
+			}
+		}else if( this.shape == 1){		// radial line
+			if( this.dix.changed(this.ix) || this.diy.changed(this.iy)){
+				// use points to sample image.
+				dx = (this.ix - 128) / this.beats;
+				dy = (this.iy - 128) / this.beats;
+
+//				debugmsg("Start new line "+this.ix+" "+this.iy);
+				x = 128;
+				y = 128;
+				for(cnt=0; cnt < this.beats; cnt++){
+					this.points[cnt] = new mpoint(Math.floor(x), Math.floor(y));
+					idx = Math.floor(b.h / 256 * y)*b.w + Math.floor(b.w / 256 * x);
+					if( this.data != null){
+						this.values[cnt] = this.data[idx];
+					}
+					x = x+dx;
+					y = y+dy;
+				}
+//				debugmsg("End new line "+x+" "+y);
+
+				this.max = cnt;
+				this.done = true;
+				this.cnt = 0;
+			}
 		}
+
+	}
+
+	this.resetPath = function(shape)
+	{
+		this.done = false;
+		this.cnt = 0;
+		this.x = 0.0;
+		this.y = 0.0;
+		this.image = null;
+		this.data = null;
+		this.dix.changed(257);
+		debugmsg("New shape "+shape);
 
 	}
 
 	// mandelbrot
 	// called about 100 times a second from execProgram.
 	this.setValue = function(data, chan)
-	{	let x;
-		let b = this.bit;
+	{	let b = this.bit;
 		let d = checkRange(data);  // 0-255  
 
 		if(b == null){
@@ -267,31 +385,105 @@ function mandleBit(bit)
 		}
 
 		if( chan == 0){
-			this.initx = (d / 256.0)  * this.wx + this.startx; 
+			this.ix = d; 
+			this.initx = (d / 256.0)  * this.wx + this.startx;
 //			debugmsg("D="+d+" dx="+(d / 256.0) );
 		}else if( chan == 1){
+			this.iy = d;
 			this.inity = (d / 256.0)  * this.wy  + this.starty; 
 
-			this.doMandle();
+			this.doMandel();
+
+			// use transport to determine when to change sample.
 			if( this.transport.gate > 0){
 				this.transport.gate--;
-				this.tick++;
 
-				this.done=false;
-			}
-			if( this.tick >= this.max){
-				this.tick = 0;
+				if( this.dir > 0){
+					this.tick++;
+				}else {
+					this.tick--;
+				}
 
-				this.done = false;
+				if( this.tick >= this.max){
+					if( this.pingpong ){
+						this.dir = -this.dir;
+						this.tick = this.max -1;
+					}else {
+						this.tick = 0;
+					}
+				}
+				if( this.tick < 0){
+					this.tick = 0;
+					if( this.pingpong ){
+						this.dir = - this.dir;
+					}else if( this.max > 0){
+						this.tick = this.max-1;
+					}
+				}
+				if( this.gate < this.transport.value){
+					this.bit.value = 0;
+				}else {	
+					this.bit.value = this.values[this.tick];
+				}
 			}
-			if( this.gate < this.transport.value){
-				this.bit.value = 0;
-			}else {	
-				this.bit.value = this.values[this.tick];
-			}
-
 		}
 
+	}
+
+	this.fetchImage = function()
+	{	let stepx, stepy;
+		let ix,iy;
+		let x, y;
+		let cnt;
+		let n;		// index to data
+		let b = this.bit;
+
+		if(b==null){
+			return;
+		}
+
+		this.image = ctx.createImageData(b.w, b.h);
+		this.data = new Uint8Array(b.w*b.h);
+
+		stepx = (this.wx) / b.w;
+		stepy = (this.wy) / b.h;
+
+		iy = 0;
+		ix = 0;
+		n = 0;
+		for( y = this.starty; y < this.endy; y += stepy){
+			for(x=this.startx; x < this.endx; x += stepx){
+				this.cnt = 0;
+				this.x = 0.0;
+				this.y = 0.0;
+				this.initx = x;
+				this.inity = y;
+				cnt = 1;
+				this.done = false;
+				this.mandle();
+
+				while(!this.done && cnt < this.reps){
+					cnt++;
+					this.mandle();
+				}
+				this.data[n] = cnt;
+
+//				c = m_color(cnt*8, 3, this.bright);
+
+				if( iy < this.image.data.length){
+					this.image.data[iy+0] = (redMap[cnt]*this.contrast+this.bright) % 256; // red
+					this.image.data[iy+1] = (greenMap[cnt]*this.contrast+this.bright) % 256;
+					this.image.data[iy+2] = (blueMap[cnt]*this.contrast+this.bright) % 256;
+					this.image.data[iy+3] = 255;	// alpha
+				}
+
+				iy += 4;
+				n++;
+			}
+			ix++;
+			n = ix*b.w;
+			iy = n *4;
+		}
 	}
 
 	this.setTempo = function(tempo)
@@ -301,16 +493,18 @@ function mandleBit(bit)
 
 	this.setTempo(240);
 
+// mandelbrot
 	this.HitTest = function(x, y)
 	{	let res = null;
 		let b = this.bit;
+		let border = 10;
 
-		if( b == null){
-			return;
-		}
 //		debugmsg("HT "+x+" "+y+" X="+b.x+" Y="+b.y+" w "+b.w+" h "+b.h);
-		if( (x >= b.x+5) && x <= (b.x+b.w-5) &&
-		    y >= (b.y+5) && y <= (b.y+b.h-5)){
+		if( b == null){
+			return null;
+		}
+		if( (x >= b.x+border) && x <= (b.x+b.w-border) &&
+		    y >= (b.y+border) && y <= (b.y+b.h-border)){
 			res = this;
 		}
 		return res;
@@ -320,71 +514,29 @@ function mandleBit(bit)
 
 // mandelbrot
 	this.Draw = function( )
-	{	let b = this.bit;
-		let xval;
-		let midx;
-		let midy;
+	{	const b = this.bit;
 		let cnt = 0;
-		let len = this.max;
-		let x, y;
-		let stepx, stepy;
-		let ix,iy;
-		let c;
-		
+		let len = 0;
+		let x=1;
+		let y;
+	
 
 		if( b == null){
 			return;
 		}
 
-		xval = b.data;
-		midx = b.x+b.w/2;
-		midy = b.y+b.h/2;
-
 		if( this.image == null){
-			this.image = ctx.createImageData(b.w, b.h);
-			stepx = (this.wx) / b.w;
-			stepy = (this.wy) / b.h;
-
-			iy = 0;
-			ix = 0;
-			for( y = this.starty; y < this.endy; y += stepy){
-				ix = ix+4*b.w;
-				iy = ix;
-				for(x=this.startx; x < this.endx; x += stepx){
-					this.cnt = 0;
-					this.x = 0.0;
-					this.y = 0.0;
-					this.initx = x;
-					this.inity = y;
-					cnt = 1;
-//					this.done = false;
-					this.mandle();
-					while(this.cnt != 0 && cnt < this.reps){
-						cnt++;
-						this.mandle();
-					}
-					c = m_color(cnt*8, 3, this.bright);
-
-					if( iy < this.image.data.length){
-						this.image.data[iy+0] = parseInt("0x"+c.substring(1, 3), 16); // red
-						this.image.data[iy+1] = parseInt("0x"+c.substring(3, 5), 16);  // green
-						this.image.data[iy+2] = parseInt("0x"+c.substring(5), 16); 	// blue
-						this.image.data[iy+3] = 255;	// alpha
-					}
-
-					iy += 4;
-				}
-			}
+			this.fetchImage();
 		}
 		
-//		debugmsg("m_color: "+xval+"="+m_color(xval));
 		if(this.image != null){
 			ctx.putImageData(this.image, b.x, b.y);
 		}
 		ctx.strokeStyle = "#ff0000";			// red
 		ctx.lineWidth = 2;
-
+// bounding box
 		ctx.strokeRect(b.x, b.y, b.w, b.h);
+
 		if( this.points == null){
 			ctx.fillStyle = "#000000";
 			return;
@@ -393,31 +545,39 @@ function mandleBit(bit)
 			ctx.fillStyle = "#000000";
 			return;
 		}
-		if( this.shape == 0){
-			ctx.beginPath();
-			for(cnt = 0; cnt < len; cnt++)
-			{
-				// points, 0,0 = left,top  255,255 = right,bottom
-				x = Math.floor(this.points[cnt].x * b.w/256) + b.x;
-				y = Math.floor(this.points[cnt].y * b.h/256) + b.y;
-				ctx.lineTo( x, y);
-			}
-			ctx.stroke();
-		}else if( this.shape ==1 ){
-			ctx.beginPath();
-			for(cnt = 0; cnt < len; cnt++)
-			{
-				// points, 0,0 = left,top  255,255 = right,bottom
-				x = Math.floor(this.points[cnt].x * b.w/256) + b.x;
-				y = Math.floor(this.points[cnt].y * b.h/256) + b.y;
-				ctx.lineTo( x, y);
-			}
-			ctx.stroke();
-			x = Math.floor(this.points[this.tick].x * b.w/256) + b.x;
-			y = Math.floor(this.points[this.tick].y * b.h/256) + b.y;
-			ctx.strokeRect(x, y, 4, 4);
+		len = this.max;
+		if( len > this.points.length){
+			debugmsg("Len "+len+" "+this.points.length);
+			len = this.points.length;
 		}
-        ctx.fillStyle = "#000000";
+
+		ctx.beginPath();
+		for(cnt = 0; cnt < len; cnt++)
+		{	x = 0;
+			y = 1;
+			// points, 0,0 = left,top  255,255 = right,bottom
+			y = Math.floor(this.points[cnt].y * b.h/256) + b.y;
+			x = Math.floor(this.points[cnt].x * b.w/256) + b.x;
+			ctx.lineTo( x, y);
+		}
+		ctx.stroke();
+
+		if( this.tick < 0){
+			this.tick = 0;
+		}else if( this.tick > this.max){
+			this.tick = 0;
+			if( this.max > 0){
+				this.tick = this.max -1;
+			}
+		}
+
+		x = Math.floor(this.points[this.tick].x * b.w/256) + b.x;
+		y = Math.floor(this.points[this.tick].y * b.h/256) + b.y;
+		ctx.strokeRect(x, y, 4, 4);
+
+		ctx.fillStyle = "#000000";
+
+		drawmode = 2;
 	}
 
 
@@ -432,12 +592,21 @@ function mandleBit(bit)
 		if( bitform != null){
 
 			msg = "<table>";
-			msg += "<tr><th>Shape</th><td><select id='shape'><option value='0' "+isSelected(this.shape, 0)+">Mandelbrot Path</option><option value='1' "+isSelected(this.shape, 1)+">Mandelbrot Line</option></select></td></tr>"
-			msg += "<tr><th>Zoom</th><td><select id='zoom'><option value='1' "+isSelected(this.zoom, 1)+">In</option><option value='2' "+isSelected(this.zoom, 2)+">Out</option></select></td></tr>\n";
-			msg += "<tr><th>X</th><td>"+this.initx+"</td>";
-			msg += "<th>Y</th><td>"+this.inity+"</td></tr>";
-			msg += "<tr><th>Tempo</th><td><input type='text' value='"+this.transport.tempo+"' id='tempo' onchange='UIrefresh(1, 0);' /></td>";
-			msg += "<th>Gate</th><td><input type='text' value='"+this.gate+"' id='gate' onchange='UIrefresh(1, 0);' /></td></tr>";
+			msg += "<tr><th>Shape</th><td><select id='shape'  onchange='UIrefresh(1, 0);' ><option value='0' "+isSelected(this.shape, 0)+">Mandelbrot Path</option>";
+			msg += "<option value='1' "+isSelected(this.shape, 1)+">Mandelbrot Line</option>";
+			msg += "<option value='2' "+isSelected(this.shape, 2)+">Image mode</option>";
+			msg += "</select></td></tr>";
+			msg += "<tr><th>Power</th><td><select id='power'  onchange='UIrefresh(1, 0);' >";
+			msg += "<option value='2' "+isSelected(this.power, 2)+">Power 2</option>";
+			msg += "<option value='3' "+isSelected(this.power, 3)+">Cubic (3)</option>";
+			msg += "</select></td></tr>";
+			msg += "<tr><th>Zoom</th><td><select id='zoom'><option value='1' "+isSelected(this.zoom, 1)+">In</option><option value='2' "+isSelected(this.zoom, 2)+">Out</option></select></td>";
+			msg += "<td><input type='button' value='Reset' onclick='UIrefresh(1, 0);' /></td></tr>\n";
+			msg += "<tr><th>PingPong</th><td><input type='checkbox' id='pingpong' "+isChecked(this.pingpong)+" /></td>";
+			msg += "<th>Depth</th><td><input type='text' id='reps' value='"+this.reps+"' onchange='UIrefresh(1, 0);'  size='4' /></td></tr>";
+			msg += "<tr><th>Tempo</th><td><input type='text' value='"+this.transport.tempo+"' id='tempo' onchange='UIrefresh(1, 0);'  size='4' /></td>";
+			msg += "<th>Gate</th><td><input type='text' value='"+this.gate+"' id='gate' onchange='UIrefresh(1, 0);' size='4' /></td></tr>";
+			msg += "<td><input type='button' value='Debug' onclick='UImandelDebug();' /></td></tr>\n";
 
 			msg += "</table>\n";
 
@@ -460,9 +629,19 @@ function mandleBit(bit)
 			s.addarg("shape");
 			s.addarg(f.value);
 		}
+		f = document.getElementById("power");
+		if( f != null){
+			s.addarg("power");
+			s.addarg(f.value);
+		}
 		f = document.getElementById("zoom");
 		if( f != null){
 			s.addarg("zoom");
+			s.addarg(f.value);
+		}
+		f = document.getElementById("reps");
+		if( f != null){
+			s.addarg("depth");
 			s.addarg(f.value);
 		}
 		f = document.getElementById("tempo");
@@ -480,6 +659,15 @@ function mandleBit(bit)
 		if( f != null){
 			s.addarg("gate");
 			s.addarg(f.value);
+		}
+		f = document.getElementById("pingpong");
+		if( f != null){
+			s.addarg("pingpong");
+			if( f.checked){
+				s.addarg(1);
+			}else {
+				s.addarg(0);
+			}
 		}
 
 		this.doLoad(s.getdata(), 0);
@@ -500,33 +688,40 @@ function mandleBit(bit)
 			return;
 		}
 
-		sx = sx / 2.0;
-		sy = sy / 2.0;
+		if( this.shape == 0 || this.shape == 1){	// mandelbrot set
+			sx = sx / 2.0;
+			sy = sy / 2.0;
 
-		this.startx = ix - sx;
-		this.starty = iy - sy;
-		this.endx = ix+sx;
-		this.endy = iy+sy;
+			this.startx = ix - sx;
+			this.starty = iy - sy;
+			this.endx = ix+sx;
+			this.endy = iy+sy;
 
-		if( this.zoom == 1){
-			this.startx += sx/5;
-			this.starty += sy/5;
-			this.endx -= sx/5;
-			this.endy -= sy/5;
-		}else if(this.zoom == 2){
-			this.startx -= sx/5;
-			this.starty -= sy/5;
-			this.endx += sx/5;
-			this.endy += sy/5;
+			if( this.zoom == 1){		// zoom in
+				this.startx += sx/5;
+				this.starty += sy/5;
+				this.endx -= sx/5;
+				this.endy -= sy/5;
+			}else if(this.zoom == 2){	// zoom out
+				this.startx -= sx/5;
+				this.starty -= sy/5;
+				this.endx += sx/5;
+				this.endy += sy/5;
+
+			}
+
+			this.wx = this.endx - this.startx;
+			this.wy = this.endy - this.starty;
+
+			this.image = null;
+			this.data = null;
+			this.done = false;
+			this.cnt = 0;
+			this.x = this.initx;
+			this.y = this.inity;
+	}else if( this.shape ==2){
 
 		}
-
-		this.wx = this.endx - this.startx;
-		this.wy = this.endy - this.starty;
-
-
-//		debugmsg("IX="+ix+" IY="+iy+" X="+mx+" y="+my);
-		this.image = null;
 	}
 
 	this.stopMove = function()
@@ -541,13 +736,18 @@ function mandleBit(bit)
 		s.addnv("control", "'mandle'");
 		s.addnv("shape", this.shape);
 		s.addnv("zoom", this.zoom);
+		s.addnv("depth", this.reps);
 		s.addnv("tempo", this.transport.tempo);
 		s.addnv("gate", this.gate);
 
 		s.addnv("startx", this.startx);
 		s.addnv("starty", this.starty);
 		s.addnv("endx", this.endx);
-		s.addnv("endy", this.endy);
+		if( this.pingpong){
+			s.addnv("endy", this.endy);
+		}else {
+
+		}
 
 //		debugmsg("Mandle "+s.getargs());
 
@@ -567,13 +767,32 @@ function mandleBit(bit)
 			val = initdata[idx+n+1];
 
 			if( param == "shape"){
+				if(val != this.shape){
+					this.resetPath(val);
+				}
 				this.shape = val;
 			}else if(param == "tempo"){
 				this.setTempo(val);
+			}else if(param == "power"){
+				if( val != this.power){
+					this.resetPath(this.shape);
+				}
+				this.power = val;
 			}else if(param == "gate"){
 				this.gate = checkRange(val);
 			}else if(param == "zoom"){
 				this.zoom = val;
+			}else if(param == "depth"){
+				if( val < 10){
+					val = 10;
+				}
+				if( val > 250){
+					val = 250;
+				}
+				if( val != this.reps){
+					this.resetPath(this.shape);
+				}
+				this.reps = val;
 			}else if(param == "startx"){
 				this.startx = val;
 			}else if(param == "starty"){
@@ -582,6 +801,12 @@ function mandleBit(bit)
 				this.endx = val;
 			}else if(param == "endy"){
 				this.endy = val;
+			}else if(param == "pingpong"){
+				if( val == 1){
+					this.pingpong = true;
+				}else {
+					this.pingpong = false;
+				}
 			}
 
 
@@ -589,6 +814,26 @@ function mandleBit(bit)
 		// init other values
 		this.tick = 0;
 		this.image = null;		// regenerate image.
+		this.wx = this.endx-this.startx;
+		this.wy = this.endy-this.starty;
+		this.ix = 0;
+		this.iy = 0;
+	}
+
+	setColorMaps();		// init the colour maps.
+
+	this.debug = function()
+	{
+		let msg="";
+		let n;
+
+		for(n=0; n < this.points.length; n++){
+			msg += "["+this.points[n].x+","+this.points[n].y+"]";
+		}
+		for(n=0; n < this.values.length; n++){
+			msg += "("+this.values[n]+")";
+		}
+		debugmsg("DEBUG "+msg);
 	}
 
 }

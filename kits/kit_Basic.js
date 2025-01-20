@@ -2,7 +2,7 @@
 // kit_basic.js
 // this is the basic kit of parts
 //
-//
+// 1/20/25
 
 kit_basic.prototype = Object.create(sbmodule.prototype);
 

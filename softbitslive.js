@@ -1,4 +1,5 @@
 // 11/16/24
+// 1/20/25
 ////////////////////////////////////////////////////////////////////////////
 var flipimg = 0;
 var flipvimg = 0;
@@ -52,6 +53,8 @@ const CORNER = 110;
 const COUNTER = 111;
 const ROTARY = 114;
 const GRAPH = 115;
+const NOISE = 118;
+const VIDEO = 119;
 const OSC = 120;
 const SPEAKER = 121;
 const FILTER = 122;
@@ -814,10 +817,10 @@ var bytecode = [
 
 	null,
 	null,
-	null,
-	null,
+	[ 5, 0, 28, 0],							// 118 noise
+	[ 1, 3, 0],							// 119 camera
 
-	[ 4, 24, 12, 8, 9, 11, 25, 0],			// 120 OSC
+	[ 4, 24, 12, 8, 9, 11, 25, 0],		// 120 OSC
 	[ 4, 8, 11, 10, 9, 7, 0],			// 121 speaker
 	[ 4, 12, 42, 7, 25, 0],				// 122 FILTER
 	[ 5, 0, 9, 3, 28, 0],				// 123 SEQUENCER
@@ -3303,6 +3306,11 @@ function Sketch() {
 				ahit = i.bit.HitTest(mx, my);
 				if( ahit != null){
 					cname = "pointer";
+					if( i.bit.ctrl != null){
+						if( i.bit.ctrl.HitTest(mx, my)){
+							cname = "crosshair";
+						}
+					}
 					i = null;
 				}else {
 					i = i.next;

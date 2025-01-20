@@ -2,6 +2,7 @@
 // kit_sound.js
 // Sound kit
 //
+// 1/20/25
 var actx = null;	// audio context
 var audioOK = false;
 
@@ -53,15 +54,15 @@ function kit_sound()
 		"poweroff", "power_off", 50, 50,	"powerin", null, null, null,			// 1
 				2,	0, "Power Off",		"End of a chain, optional.", 0x0001, "Power", 0, 1,	// 1
 		"control", "speaker", 100, 50,	"audioin", null ,"actionin",  null,		// 0
-				0,	1, "Speaker",	"Sound output",	 0x102, "Output", 0, 1,	// 0
+				121,	1, "Speaker",	"Sound output",	 0x102, "Output", 0, 1,	// 0
 		"control", "osc", 100, 50,	"actionin", "audioout" ,"actionin",  null,		// 0
-				0,	2, "Oscillator",	"Make sound",	 0x0121, "Action", 0, 1,	// 0
+				120,2, "Oscillator",	"Make sound",	 0x0121, "Action", 0, 1,	// 0
 
 		"control", "filter", 100, 50,	"audioin", "audioout" ,"actionin",  null,		// 0
-				0,	3, "Filter",	"Change sound",	 0x0122, "Action", 0, 1,	// 0
+				122,	3, "Filter",	"Change sound",	 0x0122, "Action", 0, 1,	// 0
 
 		"control", "delay", 100, 50,	"audioin", "audioout" ,"actionin",  null,		// 0
-				0,	4, "Delay",	"change sound",	 0x0122, "Action", 0, 1,	// 0
+				126,	4, "Delay",	"change sound",	 0x0122, "Action", 0, 1,	// 0
 
 		"control", "analyzer", 200, 100, "audioin", "audioout" ,null,  null,		// 0
 				124,	10, "Analyzer",	"Display sound",	 0x0022, "Output", 0, 1,	// 0
@@ -71,8 +72,16 @@ function kit_sound()
 
 		"control", "microphone", 50, 50, null, "audioout" ,null,  null,		// 0
 				125,	12, "Microphone",	"Input sound",	 0x0020, "Input", 0, 1,	// 0
+				
+		"control", "camera", 200, 200, null, "audioout" ,null,  null,		// 0
+				119,    14, "Camera",	"Input video",	 0x0020, "Input", 0, 1,	// 0
+
 		"control", "panner", 100, 50, "audioin", "audioout" ,"actionin",  null,		// 0
-				0,	13, "Panner",	"Pan sound",	 0x0122, "Action", 0, 1,	// 0
+				127,	13, "Panner",	"Pan sound",	 0x0122, "Action", 0, 1,	// 0
+	
+		"control", "noise", 50, 50, "actionin", "audioout" ,null,  null,		// 0
+				118,	15, "Noise",	"Noise",	 	0x0021, "Input", 0, 1,	// 0
+
 		null, null, null, null,				null, null, null, null
 		];
 
@@ -91,6 +100,7 @@ function kit_sound()
 		"roundknob", 2,	// round knob
 		"mic", 0xd,
 		"panner", 0xd,
+		"noise", 0xd,
 		null, null
 	];
 
@@ -112,14 +122,14 @@ function kit_sound()
 	// defines the op codes for the program. softbitslivs:execProgram
 	this.kitctrlcodes = [
 		"power_on", 0,
-		"osc", 120,
-		"speaker", 121,
-		"filter", 122,
+//		"osc", 120,
+//		"speaker", 121,
+//		"filter", 122,
 //		"analyzer", 124,	// audio display
 //		"spectrum", 124,	// audio display
 //		"microphone", 125,	// audio input
-		"delay", 126,	// audio input
-		"panner", 127,	// audio panner
+//		"delay", 126,	// audio input
+//		"panner", 127,	// audio panner
 		null, 254
 	];
 
@@ -191,6 +201,16 @@ function kit_sound()
 			return ct;
 		}else if( ctrl == 13){
 			ct = new pannerBit( bit);
+			bit.ctrl = ct;
+			ct.setData();
+			return ct;
+		}else if( ctrl == 14){
+			ct = new videoBit( bit);
+			bit.ctrl = ct;
+			ct.setData();
+			return ct;
+		}else if( ctrl == 15){
+			ct = new noiseBit( bit);
 			bit.ctrl = ct;
 			ct.setData();
 			return ct;

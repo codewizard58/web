@@ -1,5 +1,5 @@
 // 10/19/24
-// 2
+// 1/20/25
 
 function doBitFormAction()
 {
@@ -189,12 +189,10 @@ function control(bit)
 
 	// control
 	this.Draw = function( )
-	{	var b = this.bit;
-		var bt;
-		var xval;
-		var p;
-		var xtmp;
-		var tmp;
+	{	const b = this.bit;
+		let bt;
+		let xval;
+		let p;
 
 		if( b == null){
 			return;
@@ -224,7 +222,7 @@ function control(bit)
 	this.HitTest = function(x, y)
 	{	var res = null;
 		var i;
-		var b = this.bit;
+		const b = this.bit;
 		var bt;
 
 		if( b == null){

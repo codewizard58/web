@@ -287,6 +287,8 @@
                 </tr>
             </table>
           </td>
+          <td valign='top'><?php include("resources/info/intro.htm"); ?>
+          </td>
         </tr>
       </table>
       <hr />
@@ -303,12 +305,15 @@
     </div> <!-- end of progdiv -->
     <div id="playdiv" style="display:none;">
       <p>Play area</p>
+
       <table>
           <tr>
             <td valign="top">
               <div id="playbox">
                   <canvas width ="800" height="600" tabindex="2" id="playcanvas">
                   </canvas>
+                  <video id='video' style='display:none'>
+                  </video >
                 </div>
             </td>
           </tr>
