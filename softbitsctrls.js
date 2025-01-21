@@ -51,24 +51,38 @@ function wireBit(bit)
 		mx = dx / 2;
 		my = dy / 2;
 
-		if( bt == 0){
+		if( b.snaps[0].side == "-l"){
 			sx = b.snaps[0].x+15;
 			sy = b.snaps[0].y+25;
 
 	        ctx.fillRect(sx,  sy, mx, 5);
 			sx += mx;
-	        ctx.fillRect(sx-5,  sy, 5, dy);
-			sy += dy;
-			ctx.fillRect(sx-5,  sy, mx, 5);
+			if( b.snaps[1].side == "-r"){
+				ctx.fillRect(sx-5,  sy, 5, dy);
+				sy += dy;
+				ctx.fillRect(sx-5,  sy, mx, 5);
+			}else {
+				ctx.fillRect(sx,  sy, mx+10, 5);
+				sx += mx+10;
+				ctx.fillRect(sx-5,  sy, 5, dy-15);
+				sy += dy-15;
+			}
 		}else {
 			sx = b.snaps[0].x+25;
-			sy = b.snaps[0].y;
+			sy = b.snaps[0].y+15;
 
 	        ctx.fillRect(sx,  sy, 5, my);
 			sy += my;
-	        ctx.fillRect(sx,  sy-5, dx, 5);
-			sx += dx;
-			ctx.fillRect(sx,  sy-5, 5, my);
+			if( b.snaps[1].side == "-b"){
+		        ctx.fillRect(sx,  sy-5, dx, 5);
+				sx += dx;
+				ctx.fillRect(sx,  sy-5, 5, my);
+			}else {
+				ctx.fillRect(sx,  sy, 5, my);
+				sy += my;
+		        ctx.fillRect(sx,  sy-5, dx-15, 5);
+				sx += dx;
+			}
 
 //	        ctx.fillRect(b.x+(b.w/2)-10,  b.y, 20, my);
 		}
@@ -176,6 +190,7 @@ function wireBit(bit)
 			msg += "<td>("+b.x+","+b.y+")</td>";
 			msg += "<td>("+b.w+","+b.h+")</td>";
 			msg += "</tr>";
+			msg += "<tr><th>Side</th><td><input type='text' id='wiresize' value='"+b.snaps[1].side+"' /></td></tr>";
 
 			msg += "</table>\n";
 
@@ -183,6 +198,16 @@ function wireBit(bit)
 			bitformaction = this;
 		}
 	
+	}
+
+	this.getData = function()
+	{	const b = this.bit;
+		let f = null;
+		f = document.getElementById("wiresize");
+//		if( f != null){
+//			b.snaps[1].side = f.value;
+//		}
+
 	}
 
 

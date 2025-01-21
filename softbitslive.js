@@ -2112,6 +2112,7 @@ function Snap(bit, side, x, srx, y, sry, w, h, idx)
 		let j;
 		let oside;
 		let dom, odom;
+		const b = this.bit;
 
 		dom = this.domain;
 
@@ -2140,10 +2141,30 @@ function Snap(bit, side, x, srx, y, sry, w, h, idx)
 				if( i.bit != this.bit){
 					res = i.bit.HitTest(bx, by);
 					if( res != null){
-						if( res.side != oside){
-							res = null;		// cannot dock with this one.
-						}else if( res.paired != null){
+						if( res.paired != null){
 							res = null;		// cannot dock with a docked one.
+						}else if( res.side != oside){
+							if( b.code == WIRE){
+								debugmsg("FT code="+b.code+" res="+res.bit.code+" oside="+oside);
+								if( oside == "-l"){
+									b.snaps[1].side = "-b";
+									b.snaps[1].w = 50;
+									b.snaps[1].h = 15;
+								}else if( oside == "-t"){
+									b.snaps[1].side = "-r";
+									b.snaps[1].w = 15;
+									b.snaps[1].h = 50;
+								}else if( oside == "-r"){
+									b.snaps[0].side = "-t";
+									b.snaps[0].w = 50;
+									b.snaps[0].h = 15;
+								}else if( oside == "-b"){
+									b.snaps[0].side = "-l";
+									b.snaps[0].w = 15;
+									b.snaps[0].h = 50;
+								}
+							}
+							res = null;		// cannot dock with this one.
 						}else {
 							// check domain
 							odom = res.domain;
@@ -2738,7 +2759,7 @@ function Bit( btype, x, y, w, h, k) {
 				xsnap = this.snaps[ snaporder[1] ];
 			}
 		}else if( ty > 2*tx){
-			// vertical mption
+			// vertical motion
 			if( ary < 0 ){
 				xsnap = this.snaps[snaporder[2] ];
 			}else {
@@ -3074,9 +3095,9 @@ function Sketch() {
 				ahit.setDxDy(mx, my);			// get the dx and dy for dragging
 				dragging = ahit.getDrag();
 
-				if( dragging != null && dragging.code == WIRE){
-					message("W "+dragging.print() );
-				}
+//				if( dragging != null && dragging.code == WIRE){
+//					message("W "+dragging.print() );
+//				}
 
 				selected = ahit;
 				scanning = ahit.findSnap();
@@ -3094,12 +3115,9 @@ function Sketch() {
 					}
 				}
 				if( dragging == selected){		// autosel
-					if( dragging.code != WIRE ){	// not wire...
 						autosel = dragging;
 						autox = mx;
 						autoy = my;
-						//message("Autoselect");
-					}
 				}
 			}
 // && i.bit.isDocked()
