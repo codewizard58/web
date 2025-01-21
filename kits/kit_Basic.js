@@ -41,10 +41,10 @@ function kit_basic()
 		"default", "a_setvalue", 100, 50,	"blankin", "actionout" , null,  null,	// 5
 				0,	0, "",				"", 							0x3,  "Action", 0, 0,		// 22
 
-		"and",	"logic_and", 100, 50,		"logicin", "logicout" , "logicin", null,	// 6
-				16,	0, "And",			"", 							0x0111, "Logic", 0, 1,		// 5
-		"default", "logic_or",  100, 50,	"logicin", "logicout" , "logicin",  null,	// 7
-				17,	0, "Or",			"", 							0x0111, "Logic", 0, 1,		// 6
+		"control",	"logic_and", 50, 150,		"logicin", "logicout" , "logicin", null,	// 6
+				16,	24, "And",			"", 							0x0111, "Logic", 0, 1,		// 5
+		"control", "logic_or",  50, 150,	"logicin", "logicout" , "logicin",  null,	// 7
+				17,	25, "Or",			"", 							0x0111, "Logic", 0, 1,		// 6
 		"default", "logic_not", 100, 50,	"logicin",  "logicout" , null,  null,	// 8
 				18,	0, "Not",			"", 0x0011,  "Logic", 0, 1,		// 7
 		"default", "logic_nand", 100, 50,	"logicin", "logicout", "logicin",  null,	// 9
@@ -286,6 +286,20 @@ this.kitctrlcodes = [
 			ct.setData();
 			debugmsg("New counter");
 			return ct;
+		}else if( ctrl == 24){
+			ct = new andBit( bit);
+			ct.values = [];
+			bit.ctrl = ct;
+			bit.setOrientation(0);		// modify snaps.
+			ct.setData();
+			return ct;
+		}else if( ctrl == 25){
+			ct = new orBit( bit);
+			ct.values = [];
+			bit.ctrl = ct;
+			bit.setOrientation(0);		// modify snaps.
+			ct.setData();
+			return ct;
 		}else {
 			message("Unknown control "+ctrl);
 		}
@@ -341,6 +355,7 @@ this.kitctrlcodes = [
 		"patchout",		0xd,
 		"imagetile",	1,
 		"piano",		1,
+		"and2",			0xd,
 		null, null
 	];
 

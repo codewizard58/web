@@ -284,7 +284,7 @@ function bitFlip()
 		dy = 0;
 
 		doAnimate();
-		message("Flip: flipped!");
+		debugmsg("Flip: flipped!");
 	}else {
 		message("Flip: cannot flip docked bit");
 	}
@@ -2100,6 +2100,7 @@ function Snap(bit, side, x, srx, y, sry, w, h, idx)
 			res = this;
 		}
 
+//		debugmsg("HT ("+x+","+y+") " +this.side+" x="+this.x+" y="+this.y+" w="+this.w+" h="+this.h);
 		return res;
 	}
 
@@ -2263,6 +2264,24 @@ function Bit( btype, x, y, w, h, k) {
 	let bt = (btype & 7);
 	let bidx = btype-bt;
 
+	this.setSnaps = function()
+	{
+		const sw = 15;
+		const sh = 50;
+
+		for(let i = 0; i < this.snaps.length; i++){
+			snapname = this.snapnames[ i];
+			if( snapname != null){
+				if( this.suffix[i] == "-l" || this.suffix[i] == "-r"){		// vertical orientation
+					this.snaps[i] = new Snap(this, this.suffix[i], this.x, this.coords[i+i], this.y,this.coords[i+i+1], sw, sh, i);
+				}else{
+					this.snaps[i] = new Snap(this, this.suffix[i], this.x, this.coords[i+i], this.y,this.coords[i+i+1], sh, sw, i);
+				}
+			}
+		}
+	
+	
+	}
 
 	// bit 
 	this.setOrientation = function(bt)
@@ -2270,20 +2289,24 @@ function Bit( btype, x, y, w, h, k) {
 		if( bt == 0 ){
 			this.w = this.initw;
 			this.h = this.inith;
-			this.coords = [ -15, 0, this.initw, 0, (this.w / 2) - 25, -10, (this.w / 2) - 25, this.inith ];
-			this.suffix = [ "-l", "-r", "-t", "-b" ];
+			if( this.ctrl == null || !this.ctrl.setOrientation(bt)){
+				this.coords = [ -15, 0, this.w, 0, (this.w / 2) - 25, -10, (this.w / 2) - 25, this.h ];
+				this.suffix = [ "-l", "-r", "-t", "-b" ];
+			}
 		}else if( bt == 1){
 			this.h = this.initw;
 			this.w = this.inith;
-			this.coords = [ 0, -15, 0, this.initw, -15, (this.h / 2) - 25, this.inith, (this.h / 2) - 25 ];
-			this.suffix = [ "-t", "-b", "-l", "-r" ];
+			if( this.ctrl == null || !this.ctrl.setOrientation(bt)){
+				this.coords = [ 0, -15, 0, this.h, -15, (this.h / 2) - 25, this.w, (this.h / 2) - 25 ];
+				this.suffix = [ "-t", "-b", "-l", "-r" ];
+			}
 		}
 		// snaps
 		let sn = 0;
 		let sname = "";
 		let btx = this.btype & 7;
 		let bidx = this.btype - btx;
-		let slen = 4;
+		let slen = this.snapnames.length;
 
 		for(sn=0; sn < slen; sn++){
 			sname = this.kit.bitnames[bidx+sn+4];
@@ -2322,30 +2345,9 @@ function Bit( btype, x, y, w, h, k) {
 
 	// message("New bit("+this.w+","+this.h+")" );
 
-	let snapname="";
-	let idx = this.btype - bt;
-	let sw = 15;
-	let sh = 50;
+	this.setSnaps();
 
-	if( bt == 1){
-		sw = 50;
-		sh = 15;
-	}
-
-	for(var i = 0; i < this.snaps.length; i++){
-		snapname = this.snapnames[ i];
-		if( snapname != null){
-			if( i < 2){
-			// in out
-				this.snaps[i] = new Snap(this, this.suffix[i], this.x, this.coords[i+i], this.y,this.coords[i+i+1], sw, sh, i);
-			}else{
-			// in2 out2
-				this.snaps[i] = new Snap(this, this.suffix[i], this.x, this.coords[i+i], this.y,this.coords[i+i+1], sh, sw, i);
-			}
-		}
-	}
-
-	debugmsg("Bit: "+ this.kit.name + " idx "+ idx + " name "+this.name+" img "+this.bitimg+" "+this.name+" domain "+this.domain.toString(16));
+//	debugmsg("Bit: "+ this.kit.name + " idx "+ idx + " name "+this.name+" img "+this.bitimg+" "+this.name+" domain "+this.domain.toString(16));
 
 // bit addctrl
 	this.addCtrl = function( idx)
@@ -2435,17 +2437,25 @@ function Bit( btype, x, y, w, h, k) {
 	this.HitTest = function(x, y)
 	{	let res = null;
 		let i;
+		let msg="";
 
 		if( x >= this.x && x <= this.x+this.w &&
 			y >= this.y && y <= this.y+this.h){
 			res = this;
+			msg = " hit bit";
 		}
 		let slen = this.snaps.length;
 		for(i=0; res == null && i < slen; i++){
 			if(  this.snaps[i] != null){
 				res = this.snaps[i].HitTest(x, y);
+				if( res != null){
+					msg += " hit snap "+i+" ";
+				}
 			}
 		}
+//		if( msg != ""){
+//			debugmsg(msg);
+//		}
 
 		return res;
 	}
@@ -2530,7 +2540,7 @@ function Bit( btype, x, y, w, h, k) {
 			}
 		}else if( pass == 2 && showsnaps == 1){	// input snaps
 			snapname = this.snapnames[0];
-			if( this.code != WIRE || this.snaps[1].paired == null){		// wire then ctrl draws if paired.
+			if( this.code != WIRE ){		
 				if( snapname != null){	
 					drawImage(snapname, this.x+this.coords[0], this.y+this.coords[1]);
 					this.snaps[0].drawIndicator( this.suffix[0], this.x+this.coords[0], this.y+this.coords[1]);
@@ -2543,7 +2553,7 @@ function Bit( btype, x, y, w, h, k) {
 			}
 		}else if( pass == 1 && showsnaps == 1){	// output snaps
 			snapname = this.snapnames[1];
-			if( this.code != WIRE || this.snaps[0].paired == null){		// wire
+			if( this.code != WIRE ){		// wire draw its own snaps
 				if( snapname != null){
 					drawImage(snapname, this.x+this.coords[2], this.y+this.coords[3]);
 					this.snaps[1].drawIndicator( this.suffix[1], this.x+this.coords[2], this.y+this.coords[3]);
@@ -2635,10 +2645,7 @@ function Bit( btype, x, y, w, h, k) {
 	this.flip = function()
 	{
 		const btmp = this.btype & 7;
-		let idx = this.btype - btmp;
-		let i, tmp;
-		let nx, ny;
-		const len = this.snaps.length;
+		const idx = this.btype - btmp;
 
 		if( this.isDocked() ){
 			return false;
@@ -2646,33 +2653,13 @@ function Bit( btype, x, y, w, h, k) {
 
 		if( btmp == 0){
 			this.btype = idx + 1;
-			i = 1;
 		}else if( btmp == 1){
 			this.btype = idx;
-			i = 0;
 		}
-		this.setOrientation( i);
+		this.setOrientation( this.btype & 1);
 
-		// re orientate the snaps
-		for(i=0; i < len; i++){
-			if( this.snaps[i] != null){
-				
-				tmp = this.snaps[i].w;
-				this.snaps[i].w = this.snaps[i].h;
-				this.snaps[i].h = tmp;
+		this.setSnaps();
 
-				tmp = this.snaps[i].rx;
-				this.snaps[i].rx = this.snaps[i].ry;
-				this.snaps[i].ry = tmp;
-
-				nx = this.x+this.coords[i+i];
-				ny = this.y+this.coords[i+i+1];
-
-				this.snaps[i].x = nx;
-				this.snaps[i].y = ny;
-				this.snaps[i].side = this.suffix[i];
-			}
-		}
 		return true;
 	}
 
@@ -3166,6 +3153,8 @@ function Sketch() {
 		let cname = "default";
 		let ldrag = dragging;
 		let i;
+		let wox, woy;
+		let wix, wiy;
 
 //		message("Mouse Move "+mx+" "+my);
 		cw = sketch.canvas.width;
@@ -3179,61 +3168,86 @@ function Sketch() {
 			sx = 0;
 			sy = 0;
 //			message("Outside "+cw+" "+ch);
+			return;
 		}
 
 		// looking for dragging wire snap.
 		// scaning == selected and dragging == wire
 		if( selected != null && scanning == selected && dragging != null && dragging.code == WIRE){
+			wox = dragging.snaps[1].x;
+			woy = dragging.snaps[1].y;
+			wix = dragging.snaps[0].x;
+			wiy = dragging.snaps[0].y;
 
 			if( selected == dragging.snaps[0] ){
-				if( dragging.snaps[1].paired != null){
-
-					message("WI "+dragging.snaps[1].x+" "+mx+" "+dragging.print() );
-
-//					if( docktarget == null){
-						if( (dragging.btype & 1 ) == 0){
-							if( dragging.snaps[1].x - mx-15 > 30 ){
-								selected.x = mx;
-							}else {
-								selected.x = dragging.snaps[1].x-46;
-							}
-						}else {
-							if( dragging.snaps[1].y - my - 15 > 30 ){
-								selected.y = my;
-							}else {
-								selected.y = dragging.snaps[1].y-46;
-							}
+				if( dragging.snaps[1].paired != null){		// output snap is paired. use as anchor.
+					if( (dragging.btype & 1) == 0){
+						// horizontal mode
+						if( wox - mx-15 > 30 ){
+							selected.x = mx;	// only allow if left of output snap.
 						}
-//					}
+						selected.y = my;
+					}else {
+						// vertical mode
+						if( woy - my-15 > 30 ){
+							selected.y = my;
+						}
+						selected.x = mx;
+					}
+					
 					ldrag = null;
-					dragging.ctrl.setBitSize( mx, my);
 				}
 			}else {
 				if( dragging.snaps[0].paired != null){
-
-					message("WO "+dragging.initw+" "+dragging.inith+" "+dragging.print() );
-
-//					if( docktarget == null){
-						if( (dragging.btype & 1 ) == 0){
-							if( mx - dragging.snaps[0].x > 45){
-								selected.x = mx;
-							}else {
-								selected.x = dragging.snaps[0].x+46;
-							}
-						}else {
-							if(  my - dragging.snaps[0].y > 45 ){
-								selected.y = my;
-							}else {
-								selected.y = dragging.snaps[0].y+46;
-							}
+					if( (dragging.btype & 1 ) == 0){
+						if( mx - wix > 45){
+							selected.x = mx;
 						}
-//					}
+						selected.y = my;
+					}else {
+						if(  my - wiy > 45 ){
+							selected.y = my;
+						}
+						selected.x = mx;
+					}
 					ldrag = null;
-					dragging.ctrl.setBitSize( mx, my);
 				}
 			}
-//		}else {
-//			message("");
+			// recalc
+				wox = dragging.snaps[1].x;
+				if( dragging.snaps[0].side == "-b"){
+					wox = wox+45;
+				}
+
+				woy = dragging.snaps[1].y;
+				if( dragging.snaps[0].side == "-r"){
+					woy = woy+45;
+				}
+
+				wix = dragging.snaps[0].x;
+				if( dragging.snaps[0].side == "-l"){
+					wix = wix+10;
+				}
+
+				wiy = dragging.snaps[0].y;
+				if( dragging.snaps[0].side == "-t"){
+					wiy = wiy+10;
+				}
+
+			if( wix < wox){
+				dragging.x = wix;
+				dragging.w = wox - wix;
+			}else {
+				dragging.x = wox;
+				dragging.w = wix -wox;
+			}
+			if( wiy < woy){
+				dragging.y = wiy;
+				dragging.h = woy - wiy;
+			}else {
+				dragging.y = woy;
+				dragging.h = wiy - woy;
+			}
 		}
 
 		if( selected != null && scanning == null){

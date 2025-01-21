@@ -23,18 +23,17 @@ function wireBit(bit)
 {	control.call(this, bit);
 
 	this.bit = bit;
+	this.points = [];
 
 
 // wire
 	this.Draw = function( )
-	{	var b = this.bit;
-		var bt;
-		var xval;
-		var p;
-		var xtmp;
-		var tmp;
-		var snapname;
-		var suffix;
+	{	const b = this.bit;
+		let bt;
+		let dx;
+		let dy;
+		let mx, my;
+		let sx,sy;
 
 		if( b == null){
 			return;
@@ -44,32 +43,49 @@ function wireBit(bit)
 		}
 		bt = b.btype & 7;	// 0 = horiz, 1 == vert
 
-		xval = b.data;
-		
         ctx.fillStyle = "#00ff00";
+
+		dx = b.snaps[1].x - b.snaps[0].x;
+		dy = b.snaps[1].y - b.snaps[0].y;
+
+		mx = dx / 2;
+		my = dy / 2;
+
 		if( bt == 0){
-	        ctx.fillRect(b.x,  b.y+(b.h/2)-10, b.w, 20);
+			sx = b.snaps[0].x+15;
+			sy = b.snaps[0].y+25;
+
+	        ctx.fillRect(sx,  sy, mx, 5);
+			sx += mx;
+	        ctx.fillRect(sx-5,  sy, 5, dy);
+			sy += dy;
+			ctx.fillRect(sx-5,  sy, mx, 5);
 		}else {
-	        ctx.fillRect(b.x+(b.w/2)-10,  b.y, 20, b.h);
+			sx = b.snaps[0].x+25;
+			sy = b.snaps[0].y;
+
+	        ctx.fillRect(sx,  sy, 5, my);
+			sy += my;
+	        ctx.fillRect(sx,  sy-5, dx, 5);
+			sx += dx;
+			ctx.fillRect(sx,  sy-5, 5, my);
+
+//	        ctx.fillRect(b.x+(b.w/2)-10,  b.y, 20, my);
 		}
         ctx.fillStyle = "#000000";
 
-		if( b.snaps[1].paired != null){
-			// draw input snap
-			if( bt == 0){
-				drawImage(wirelinimg, b.snaps[0].x, b.snaps[0].y);
-			}else {
-				drawImage(wiretinimg, b.snaps[0].x, b.snaps[0].y);
-			}
-		} 
-		if( b.snaps[0].paired != null){
-			// draw output snap
-			if( bt == 0){
-				drawImage(wireroutimg, b.snaps[1].x, b.snaps[1].y);
-			}else {
-				drawImage(wireboutimg, b.snaps[1].x, b.snaps[1].y);
-			}
-		} 
+		// draw input snap
+		if( b.snaps[0].side == "-l"){
+			drawImage(wirelinimg, b.snaps[0].x, b.snaps[0].y);
+		}else {
+			drawImage(wiretinimg, b.snaps[0].x, b.snaps[0].y);
+		}
+		// draw output snap
+		if( b.snaps[1].side == "-r"){
+			drawImage(wireroutimg, b.snaps[1].x, b.snaps[1].y);
+		}else {
+			drawImage(wireboutimg, b.snaps[1].x, b.snaps[1].y);
+		}
 	}
 
 // wire
@@ -111,15 +127,107 @@ function wireBit(bit)
 	}
 
 
+	this.setData = function()
+	{	let msg="";
+		let idx;
+		const b = this.bit;
+
+		if( bitform != null){
+			bitform.innerHTML="";
+		}
+		
+		bitform = document.getElementById("bitform");
+		if( bitform != null){
+			msg = "<table>";
+
+			msg += "<tr>";
+			for(idx = 0; idx < b.snaps.length; idx ++){
+				if( b.snaps[idx] != null){
+					msg += "<td>"+b.snaps[idx].side+"</td>";
+				}else {
+					msg += "<td> - </td>";
+				}
+
+			}
+			msg += "</tr>";
+			msg += "<tr>";
+			for(idx = 0; idx < b.snaps.length; idx ++){
+				if( b.snaps[idx] != null){
+					msg += "<td>("+b.snaps[idx].x+","+b.snaps[idx].y+")</td>";
+				}else {
+					msg += "<td> - </td>";
+				}
+
+			}
+			msg += "</tr>";
+			msg += "<tr>";
+			for(idx = 0; idx < b.snaps.length; idx ++){
+				if( b.snaps[idx] != null){
+					msg += "<td>("+b.snaps[idx].w+","+b.snaps[idx].h+")</td>";
+				}else {
+					msg += "<td> - </td>";
+				}
+
+			}
+			msg += "</tr>";
+			msg += "<tr>";
+			msg += "<td>"+(b.btype & 7)+"</td>";
+			msg += "<td>"+(b.code)+"</td>";
+			msg += "<td>("+b.x+","+b.y+")</td>";
+			msg += "<td>("+b.w+","+b.h+")</td>";
+			msg += "</tr>";
+
+			msg += "</table>\n";
+
+			bitform.innerHTML = msg;
+			bitformaction = this;
+		}
+	
+	}
+
+
+
+
 // wire 
 	this.doSave = function()
-	{	var msg = "1,";
+	{	const b = this.bit;
+		let s = new saveargs();
 
-		return msg;
+		s.addnv("control", "'wire'");
+		s.addnv("inx", b.snaps[0].x);
+		s.addnv("iny", b.snaps[0].y);
+		s.addnv("outx", b.snaps[1].x);
+		s.addnv("outy", b.snaps[1].y);
+
+		return s.getargs();
 	}
-		
-	this.doLoad = function(initdata,  idx)
-	{	var i = initdata[idx];
+	
+	this.doLoad = function(initdata, idx)
+	{	let len = initdata[idx];
+		let n = 1;
+		let param="";
+		let val = "";
+		const b = this.bit;
+
+		for(n = 1; n < len ; n += 2){
+			param = initdata[idx+n];
+			val = initdata[idx+n+1];
+
+			if( param == "control"){
+				continue;
+			}
+			if( param == "inx"){
+				b.snaps[0].x = val;
+			}else if( param == "iny"){
+				b.snaps[0].y = val;
+			}else if( param == "outx"){
+				b.snaps[1].x = val;
+			}else if( param == "outy"){
+				b.snaps[1].y = val;
+			}
+
+		}
+
 	}		
 		
 
@@ -167,6 +275,12 @@ function control(bit)
 			this.t = b.y+10;
 			this.b = b.y+b.initw-10;
 		}
+	}
+
+
+	this.setOrientation = function(bt)
+	{
+		return false;
 	}
 
 
