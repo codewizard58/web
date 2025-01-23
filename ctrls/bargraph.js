@@ -230,25 +230,20 @@ function mandleBit(bit)
 	this.wy = this.endy-this.starty;
 
 	this.cnt = 0;
+	this.max = 0;
 	this.image = null;
 	this.data = null;
-	this.tick = 0;
-	this.transport = new transport();
-	this.gate = 128;
 	this.done = false;
-	this.max = 0;
 	this.values = [];
 	this.zoom = 1;
 	this.reps = 50;
 	this.beats = 32;
-	this.dir = 1;
-	this.pingpong = false;
 	this.contrast = 255 / this.reps;
+	this.sampler = new sampler();
 
 	this.power = 2;
 
-
-	timer_list.addobj(this.transport, null);
+	this.sampler.setSize(this.bit.w, this.bit.h);
 
 
 	this.mapx = function(y)
@@ -289,7 +284,6 @@ function mandleBit(bit)
 			this.x = 0.0;
 			this.y = 0.0;
 			this.done = true;
-//			debugmsg("M "+this.x+" "+this.y);
 		}else {
 			this.x = a;
 			this.y = b;
@@ -304,6 +298,7 @@ function mandleBit(bit)
 		let y;
 		let idx;
 		let dx,dy;
+		let max = 0;
 
 		if( b == null){
 			return;
@@ -323,37 +318,21 @@ function mandleBit(bit)
 				if( this.cnt < this.beats){
 					this.values[this.cnt] = this.mapy(this.y);
 					this.points[this.cnt] = new mpoint( this.mapx(this.x), this.mapy(this.y) );
-					this.max = this.cnt;
+					max = this.cnt;
 				}
-//				debugmsg("XCNT="+this.cnt+" x="+this.x+" y="+this.y);
 				this.cnt++;
 				if( this.done){
 					this.cnt = 0;
 					this.points[this.cnt] = new mpoint( this.mapx(this.initx), this.mapy(this.inity) );
-//					this.debug();
+
+					this.sampler.setPoints( this.points, max);
+					this.sampler.setValues( this.values, max);
 				}
 			}
 		}else if( this.shape == 1){		// radial line
 			if( this.dix.changed(this.ix) || this.diy.changed(this.iy)){
-				// use points to sample image.
-				dx = (this.ix - 128) / this.beats;
-				dy = (this.iy - 128) / this.beats;
+				this.sampler.radial(this.ix, this.iy);
 
-//				debugmsg("Start new line "+this.ix+" "+this.iy);
-				x = 128;
-				y = 128;
-				for(cnt=0; cnt < this.beats; cnt++){
-					this.points[cnt] = new mpoint(Math.floor(x), Math.floor(y));
-					idx = Math.floor(b.h / 256 * y)*b.w + Math.floor(b.w / 256 * x);
-					if( this.data != null){
-						this.values[cnt] = this.data[idx];
-					}
-					x = x+dx;
-					y = y+dy;
-				}
-//				debugmsg("End new line "+x+" "+y);
-
-				this.max = cnt;
 				this.done = true;
 				this.cnt = 0;
 			}
@@ -387,45 +366,11 @@ function mandleBit(bit)
 		if( chan == 0){
 			this.ix = d; 
 			this.initx = (d / 256.0)  * this.wx + this.startx;
-//			debugmsg("D="+d+" dx="+(d / 256.0) );
 		}else if( chan == 1){
 			this.iy = d;
 			this.inity = (d / 256.0)  * this.wy  + this.starty; 
 
 			this.doMandel();
-
-			// use transport to determine when to change sample.
-			if( this.transport.gate > 0){
-				this.transport.gate--;
-
-				if( this.dir > 0){
-					this.tick++;
-				}else {
-					this.tick--;
-				}
-
-				if( this.tick >= this.max){
-					if( this.pingpong ){
-						this.dir = -this.dir;
-						this.tick = this.max -1;
-					}else {
-						this.tick = 0;
-					}
-				}
-				if( this.tick < 0){
-					this.tick = 0;
-					if( this.pingpong ){
-						this.dir = - this.dir;
-					}else if( this.max > 0){
-						this.tick = this.max-1;
-					}
-				}
-				if( this.gate < this.transport.value){
-					this.bit.value = 0;
-				}else {	
-					this.bit.value = this.values[this.tick];
-				}
-			}
 		}
 
 	}
@@ -484,14 +429,13 @@ function mandleBit(bit)
 			n = ix*b.w;
 			iy = n *4;
 		}
+		this.sampler.setImage(this.image);
+		this.sampler.setData(this.data);
 	}
 
 	this.setTempo = function(tempo)
 	{
-		this.transport.setTempo(tempo, 0.5);
 	}
-
-	this.setTempo(240);
 
 // mandelbrot
 	this.HitTest = function(x, y)
@@ -519,6 +463,8 @@ function mandleBit(bit)
 		let len = 0;
 		let x=1;
 		let y;
+		let points;
+		let max;
 	
 
 		if( b == null){
@@ -532,23 +478,22 @@ function mandleBit(bit)
 		if(this.image != null){
 			ctx.putImageData(this.image, b.x, b.y);
 		}
+		points = this.sampler.points;
+		max  = this.sampler.max;
+		
 		ctx.strokeStyle = "#ff0000";			// red
 		ctx.lineWidth = 2;
 // bounding box
 		ctx.strokeRect(b.x, b.y, b.w, b.h);
 
-		if( this.points == null){
+		if( points.length == 0){
 			ctx.fillStyle = "#000000";
 			return;
 		}
-		if( this.points.length == 0){
-			ctx.fillStyle = "#000000";
-			return;
-		}
-		len = this.max;
-		if( len > this.points.length){
-			debugmsg("Len "+len+" "+this.points.length);
-			len = this.points.length;
+		len = max;
+		if( len > points.length){
+			debugmsg("Len "+len+" "+points.length);
+			len = points.length;
 		}
 
 		ctx.beginPath();
@@ -556,23 +501,25 @@ function mandleBit(bit)
 		{	x = 0;
 			y = 1;
 			// points, 0,0 = left,top  255,255 = right,bottom
-			y = Math.floor(this.points[cnt].y * b.h/256) + b.y;
-			x = Math.floor(this.points[cnt].x * b.w/256) + b.x;
+			y = Math.floor(points[cnt].y * b.h/256) + b.y;
+			x = Math.floor(points[cnt].x * b.w/256) + b.x;
 			ctx.lineTo( x, y);
 		}
 		ctx.stroke();
 
+		this.tick = this.sampler.position();
+
 		if( this.tick < 0){
 			this.tick = 0;
-		}else if( this.tick > this.max){
+		}else if( this.tick > max){
 			this.tick = 0;
-			if( this.max > 0){
-				this.tick = this.max -1;
+			if( max > 0){
+				this.tick = max -1;
 			}
 		}
 
-		x = Math.floor(this.points[this.tick].x * b.w/256) + b.x;
-		y = Math.floor(this.points[this.tick].y * b.h/256) + b.y;
+		x = Math.floor(points[this.tick].x * b.w/256) + b.x;
+		y = Math.floor(points[this.tick].y * b.h/256) + b.y;
 		ctx.strokeRect(x, y, 4, 4);
 
 		ctx.fillStyle = "#000000";
@@ -601,15 +548,12 @@ function mandleBit(bit)
 			msg += "<option value='3' "+isSelected(this.power, 3)+">Cubic (3)</option>";
 			msg += "</select></td></tr>";
 			msg += "<tr><th>Zoom</th><td><select id='zoom'><option value='1' "+isSelected(this.zoom, 1)+">In</option><option value='2' "+isSelected(this.zoom, 2)+">Out</option></select></td>";
-			msg += "<td><input type='button' value='Reset' onclick='UIrefresh(1, 0);' /></td></tr>\n";
-			msg += "<tr><th>PingPong</th><td><input type='checkbox' id='pingpong' "+isChecked(this.pingpong)+" /></td>";
+			msg += "<td><input type='button' value='Reset' onclick='UImandelReset(1, 0);' /></td></tr>\n";
+			msg += "<tr><th>PingPong</th><td><input type='checkbox' id='pingpong' "+isChecked(this.sampler.pingpong)+" /></td>";
 			msg += "<th>Depth</th><td><input type='text' id='reps' value='"+this.reps+"' onchange='UIrefresh(1, 0);'  size='4' /></td></tr>";
-			msg += "<tr><th>Tempo</th><td><input type='text' value='"+this.transport.tempo+"' id='tempo' onchange='UIrefresh(1, 0);'  size='4' /></td>";
+			msg += "<tr><th>Tempo</th><td><input type='text' value='"+this.sampler.tempo+"' id='tempo' onchange='UIrefresh(1, 0);'  size='4' /></td>";
 			msg += "<th>Gate</th><td><input type='text' value='"+this.gate+"' id='gate' onchange='UIrefresh(1, 0);' size='4' /></td></tr>";
-			msg += "<td><input type='button' value='Debug' onclick='UImandelDebug();' /></td></tr>\n";
-
 			msg += "</table>\n";
-
 
 			bitform.innerHTML = msg;
 			bitformaction = this;
@@ -729,6 +673,7 @@ function mandleBit(bit)
 		
 	}
 
+	// mandelbrot
 	this.doSave = function()
 	{	let msg = "";
 		let s = new saveargs();
@@ -737,16 +682,17 @@ function mandleBit(bit)
 		s.addnv("shape", this.shape);
 		s.addnv("zoom", this.zoom);
 		s.addnv("depth", this.reps);
-		s.addnv("tempo", this.transport.tempo);
+		s.addnv("tempo", this.tempo);
 		s.addnv("gate", this.gate);
 
 		s.addnv("startx", this.startx);
 		s.addnv("starty", this.starty);
 		s.addnv("endx", this.endx);
-		if( this.pingpong){
-			s.addnv("endy", this.endy);
+		s.addnv("endy", this.endy);
+		if( this.sampler.pingpong){
+			s.addnv("pingpong", 1);
 		}else {
-
+			s.addnv("pingpong", 0);
 		}
 
 //		debugmsg("Mandle "+s.getargs());
@@ -803,9 +749,9 @@ function mandleBit(bit)
 				this.endy = val;
 			}else if(param == "pingpong"){
 				if( val == 1){
-					this.pingpong = true;
+					this.sampler.pingpong = true;
 				}else {
-					this.pingpong = false;
+					this.sampler.pingpong = false;
 				}
 			}
 
@@ -822,19 +768,6 @@ function mandleBit(bit)
 
 	setColorMaps();		// init the colour maps.
 
-	this.debug = function()
-	{
-		let msg="";
-		let n;
-
-		for(n=0; n < this.points.length; n++){
-			msg += "["+this.points[n].x+","+this.points[n].y+"]";
-		}
-		for(n=0; n < this.values.length; n++){
-			msg += "("+this.values[n]+")";
-		}
-		debugmsg("DEBUG "+msg);
-	}
 
 }
 

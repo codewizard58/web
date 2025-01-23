@@ -78,6 +78,9 @@ var animation_list = new objlist();
 // debug messages
 var debug = null;
 
+var info_list = new objlist();
+var audio_list = new objlist();		// for delayed audio setup.
+
 ////////////////////////////////////////////////////////////////
 // link list of objects
 //
@@ -395,6 +398,16 @@ function outBitValues()
 }
 
 
+/////////////////////////////////////////////////////////////////////////////////////////
+function setInfo(name)
+{	let f = document.getElementById("info");
+
+	if( f != null){
+		debugmsg("Show "+name);
+	}
+
+}
+
 // length counted objects.
 // len,type, ...
 function UIdoSave()
@@ -710,7 +723,7 @@ function sbmodule( name )
 		"power_off", 2,
 	];
 
-
+//sbmodule
 	this.findkitcode = function(name)
 	{	let n = 0;
 		for(n=0; n < this.kitctrlcodes.length; n = n+2){
@@ -741,12 +754,7 @@ function sbmodule( name )
 		return 253;
 	}
 
-	this.getdomain = function(name)
-	{
-		debugmsg("getdomain "+name);
-		return 0;
-	}
-
+//sbmodule
 	this.imagefetch = function(name, dst, folder)
 	{	let imagedir="";
 
@@ -889,7 +897,6 @@ function addkit( sbmod)
 
 function findkit( name)
 {	var t;
-	var xmlhttp;
 
 	t = kitlist;
 

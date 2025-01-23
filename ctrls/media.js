@@ -22,26 +22,12 @@ micBit.prototype = Object.create(control.prototype);
 
 function micBit(bit)
 {	control.call(this, bit);
-	this.deg = degree;
 	this.bit = bit;
-	this.gain = null;
-	this.osc = null;
 	this.webkitstyle = false;
 	this.val = 255;		// debug set initial volume
-	this.freq= 60;		// middle C in Midi
-	this.prevfreq = new delta();
-	this.nfreq=0;
 	this.audioin = null;
 	this.audioout = null;
-	this.wave = -128;		// biased by 128
-	this.prevwave = new delta();
-	this.prevmix = new delta();
-	this.range = 12; 	// bend range
-	this.a440 = 440;
 	this.ival = 0;
-	this.mod = 0;		// modulation routing
-	this.modgain = 128;	// modulation gain
-	this.modfreq = 128;	// modulation freq
 
     let imagename = "mic";
 	this.bitimg =this.bit.findImage(imagename);
@@ -180,48 +166,117 @@ function videoBit(bit)
 
 }
 
-
+// not a control.
+// a utility object
+//
 function sampler(ctrl)
 {	this.ctrl = ctrl;
 	this.image = null;
+	this.data = null;
+	this.values = [];
+	this.points = [];
+	this.w = 0;
+	this.h = 0;
+	this.beats = 32;
+	this.max = 0;
+	this.dir = 1;
+	this.tick = 0;
+	this.pingpong = 0;
+	this.gate = 128;
+	this.tempo =180;
+
+
 
 	this.setImage = function(image)
 	{
 		this.image = image;
 	}
 
-}
+	this.setData = function(data)
+	{
+		this.data = data;
+		debugmsg("SETDATA "+this.data.length);
+	}
 
+	this.setSize = function(w, h)
+	{
+		this.w = w;
+		this.h = h;
+	}
 
-samplerBit.prototype = Object.create(control.prototype);
+	this.setPoints = function( points, max)
+	{
+		this.points = points;
+		this.max = max;
+	}
 
-function samplerBit(bit)
-{	control.call(this, bit);
-	this.bit = bit;
-	this.image = null;
-	this.previmage = null;
-	this.video = null;
-	this.mode = 2;			// 0 = normal, 1 = diff
-	this.shift = 0;				// 4 * 2
-	this.sampler = new sampler(this);
+	this.setValues = function( values, max)
+	{
+		this.values = values;
+		this.max = max;
+	}
 
-    let imagename = "sampler";
-	this.bitimg =this.bit.findImage(imagename);
-	this.bitname = imagename;
-	this.name = "Sampler";
+	this.radial = function(ix, iy)
+	{	let dx;
+		let dy;
+		let x;
+		let y;
+		let cnt;
+		let idx;
+		const sw = this.w / 256;
+		const sh = this.h / 256;
 
-	this.Draw = function( )
-	{	const b = this.bit;
-		let i,j;
-		let n;
+		// use points to sample image.
+		dx = (ix - 128) / this.beats;
+		dy = (iy - 128) / this.beats;
 
-		if( b == null){
-			return;
+//				debugmsg("Start new line "+this.ix+" "+this.iy);
+		x = 128;
+		y = 128;
+		for(cnt=0; cnt < this.beats; cnt++){
+			this.points[cnt] = new mpoint(Math.floor(x), Math.floor(y));
+			idx = Math.floor(sh * y)*this.w + Math.floor(sw * x);
+			if( this.data != null){
+				this.values[cnt] = this.data[idx];
+			}
+			x = x+dx;
+			y = y+dy;
 		}
-        ctx.fillStyle = "#ffffff";
-		if(this.image != null){
-			ctx.putImageData(this.image, b.x, b.y);
+		this.max = cnt;
+		debugmsg("End new line "+x+" "+y);
+	}
+
+//sampler
+	this.getValue = function()
+	{
+		if( this.dir > 0){
+			this.tick++;
+		}else {
+			this.tick--;
 		}
+
+		if( this.tick >= this.max){
+			if( this.pingpong ){
+				this.dir = -this.dir;
+				this.tick = this.max -1;
+			}else {
+				this.tick = 0;
+			}
+		}
+		if( this.tick < 0){
+			this.tick = 0;
+			if( this.pingpong ){
+				this.dir = - this.dir;
+			}else if( this.max > 0){
+				this.tick = this.max-1;
+			}
+		}
+		return this.values[this.tick];
+	}
+
+	this.position = function()
+	{
+		return this.tick;
 	}
 
 }

@@ -28,6 +28,7 @@ function noAudio()
 function checkaudiocontext()
 {
 
+	debugmsg("Checkaudio");
 	if( typeof( AudioContext) !== "undefined" ){
 		audioOK = true;
 		return actx = new AudioContext();
@@ -220,24 +221,26 @@ function kit_sound()
 
 	// kit sound
 	this.selected = function()
-	{	let msg = "";
-
-		if( actx == null){
-			actx = checkaudiocontext();
+	{
+		if(startSound){
+			if( actx == null){
+				actx = checkaudiocontext();
+				audioRelink();
+			}
 		}
 	}
 
-
-
-
 	this.getdomain = function()
 	{
-		if( actx == null){
-			actx = checkaudiocontext();
-		}
-		if( audioOK){
-			activedomains |= 2;
-			return 2;
+		if( startSound){
+			if( actx == null){
+				actx = checkaudiocontext();
+				audioRelink();
+			}
+			if( audioOK){
+				activedomains |= 2;
+				return 2;
+			}
 		}
 		return 0;
 	}

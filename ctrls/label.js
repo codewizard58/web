@@ -1,5 +1,20 @@
 // label and map bits
 //
+function getTextWidth(text, size, font) {
+    // re-use canvas object for better performance
+	let msg = ""+size+"px "+font;
+    ctx.save();
+	ctx.font = msg;
+    return ctx.measureText(text);
+};
+
+function getfontsize( w, font)
+{	let w12 = getTextWidth(m68+"MMMMMMMMMM", 12, "Courier");
+	var x = (w-20) / w12;
+
+	return Math.floor( x * 12);
+}
+
 
 labelBit.prototype = Object.create(control.prototype);
 
@@ -7,7 +22,9 @@ function labelBit(bit)
 {	control.call(this, bit);
 	this.bit = bit;
 	this.label = "Text here";
-	this.paramnames = ["control", "label", "background", "font", "color"];
+	this.paramnames = ["control", "label", "background", "font", "face", "color"];
+	this.fontsize = 20;
+	this.face = "courier";
 
 	this.HitTest = function(mx, my)
 	{	let b = this.bit;
@@ -60,7 +77,8 @@ function labelBit(bit)
 			msg += "<tr><th align='right'>Label</th><td ><input type='text' id='label' value='"+this.label+"' size='10' /></td></tr>\n";
 			msg += "<tr><th align='right'>Background</th><td ><input type='text' id='ctrlbk' value='"+this.background+"' size='10' /></td></tr>\n";
 			msg += "<tr><th align='right'>Color</th><td ><input type='text' id='ctrlcol' value='"+this.color+"' size='10' /></td></tr>\n";
-			msg += "<tr><th align='right'>Font</th><td ><input type='text' id='ctrlfont' value='"+this.font+"' size='10' /></td></tr>\n";
+			msg += "<tr><th align='right'>Font Size</th><td ><input type='text' id='ctrlfont' value='"+this.fontsize+"' size='4' /></td>";
+			msg += "<th align='right'>Font Face</th><td ><input type='text' id='ctrlface' value='"+this.face+"' size='10' /></td>";
 
 			msg += "</table>\n";
 
@@ -82,7 +100,7 @@ function labelBit(bit)
 		if( bitform != null && bitformaction == this){
 			// match with paramnames
 //			this.paramnames = ["control", "label", "background", "font", "color"];
-			let nf = [ null, "label", "ctrlbk", "ctrlfont", "ctrlcol"];
+			let nf = [ null, "label", "ctrlbk", "ctrlfont", "ctrlface", "ctrlcol"];
 			let i = 0;
 			let msg = [];
 			let cnt = 1;
@@ -136,6 +154,7 @@ function labelBit(bit)
 		let param="";
 		let val = "";
 		let b = this.bit;
+		let metrics;
 
 		if( b == null){
 			return;
@@ -157,12 +176,21 @@ function labelBit(bit)
 				this.background = val;
 				b.background = val;
 			}else if( param == "font"){
-				this.font = val;
-				b.font = val;
+				this.fontsize = val;
+			}else if( param == "face"){
+				this.face = val;
 			}else if( param == "color"){
 				this.color = val;
 				b.color = val;
 			}
+		}
+		b.font = ""+this.fontsize+"px "+this.face;
+		metrics = getTextWidth( this.label, this.fontsize, this.face);
+//		debugmsg("Metrics h="+metrics.height);
+		if( metrics.width > 30){
+			b.w = metrics.width+20;
+		}else {
+			b.w = 50;
 		}
 	}
 

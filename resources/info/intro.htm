@@ -1,4 +1,7 @@
-<div id="intro">
+<script type="text/javascript">
+    info_list.addobj("intro_info", 1);
+</script>
+<div id="intro_info">
     <h1>Introduction</h1>
     <p>This web page was inspired by the Littlebits hardware modules that snap together magnetically. The "snaps" are either an input or an output. 
         Using the magnetic North and South poles
@@ -8,7 +11,8 @@
         A Power bit has just an output and is used to power the rest of the chain of bits. The data signal of the power bit is +5 volt.
     </p>
     <p>I first discovered the Littlebits modules at Moogfest in 2014. Korg had designed a series of bits based on their synthesizer designs. </p>
-    <p>A couple of years later, I thought about making a web page that used the simple snap together idea modules with a single data line between modules.
-        And coded the basic module with snaps design. The code had to allow the snapping of modules together and building up groups of modules.
+    <p>A couple of years later, I thought about making a web page that used the simple snap together idea of a single data line (variable) between modules.
+        And coded the basic module with snaps design. The code had to allow the snapping of modules together and building up groups of modules. Since the
+        Littlebits modules use a 0 - +5 Volt value I decided to try and use a 0 - 255 (8-bit, byte) range for the data variable.
     </p>
 </div>

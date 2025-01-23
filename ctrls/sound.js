@@ -341,32 +341,34 @@ function oscBit(bit)
 	// osc
 	this.setup = function()
 	{
+		if( actx == null ){
+			debugmsg("Waiting for audio");
+			return false;
+		}
 		if( notetab == null){
 			setupnotetab();
 		}
 		if( this.osc == null){
-			if( actx != null ){
-				debugmsg("Create osc");
-				this.osc = actx.createOscillator();
-		
-				this.setoscfreq(0);
-				if( typeof( actx.createGainNode) != "undefined"){
-					this.webkitstyle = true;
-					this.gain = actx.createGainNode();
-				}else {
-					this.gain = actx.createGain();
-				}
-				this.gain.gain.setTargetAtTime( this.val/ 255, 0, 0.01);
-				this.osc.connect( this.gain);
-				this.setoscwave(this.wave);
-		
-				this.audioout = this.gain;
-				if( !this.webkitstyle){
-					this.osc.start(0);
-				}
+			debugmsg("Create osc");
+			this.osc = actx.createOscillator();
+	
+			this.setoscfreq(0);
+			if( typeof( actx.createGainNode) != "undefined"){
+				this.webkitstyle = true;
+				this.gain = actx.createGainNode();
+			}else {
+				this.gain = actx.createGain();
+			}
+			this.gain.gain.setTargetAtTime( this.val/ 255, 0, 0.01);
+			this.osc.connect( this.gain);
+			this.setoscwave(this.wave);
+	
+			this.audioout = this.gain;
+			if( !this.webkitstyle){
+				this.osc.start(0);
 			}
 		}
-
+		return true;
 	}
 
 
@@ -518,6 +520,7 @@ function oscBit(bit)
 	}		
 
 
+	// osc
 	this.onMove = function(x, y)
 	{	let vx = x - this.initx;
 		let vy = y - this.inity;
@@ -539,6 +542,7 @@ function oscBit(bit)
 		}
 	}
 
+	audio_list.addobj(this, null);
 }
 
 
@@ -557,7 +561,7 @@ function speakerBit(bit)
 	this.val = 0;
 	this.audioin = null;
 	this.mix = 50;
-	this.modmix = 128;
+	this.modmix = 128;				// 128 bias
 	this.prevmix = new delta();
 	this.deg = degree;
 	this.ival = 0;
@@ -565,7 +569,7 @@ function speakerBit(bit)
 	roundknobimg =this.bit.findImage("roundknob");
 
 	this.HitTest = function(mx, my)
-	{	let b = this.bit;
+	{	const b = this.bit;
 		let x = mx-b.x;
 		let y = my-b.y;
 		let bt = b.btype & 7;	// 0 = horiz, 1 == vert
@@ -581,7 +585,7 @@ function speakerBit(bit)
 		if( x > 0 && x < 20 && y > 0 && y < 20 ){
 			this.initx = mx;
 			this.inity = my;
-			this.ival = this.mix * 255;
+			this.ival = this.mix;
 			return this;
 		}
 
@@ -613,7 +617,7 @@ function speakerBit(bit)
 		}
 		if( this.prevmix.changed(mix)){
 			if(this.gain != null){
-				this.gain.gain.setTargetAtTime( mix, 0, 0.1);
+				this.gain.gain.setTargetAtTime( mix, 0, 0.05);
 			}
 		}
 	}
@@ -622,7 +626,7 @@ function speakerBit(bit)
 	this.Draw = function( )
 	{	var b = this.bit;
 		var bt;
-		var xval = this.mix*255;		// 0 - 255
+		var xval = this.mix;		// 0 - 255
         let speaker = this.bitimg;
 
 		if( b == null){
@@ -652,30 +656,32 @@ function speakerBit(bit)
 	// speaker
 	this.setup = function ()
 	{
+		if( actx == null){
+			return false;
+		}
 		if( this.gain == null){
 			// create a new node
-			if( actx != null){
-				if( typeof( actx.createGainNode) != "undefined"){
-			//		alert ("use gain node");
-					this.webkitstyle = true;
-					this.gain = actx.createGainNode();
-				}else {
-					this.gain = actx.createGain();
-				}
-				this.gain.gain.setTargetAtTime( 0, 0, 0.01);
-				this.gain.connect( actx.destination); // debug
+			if( typeof( actx.createGainNode) != "undefined"){
+		//		alert ("use gain node");
+				this.webkitstyle = true;
+				this.gain = actx.createGainNode();
+			}else {
+				this.gain = actx.createGain();
 			}
+			this.gain.gain.setTargetAtTime( 0, 0, 0.01);
+			this.gain.connect( actx.destination); // debug
 			debugmsg("Setup speaker");
 
 			this.audioin = this.gain;
+			this.prevmix.changed(-1);
 		}
-
+		return true;
 	}
 
 	// speaker
 	this.setData = function()
 	{	let msg="";
-		let val = this.mix*255;
+		let val = this.mix;
 		if( bitform != null){
 			bitform.innerHTML="";
 		}
@@ -720,7 +726,7 @@ function speakerBit(bit)
 	{	let s = new saveargs();
 
 		s.addnv("control", "'speaker'");
-		s.addnv("mix", this.nfreq);
+		s.addnv("mix", this.mix);
 
 		return s.getargs();
 	}
@@ -732,7 +738,7 @@ function speakerBit(bit)
 		let param="";
 		let val = "";
 
-		debugmsg("SPK doload "+idx+" "+len);
+//		debugmsg("SPK doload "+idx+" "+len);
 		for(n = 1; n < len ; n += 2){
 			param = initdata[idx+n];
 			val = initdata[idx+n+1];
@@ -753,12 +759,11 @@ function speakerBit(bit)
 	{	let vx = x - this.initx;
 		let vy = y - this.inity;
 		let val = 0;
-		let b = this.bit;
 		let f = null;
 
 		val = rotaryvalue(vx, vy, this.ival);
-		this.mix = val / 255;
-		this.setValue(val, 0);
+		this.mix = val ;
+		this.setValue(val, 2);
 
 		if( miditargeting != null){
 			midiAddTarget(this, 0);
@@ -775,6 +780,7 @@ function speakerBit(bit)
 
 	}
 
+	audio_list.addobj(this, null);
 }
 
 
@@ -879,6 +885,9 @@ this.Draw = function( )
 	// filter
 	this.setup = function ()
 	{
+		if( actx == null){
+			return false;
+		}
 		if( notetab == null){
 			setupnotetab();
 		}
@@ -898,6 +907,7 @@ this.Draw = function( )
 			this.audioout = this.vcf;
 			debugmsg("Setup filter");
 		}
+		return true;
 	}
 
 	this.setvcf = function()
@@ -1200,9 +1210,12 @@ function delayBit(bit)
 		}
 	}
 
-
+// delay
 	this.setup = function()
 	{
+		if( actx == null){
+			return false;
+		}
 		if( this.audioin == null ){
 			this.ingain = actx.createGain();		// used as the input node.
 			this.ingain.gain.value = 0.75;
@@ -1231,6 +1244,7 @@ function delayBit(bit)
 			this.audioin = this.ingain;
 			debugmsg("Create delay");
 		}
+		return true;
 	}
 
 	this.modnames = ["delay", "feedback" ];
@@ -1362,8 +1376,7 @@ function delayBit(bit)
 		}
 	}
 
-	this.setup();	
-	
+	audio_list.addobj(this, null);	
 }
 
 
@@ -1383,6 +1396,7 @@ function seqBit(bit)
 	this.ival = 0;
 	this.clksrc = null;		// midi vs local
 	this.transport = new transport();
+	this.gate = 128;
 
 	let imagename = "seq";
 	this.bitimg =this.bit.findImage(imagename);
@@ -1390,6 +1404,7 @@ function seqBit(bit)
 	this.name = "Sequencer";
 	roundknobimg =this.bit.findImage("roundknob");
 	timer_list.addobj(this.transport, null);
+	this.transport.name = "Seq-transport";		// for debugging
 
 	this.HitTest = function(mx, my)
 	{	let b = this.bit;
@@ -1422,13 +1437,13 @@ function seqBit(bit)
 
 	// seq
 	this.Draw = function( )
-	{	var b = this.bit;
+	{	const b = this.bit;
 		var bt;
 		var xval = b.value;		// 0 - 255
-        let seq = this.bitimg;
+        const seq = this.bitimg;
 		let i = 0;
 		let ac = this.getstep();
-		let len=this.values.length;
+		let len= this.values.length;
 		let tx = b.x;
 		let ty = b.y;
 
@@ -1468,17 +1483,28 @@ function seqBit(bit)
 	this.setValue = function(data, chan)
 	{	let t = 1;
 		let prevval = this.bit.value;
+		let step = 0;
+		const perbeat = Math.floor(256 / this.values.length);
 
 		if( chan == 0){
 			if( data == 0){
 				this.bit.value = this.values[this.getstep()];
 			}else if( data == 255){
-				this.step = this.transport.value;
+				this.step = this.transport.getValue();
+				this.transport.trigger = 0;			// show that the transport is still being used.
 				this.bit.value = this.values[this.getstep()];
+				
+				// calc position in this beat
+				step = (this.step % perbeat ) * this.values.length;
+				if( step > this.gate){
+					this.bit.value = 0;
+				}
+				this.transport.resume();
 				execmode = 2;
 			}else {
 				this.step = data;
 				this.bit.value = this.values[this.getstep()];
+				this.transport.stop();
 			}
 		}else if( chan > 1){
 			this.values[chan-2] = checkRange(data);
@@ -1520,6 +1546,7 @@ function seqBit(bit)
 			msg += "</tr>\n";
 			if( this.clksrc == null){
 				msg += "<tr><th>Tempo</th><td colspan='2'><input type='text' id='tempo' value='"+this.transport.tempo+"'  size='4' /></td>\n";
+				msg += "<th>Gate</th><td colspan='2'><input type='text' id='gate' value='"+this.gate+"'  size='4' /></td>\n";
 				msg += "</tr>\n";
 			}
 			msg += "</table>\n";
@@ -1574,12 +1601,9 @@ function seqBit(bit)
 		}
 		f = document.getElementById("gate");
 		if( f != null){
-			val = f.value;
-			if( val < 5){
-				val = 5;
-			}else if( val > 100){
-				val = 100;
-			}
+			val = checkRange(f.value);
+			s.addarg("gate");
+			s.addarg( val);
 		}
 
 		this.doLoad( s.getdata(), 0);
@@ -1613,7 +1637,7 @@ function seqBit(bit)
 			param = initdata[idx+n];
 			val = initdata[idx+n+1];
 
-			debugmsg("SEQ "+param+":"+val);
+//			debugmsg("SEQ "+param+":"+val);
 			if( param == "'control'"){
 				continue;
 			}
@@ -1625,12 +1649,14 @@ function seqBit(bit)
 //				debugmsg("SEQ"+param+" "+i+" "+val);
 
 			}else if( param == "tempo"){
-				if( val < 40){
-					val = 40;
-				}else if( val > 240){
-					val = 240;
+				if( val < 10){
+					val = 10;
+				}else if( val > 300){
+					val = 300;
 				}
 				this.setTempo(val);
+			}else if( param == "gate"){
+				this.gate = checkRange(val);
 			}
 		}
 	}		
@@ -1884,6 +1910,9 @@ function scopeBit( bit )
 //scope
 	this.setup = function ()
 	{
+		if( actx == null){
+			return false;
+		}
 		if( this.analyser == null){
 			if( actx != null){
 				this.analyser = actx.createAnalyser();
@@ -1904,6 +1933,7 @@ function scopeBit( bit )
 				this.audioout = this.analyser;
 			}
 		}
+		return true;
 	}
 
 	//scope
@@ -1913,8 +1943,7 @@ function scopeBit( bit )
 	}
 
 	// initialize
-	this.setup();
-
+	audio_list.addobj(this, null);
 }
 
 
@@ -2010,7 +2039,7 @@ function pannerBit(bit)
 
 	}
 
-
+// panner
 	this.setup = function(){
 		if( this.audioout == null){
 			this.panner = actx.createStereoPanner();
@@ -2018,6 +2047,7 @@ function pannerBit(bit)
 
 			this.audioout = this.panner;
 			this.audioin = this.panner;
+			debugmsg("Setup panner");
 		}
 	}
 
@@ -2098,8 +2128,6 @@ function noiseBit(bit)
 		}
 	}
 
-
-
 	this.setValue = function(data, chan)
 	{	const b = this.bit;
 
@@ -2108,8 +2136,6 @@ function noiseBit(bit)
 			return;
 		}
 	}
-
-
 
 	this.setup = function()
 	{
@@ -2140,7 +2166,7 @@ function noiseBit(bit)
 			this.audioout = this.source;
 			this.source.start(0);
 
-			debugmsg("Noise "+this.duration);
+//			debugmsg("Noise "+this.duration);
 		}
 	}
 

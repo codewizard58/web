@@ -45,12 +45,12 @@ function kit_basic()
 				16,	24, "And",			"", 							0x0111, "Logic", 0, 1,		// 5
 		"control", "logic_or",  50, 150,	"logicin", "logicout" , "logicin",  null,	// 7
 				17,	25, "Or",			"", 							0x0111, "Logic", 0, 1,		// 6
-		"default", "logic_not", 100, 50,	"logicin",  "logicout" , null,  null,	// 8
+		"default", "logic_not", 50, 50,	"logicin",  "logicout" , null,  null,	// 8
 				18,	0, "Not",			"", 0x0011,  "Logic", 0, 1,		// 7
-		"default", "logic_nand", 100, 50,	"logicin", "logicout", "logicin",  null,	// 9
-				19,	0, "Nand",			"", 0x0111,  "Logic", 0, 1,		// 8
-		"default", "logic_nor", 100, 50,	"logicin", "logicout" , "logicin",  null,	// 10
-				20,	0, "Nor",			"", 0x0111,  "Logic", 0, 1,		// 9
+		"control", "logic_nand", 50, 150,	"logicin", "logicout", "logicin",  null,	// 9
+				19,	26, "Nand",			"", 0x0111,  "Logic", 0, 1,		// 8
+		"control", "logic_nor", 50, 150,	"logicin", "logicout" , "logicin",  null,	// 10
+				20,	27, "Nor",			"", 0x0111,  "Logic", 0, 1,		// 9
 
 		"default", "a_plus", 100, 50,		"actionin", "actionout" ,"actionin",  null,		// 11
 				36,	0, "Add ",				"", 0x0111, "Action", 0, 1,		// 22
@@ -287,14 +287,32 @@ this.kitctrlcodes = [
 			debugmsg("New counter");
 			return ct;
 		}else if( ctrl == 24){
-			ct = new andBit( bit);
+			ct = new logicBit( bit);
+			ct.setImage("and2", "And", LOGICAND);
 			ct.values = [];
 			bit.ctrl = ct;
 			bit.setOrientation(0);		// modify snaps.
 			ct.setData();
 			return ct;
 		}else if( ctrl == 25){
-			ct = new orBit( bit);
+			ct = new logicBit( bit);
+			ct.setImage("or", "Or", LOGICOR);
+			ct.values = [];
+			bit.ctrl = ct;
+			bit.setOrientation(0);		// modify snaps.
+			ct.setData();
+			return ct;
+		}else if( ctrl == 26){
+			ct = new logicBit( bit);
+			ct.setImage("nand", "Nand", LOGICNAND);
+			ct.values = [];
+			bit.ctrl = ct;
+			bit.setOrientation(0);		// modify snaps.
+			ct.setData();
+			return ct;
+		}else if( ctrl == 27){
+			ct = new logicBit( bit);
+			ct.setImage("nor", "Nor", LOGICNOR);
 			ct.values = [];
 			bit.ctrl = ct;
 			bit.setOrientation(0);		// modify snaps.
@@ -356,6 +374,9 @@ this.kitctrlcodes = [
 		"imagetile",	1,
 		"piano",		1,
 		"and2",			0xd,
+		"or",			0xd,
+		"nand",			0xd,
+		"nor",			0xd,
 		null, null
 	];
 

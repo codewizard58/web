@@ -828,7 +828,7 @@ function MIDIfilter()
 
 
 // 
-// rt - provide a value that goes from 0-255 in a specified time/tempo
+// transport - provide a value that goes from 0-255 in a specified time/tempo
 //
 function transport()
 {
@@ -839,7 +839,8 @@ function transport()
 	this.value = 0;
 	this.delta = 0.0;
 	this.beats = 0;
-	this.gate = 0;
+	this.trigger = 0;
+	this.name = "";
 
 	// called with current time in milliseconds
 	this.run = function( now)
@@ -847,20 +848,43 @@ function transport()
 		let millis = now - this.clkstart;
 		this.clkstart = now;
 
+		if( this.running == 0){
+			return false;
+		}
+		if(this.trigger > 2){		// missing too many ?
+			return false;
+		}
+
 		this.value += this.delta * millis;
 
 		if( this.delta > 0){
 			while( this.value >= 256){
 				this.value -= 256;
-				this.gate++;
+				this.trigger++;
 			}
 		}else {
 			while( this.value < 0 ){
 				this.value += 256;
-				this.gate++;
+				this.trigger++;
 			}
 		}
 		return false;		// keep running.
+	}
+
+	// transport
+	this.stop = function()
+	{
+		this.running = 0;
+	}
+
+	this.resume = function()
+	{
+		this.running = 1;
+	}
+
+	this.getValue = function()
+	{
+		return this.value;
 	}
 
 	this.timer = function()
@@ -868,6 +892,7 @@ function transport()
 	
 	}
 
+	// transport
 	this.setTempo = function(tempo, beats)
 	{
 		if( tempo <= 0){
@@ -888,6 +913,17 @@ function transport()
 	this.midiclock = function()
 	{
 		this.clock++;
+	}
+
+	// transport for debug
+	this.setData = function()
+	{	let msg = "";
+
+		msg += "<table>\n";
+		msg += "<tr><th>Delta</th><td>"+this.delta+"</td><th>trigger</th><td>"+this.trigger+"</td></tr>\n";
+		msg += "</table>\n";
+
+		return msg;
 	}
 }
 

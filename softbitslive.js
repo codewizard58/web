@@ -27,6 +27,10 @@ var drawspeed = 1;			// fast
 // 12/24/24
 var showsnaps = 1;
 
+// 1/21/25
+var animatecolor = "#ffffff";	// debugging
+var startSound = false;		// cannot start sound yet.
+
 const POWERON=0;
 const POWEROFF=1;
 const MIDICV=4;
@@ -524,10 +528,17 @@ function UIchooseKit(kit)
 		msg = chooseGroup(curbittype);
 		alist.innerHTML = msg;
 		alist.style.border = "2px solid "+curbitcolor;
+		setInfo(kit+"-info");
 	}
 
 }
 
+// the following is called on user interaction.
+function UIchooseKit_clicked(kit)
+{	
+	startSound = true;
+	UIchooseKit(kit);
+}
 //////////////////////////////////////////////////////////////////////////
 //
 // Local SoftBits execution
@@ -1001,6 +1012,36 @@ var bytecode = [
 	[2, 0]		// 255 ENDPROG
 
 ];
+
+function audioRelink( )
+{	let partner;
+	let bl = sketch.blist;
+	let b;
+
+//	debugmsg("Audio Relink");
+	while(bl != null){
+		b = bl.bit;
+
+//		debugmsg("Bit "+b.code);
+		if( b.snaps[1] != null){
+			partner =  b.snaps[1].paired;
+			if( partner != null){
+				b.undock(partner.bit);
+				partner.bit.dock(b, 0);
+//				debugmsg(" partner 1 "+partner.bit.code);
+			}
+		}
+		if( b.snaps[3] != null){
+			partner =  b.snaps[3].paired;
+			if( partner != null){
+				b.undock(partner.bit);
+				partner.bit.dock(b, 2);
+//				debugmsg(" partner 3 "+partner.bit.code);
+			}
+		}
+		bl = bl.next;
+	}
+}
 
 
 function Program()
@@ -1875,7 +1916,7 @@ function Program()
 								this.chains[ curchain].data = this.getValue2( progbits, ibp, 255);
 							}
 							break;
-	
+
 					}
 					ip++;
 				}
@@ -1926,6 +1967,19 @@ function Snap(bit, side, x, srx, y, sry, w, h, idx)
 
 	this.domain = (bit.domain >> (idx*4)) & 0xf;
 //	debugmsg("SNAP "+bit.name+" "+idx+" "+this.domain);
+
+	// snap
+	this.isbit = function()
+	{
+		return false;
+	}
+
+	// snap
+	this.issnap = function()
+	{
+		return true;
+	}
+
 
 	this.drawIndicator = function(orientation, x, y)
 	{	var val;
@@ -2140,12 +2194,17 @@ function Snap(bit, side, x, srx, y, sry, w, h, idx)
 	        for (i = sketch.blist ; i != null && res == null; i = i.next) {
 				if( i.bit != this.bit){
 					res = i.bit.HitTest(bx, by);
-					if( res != null){
+					if( res == i.bit){
+						res = null;
+					}
+					if( res != null ){		// res is a snap.
 						if( res.paired != null){
 							res = null;		// cannot dock with a docked one.
 						}else if( res.side != oside){
+
+							// auto rotate check.
 							if( b.code == WIRE){
-								debugmsg("FT code="+b.code+" res="+res.bit.code+" oside="+oside);
+//								debugmsg("FT code="+b.code+" rside="+res.side+" oside="+oside);
 								if( oside == "-l"){
 									b.snaps[1].side = "-b";
 									b.snaps[1].w = 50;
@@ -2203,7 +2262,7 @@ function Snap(bit, side, x, srx, y, sry, w, h, idx)
 		if( repel == 1){
 			ctx.strokeStyle = "#ff0000";
 		}else{
-			ctx.strokeStyle = "#ffffff";
+			ctx.strokeStyle = animatecolor;
 		}
 		ctx.lineWidth = 2;
 
@@ -2285,6 +2344,20 @@ function Bit( btype, x, y, w, h, k) {
 	let bt = (btype & 7);
 	let bidx = btype-bt;
 
+	// bit
+	this.isbit = function()
+	{
+		return true;
+	}
+
+	// bit
+	this.issnap = function()
+	{
+		return false;
+	}
+
+
+
 	this.setSnaps = function()
 	{
 		const sw = 15;
@@ -2357,18 +2430,13 @@ function Bit( btype, x, y, w, h, k) {
 	this.name = this.kit.bitnames[bidx+1];
 	if( this.kit.bitnames[bidx+8] > 0){
 		this.code = this.kit.bitnames[bidx+8];
-		debugmsg("BIT "+this.name+" code="+this.code);
 	}else {
 		this.code = this.kit.findcode( this.name);
 	}
 	this.bitname = imagename;
 	this.domain = this.kit.bitnames[bidx+12];
 
-	// message("New bit("+this.w+","+this.h+")" );
-
 	this.setSnaps();
-
-//	debugmsg("Bit: "+ this.kit.name + " idx "+ idx + " name "+this.name+" img "+this.bitimg+" "+this.name+" domain "+this.domain.toString(16));
 
 // bit addctrl
 	this.addCtrl = function( idx)
@@ -2458,26 +2526,18 @@ function Bit( btype, x, y, w, h, k) {
 	this.HitTest = function(x, y)
 	{	let res = null;
 		let i;
-		let msg="";
+		let slen = this.snaps.length;
 
-		if( x >= this.x && x <= this.x+this.w &&
+		if(  x >= this.x && x <= this.x+this.w &&
 			y >= this.y && y <= this.y+this.h){
 			res = this;
-			msg = " hit bit";
 		}
-		let slen = this.snaps.length;
+
 		for(i=0; res == null && i < slen; i++){
 			if(  this.snaps[i] != null){
 				res = this.snaps[i].HitTest(x, y);
-				if( res != null){
-					msg += " hit snap "+i+" ";
-				}
 			}
 		}
-//		if( msg != ""){
-//			debugmsg(msg);
-//		}
-
 		return res;
 	}
 
@@ -2539,6 +2599,8 @@ function Bit( btype, x, y, w, h, k) {
 	{	var snapname = null;
 		const btmp = this.btype & 7;
 		let img = 0;
+		let sx,sy,sw,sh;
+		let sn;
 
         if( pass == 0){
 			img = this.bitimg;
@@ -2559,32 +2621,72 @@ function Bit( btype, x, y, w, h, k) {
 					ctx.strokeRect(this.x-2, this.y-2, this.w+4, this.h+4);
 				}
 			}
-		}else if( pass == 2 && showsnaps == 1){	// input snaps
-			snapname = this.snapnames[0];
-			if( this.code != WIRE ){		
+		}else if( pass == 2){
+				snapname = this.snapnames[0];
+				if( this.code != WIRE ){		
+					if( snapname != null){	
+						if( showsnaps == 1){	// input snaps
+							drawImage(snapname, this.x+this.coords[0], this.y+this.coords[1]);
+							this.snaps[0].drawIndicator( this.suffix[0], this.x+this.coords[0], this.y+this.coords[1]);
+						}else if( this.snaps[0].paired != null){
+							sn = this.snaps[0];
+							if( sn.side == "-l"){
+								sx = sn.x-15;
+								sy = sn.y+sn.h/2 - 2;
+								sw = 30;
+								sh = 5;
+							}else {
+								sx = sn.x+sn.w/2 -2;
+								sy = sn.y-15;
+								sw = 5;
+								sh = 30;
+							}
+
+							ctx.fillStyle = powerColors[this.chain];
+							ctx.fillRect(sx, sy, sw, sh);
+						}
+					}
+				}
+				snapname = this.snapnames[2];
 				if( snapname != null){	
-					drawImage(snapname, this.x+this.coords[0], this.y+this.coords[1]);
-					this.snaps[0].drawIndicator( this.suffix[0], this.x+this.coords[0], this.y+this.coords[1]);
+					if( showsnaps == 1){	// input snaps
+						drawImage(snapname, this.x+this.coords[4], this.y+this.coords[5]);
+						this.snaps[2].drawIndicator( this.suffix[2], this.x+this.coords[4], this.y+this.coords[5]);
+					}else if( this.snaps[2].paired != null){
+						sn = this.snaps[2];
+						if( sn.side == "-l"){
+							sx = sn.x-15;
+							sy = sn.y+sn.h/2 - 2;
+							sw = 30;
+							sh = 5;
+						}else {
+							sx = sn.x+sn.w/2 -2;
+							sy = sn.y-15;
+							sw = 5;
+							sh = 30;
+						}
+
+						ctx.fillStyle = powerColors[sn.paired.bit.chain];
+						ctx.fillRect(sx, sy, sw, sh);
+					}
 				}
-			}
-			snapname = this.snapnames[2];
-			if( snapname != null){	
-				drawImage(snapname, this.x+this.coords[4], this.y+this.coords[5]);
-				this.snaps[2].drawIndicator( this.suffix[2], this.x+this.coords[4], this.y+this.coords[5]);
-			}
-		}else if( pass == 1 && showsnaps == 1){	// output snaps
-			snapname = this.snapnames[1];
-			if( this.code != WIRE ){		// wire draw its own snaps
+		}else if( pass == 1 ){
+				snapname = this.snapnames[1];
+				if( this.code != WIRE ){		// wire draw its own snaps
+					if( snapname != null){
+						if( showsnaps == 1){	// output snaps
+							drawImage(snapname, this.x+this.coords[2], this.y+this.coords[3]);
+							this.snaps[1].drawIndicator( this.suffix[1], this.x+this.coords[2], this.y+this.coords[3]);
+						}
+					}
+				}
+				snapname = this.snapnames[3];
 				if( snapname != null){
-					drawImage(snapname, this.x+this.coords[2], this.y+this.coords[3]);
-					this.snaps[1].drawIndicator( this.suffix[1], this.x+this.coords[2], this.y+this.coords[3]);
+					if( showsnaps == 1){	// output snaps
+						drawImage(snapname, this.x+this.coords[6], this.y+this.coords[7]);
+						this.snaps[3].drawIndicator( this.suffix[3], this.x+this.coords[6], this.y+this.coords[7]);
+					}
 				}
-			}
-			snapname = this.snapnames[3];
-			if( snapname != null){
-				drawImage(snapname, this.x+this.coords[6], this.y+this.coords[7]);
-				this.snaps[3].drawIndicator( this.suffix[3], this.x+this.coords[6], this.y+this.coords[7]);
-			}
 		}else if( pass == 3){
 			if( this.ctrl != null){
 				if( this.code == SPEAKER && this.chain == 0){
@@ -2628,7 +2730,7 @@ function Bit( btype, x, y, w, h, k) {
 		let p = null;
 		let snap = this.snaps[sidx];
 
-		debugmsg("BIT Docked "+this.name+" to "+partner.name+" pdom="+snap.paired.domain);
+//		debugmsg("BIT Docked "+this.name+" to "+partner.name+" pdom="+snap.paired.domain);
 		if( this.ctrl != null){
 			this.ctrl.dock(partner, snap.paired.domain);
 		}
@@ -2636,7 +2738,7 @@ function Bit( btype, x, y, w, h, k) {
 
 	this.dockto = function(partner, dom)
 	{
-		debugmsg("BIT dockto "+this.name+" -> "+partner.name);
+//		debugmsg("BIT dockto "+this.name+" -> "+partner.name);
 		if( this.ctrl != null){
 			this.ctrl.dockto(partner, dom);
 		}
@@ -2646,7 +2748,7 @@ function Bit( btype, x, y, w, h, k) {
 	// bit input / output
 	this.undock = function(partner)
 	{
-		debugmsg("BIT Undock "+this.name+" from "+partner.name);
+//		debugmsg("BIT Undock "+this.name+" from "+partner.name);
 		if( this.ctrl != null ){
 			this.ctrl.undock(partner);
 		}
@@ -2654,7 +2756,7 @@ function Bit( btype, x, y, w, h, k) {
 
 	this.undockfrom = function(partner, dom)
 	{
-		debugmsg("BIT Undock from "+this.name+" <- "+partner.name);
+//		debugmsg("BIT Undock from "+this.name+" <- "+partner.name);
 		if( this.ctrl != null){
 			this.ctrl.undockfrom(partner, dom);
 		}
@@ -2692,7 +2794,7 @@ function Bit( btype, x, y, w, h, k) {
 		}
 		t = 9 - t
         ctx.lineWidth = 2;
-        ctx.strokeStyle = "#ff0000";
+        ctx.strokeStyle = "#00ff00";
         ctx.strokeRect(this.x+t, this.y+t, this.w-t-t, this.h-t-t);
 	}
 
@@ -3048,7 +3150,7 @@ function Sketch() {
 
 // sketch
     this.doMouseDown = function() {
-		let ahit = null;
+		let abit = null;
 		let tmp;
 		let i;
 		if( hidetouch){
@@ -3056,9 +3158,9 @@ function Sketch() {
 		}
 
 		if( selected != null){
-			ahit = selected.getDrag();
-			if( !ahit.isDocked() ){
-				tmp = ahit.hitHandle( mx, my);
+			abit = selected.getDrag();
+			if( !abit.isDocked() ){
+				tmp = abit.hitHandle( mx, my);
 				if( tmp == 1 ){
 					bitFlip();
 					return false;
@@ -3069,8 +3171,8 @@ function Sketch() {
 				}
 			}
 
-			if( ahit.ctrl != null){
-				ahit.ctrl.getData();
+			if( abit.ctrl != null){
+				abit.ctrl.getData();
 			}
 		}
 		if( bitform != null){
@@ -3089,18 +3191,13 @@ function Sketch() {
 
 		i = sketch.blist ;
         while( i != null ) {
-			ahit = i.bit.HitTest(mx, my);
-			if( ahit != null){
-				message("X="+ahit.x+" Y="+ahit.y);
-				ahit.setDxDy(mx, my);			// get the dx and dy for dragging
-				dragging = ahit.getDrag();
+			abit = i.bit.HitTest(mx, my);
+			if( abit != null){
+				abit.setDxDy(mx, my);			// get the dx and dy for dragging
+				dragging = abit.getDrag();
 
-//				if( dragging != null && dragging.code == WIRE){
-//					message("W "+dragging.print() );
-//				}
-
-				selected = ahit;
-				scanning = ahit.findSnap();
+				selected = abit;
+				scanning = abit.findSnap();
 				if( scanning != null){
 					docktarget = scanning.paired;
 					if( docktarget != null){
@@ -3108,16 +3205,15 @@ function Sketch() {
 							scanning.bit.code != WIRE){
 							scanning.unDock();		// unlink the snap
 						}else {
-							message("un dock wire");
 							scanning.unDock();		// unlink the snap
 						}
 						sketch.drawProgram();
 					}
 				}
-				if( dragging == selected){		// autosel
-						autosel = dragging;
-						autox = mx;
-						autoy = my;
+				if( dragging == selected ){		// autosel
+					autosel = dragging;
+					autox = mx;
+					autoy = my;
 				}
 			}
 // && i.bit.isDocked()
@@ -3136,14 +3232,14 @@ function Sketch() {
 			if( dragging != null && dragging.ctrl != null){
 				dragging.ctrl.setData();
 			}
-			if( ahit != null){
+			if( abit != null){
 				i = null;
 			}
 			if( i != null){
 				i = i.next;
 			}
 		}
-		if( ahit == null){
+		if( abit == null){
 			sx = mx;	// drag all.
 			sy = my;
 			docking = null;		// cancel any docking...
@@ -3171,8 +3267,6 @@ function Sketch() {
 		let cname = "default";
 		let ldrag = dragging;
 		let i;
-		let wox, woy;
-		let wix, wiy;
 
 //		message("Mouse Move "+mx+" "+my);
 		cw = sketch.canvas.width;
@@ -3191,81 +3285,11 @@ function Sketch() {
 
 		// looking for dragging wire snap.
 		// scaning == selected and dragging == wire
-		if( selected != null && scanning == selected && dragging != null && dragging.code == WIRE){
-			wox = dragging.snaps[1].x;
-			woy = dragging.snaps[1].y;
-			wix = dragging.snaps[0].x;
-			wiy = dragging.snaps[0].y;
-
-			if( selected == dragging.snaps[0] ){
-				if( dragging.snaps[1].paired != null){		// output snap is paired. use as anchor.
-					if( (dragging.btype & 1) == 0){
-						// horizontal mode
-						if( wox - mx-15 > 30 ){
-							selected.x = mx;	// only allow if left of output snap.
-						}
-						selected.y = my;
-					}else {
-						// vertical mode
-						if( woy - my-15 > 30 ){
-							selected.y = my;
-						}
-						selected.x = mx;
-					}
-					
-					ldrag = null;
-				}
-			}else {
-				if( dragging.snaps[0].paired != null){
-					if( (dragging.btype & 1 ) == 0){
-						if( mx - wix > 45){
-							selected.x = mx;
-						}
-						selected.y = my;
-					}else {
-						if(  my - wiy > 45 ){
-							selected.y = my;
-						}
-						selected.x = mx;
-					}
-					ldrag = null;
-				}
-			}
-			// recalc
-				wox = dragging.snaps[1].x;
-				if( dragging.snaps[0].side == "-b"){
-					wox = wox+45;
-				}
-
-				woy = dragging.snaps[1].y;
-				if( dragging.snaps[0].side == "-r"){
-					woy = woy+45;
-				}
-
-				wix = dragging.snaps[0].x;
-				if( dragging.snaps[0].side == "-l"){
-					wix = wix+10;
-				}
-
-				wiy = dragging.snaps[0].y;
-				if( dragging.snaps[0].side == "-t"){
-					wiy = wiy+10;
-				}
-
-			if( wix < wox){
-				dragging.x = wix;
-				dragging.w = wox - wix;
-			}else {
-				dragging.x = wox;
-				dragging.w = wix -wox;
-			}
-			if( wiy < woy){
-				dragging.y = wiy;
-				dragging.h = woy - wiy;
-			}else {
-				dragging.y = woy;
-				dragging.h = wiy - woy;
-			}
+//		if( selected != null && scanning == selected && dragging != null && dragging.ctrl != null){
+//			dragging.ctrl.doDrag(mx, my);
+//		}
+		if( selected != null && scanning == selected && dragging != null && dragging.ctrl != null){
+			ldrag = dragging.ctrl.doDrag(mx, my);
 		}
 
 		if( selected != null && scanning == null){
@@ -3476,18 +3500,18 @@ function Sketch() {
 			return 0;
 		}
 		if( xbit.isDocked() ){
-			message("Remove: bit is docked");
+//			message("Remove: bit is docked");
 			return 0;
 		}
 		this.getBounds();
 		if( this.bitvisible < 2){
-			message("Remove: cannot remove last visble bit");
+//			message("Remove: cannot remove last visble bit");
 			return 0;
 		}
 // ok to delete bit
 		if( xbit == this.blist.bit){
 			this.blist = this.blist.next;
-			message("First bit");
+//			message("First bit");
 		}
 
 		xbit.carrier.delBit();
@@ -3651,8 +3675,10 @@ function doAnimate()
 			drawmode--;
 		}
 		if( selected != null){
+			animatecolor = "#ff0000";
 			selected.Animate( tick);
 			drawmode = 2;
+			animatecolor = "#ffffff";
 		}
 		if( docktarget != null){
 			docktarget.Animate( tick);
@@ -3774,6 +3800,23 @@ function doTimer()
 			t = tn;
 		}
 		slowTimer_list.head = tafter;
+
+		if( startSound ){
+			t = audio_list.head;
+			tafter = null;
+			while(t != null){
+				tn = t.next;
+				if( !t.ob.setup() ){
+					t.next = tafter;
+					tafter = t;
+				}else {
+					t.obj = null;	// deref
+				}
+		
+				t = tn;
+			}
+			audio_list.head = tafter;
+		}
 	}
 }
 
@@ -3828,9 +3871,7 @@ function initFindTab(initdata, i, n)
 
 function loadInitData( initdata)
 {	let i,j, num;
-	let bl, bp;
-	let pair;
-	let snap;
+	let bl;
 	let bit, bit2;
 	let nbit;
 	let idx;
@@ -3899,7 +3940,7 @@ function loadInitData( initdata)
 		}else if( len > 1 && initdata[i] == "options"){
 			debugmsg("INIT options");
 		}else if( len > 2 ){
-			message("Bad load data, expected 'bit' got "+initdata[i] +" len="+len);
+//			message("Bad load data, expected 'bit' got "+initdata[i] +" len="+len);
 			return;
 		}
 		obj = next;

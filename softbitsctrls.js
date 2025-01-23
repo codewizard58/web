@@ -34,11 +34,9 @@ function wireBit(bit)
 		let dy;
 		let mx, my;
 		let sx,sy;
+		let sn, sw, sh;
 
 		if( b == null){
-			return;
-		}
-		if( showsnaps == 0){
 			return;
 		}
 		bt = b.btype & 7;	// 0 = horiz, 1 == vert
@@ -50,6 +48,11 @@ function wireBit(bit)
 
 		mx = dx / 2;
 		my = dy / 2;
+
+		if( b.snaps[0].paired){
+			sn = b.snaps[0].paired;
+			ctx.fillStyle = powerColors[sn.bit.chain];
+		}
 
 		if( b.snaps[0].side == "-l"){
 			sx = b.snaps[0].x+15;
@@ -67,7 +70,7 @@ function wireBit(bit)
 				ctx.fillRect(sx-5,  sy, 5, dy-15);
 				sy += dy-15;
 			}
-		}else {
+		}else {		// is -t
 			sx = b.snaps[0].x+25;
 			sy = b.snaps[0].y+15;
 
@@ -78,9 +81,9 @@ function wireBit(bit)
 				sx += dx;
 				ctx.fillRect(sx,  sy-5, 5, my);
 			}else {
-				ctx.fillRect(sx,  sy, 5, my);
-				sy += my;
-		        ctx.fillRect(sx,  sy-5, dx-15, 5);
+				ctx.fillRect(sx,  sy, 5, my+10);
+				sy += my+10;
+		        ctx.fillRect(sx,  sy, dx-15, 5);
 				sx += dx;
 			}
 
@@ -89,16 +92,36 @@ function wireBit(bit)
         ctx.fillStyle = "#000000";
 
 		// draw input snap
-		if( b.snaps[0].side == "-l"){
-			drawImage(wirelinimg, b.snaps[0].x, b.snaps[0].y);
-		}else {
-			drawImage(wiretinimg, b.snaps[0].x, b.snaps[0].y);
+		if( showsnaps == 1){
+			if( b.snaps[0].side == "-l"){
+				drawImage(wirelinimg, b.snaps[0].x, b.snaps[0].y);
+			}else {
+				drawImage(wiretinimg, b.snaps[0].x, b.snaps[0].y);
+			}
+		}else if( b.snaps[0].paired != null){
+			sn = b.snaps[0];
+			if( sn.side == "-l"){
+				sx = sn.x-15;
+				sy = sn.y+sn.h/2 - 2;
+				sw = 30;
+				sh = 5;
+			}else {
+				sx = sn.x+sn.w/2 -2;
+				sy = sn.y-15;
+				sw = 5;
+				sh = 30;
+			}
+
+			ctx.fillStyle = powerColors[b.chain];
+			ctx.fillRect(sx, sy, sw, sh);
 		}
 		// draw output snap
-		if( b.snaps[1].side == "-r"){
-			drawImage(wireroutimg, b.snaps[1].x, b.snaps[1].y);
-		}else {
-			drawImage(wireboutimg, b.snaps[1].x, b.snaps[1].y);
+		if( showsnaps == 1){
+			if( b.snaps[1].side == "-r"){
+				drawImage(wireroutimg, b.snaps[1].x, b.snaps[1].y);
+			}else {
+				drawImage(wireboutimg, b.snaps[1].x, b.snaps[1].y);
+			}
 		}
 	}
 
@@ -151,52 +174,6 @@ function wireBit(bit)
 		}
 		
 		bitform = document.getElementById("bitform");
-		if( bitform != null){
-			msg = "<table>";
-
-			msg += "<tr>";
-			for(idx = 0; idx < b.snaps.length; idx ++){
-				if( b.snaps[idx] != null){
-					msg += "<td>"+b.snaps[idx].side+"</td>";
-				}else {
-					msg += "<td> - </td>";
-				}
-
-			}
-			msg += "</tr>";
-			msg += "<tr>";
-			for(idx = 0; idx < b.snaps.length; idx ++){
-				if( b.snaps[idx] != null){
-					msg += "<td>("+b.snaps[idx].x+","+b.snaps[idx].y+")</td>";
-				}else {
-					msg += "<td> - </td>";
-				}
-
-			}
-			msg += "</tr>";
-			msg += "<tr>";
-			for(idx = 0; idx < b.snaps.length; idx ++){
-				if( b.snaps[idx] != null){
-					msg += "<td>("+b.snaps[idx].w+","+b.snaps[idx].h+")</td>";
-				}else {
-					msg += "<td> - </td>";
-				}
-
-			}
-			msg += "</tr>";
-			msg += "<tr>";
-			msg += "<td>"+(b.btype & 7)+"</td>";
-			msg += "<td>"+(b.code)+"</td>";
-			msg += "<td>("+b.x+","+b.y+")</td>";
-			msg += "<td>("+b.w+","+b.h+")</td>";
-			msg += "</tr>";
-			msg += "<tr><th>Side</th><td><input type='text' id='wiresize' value='"+b.snaps[1].side+"' /></td></tr>";
-
-			msg += "</table>\n";
-
-			bitform.innerHTML = msg;
-			bitformaction = this;
-		}
 	
 	}
 
@@ -221,8 +198,10 @@ function wireBit(bit)
 		s.addnv("control", "'wire'");
 		s.addnv("inx", b.snaps[0].x);
 		s.addnv("iny", b.snaps[0].y);
+		s.addnv("inside", "'"+b.snaps[0].side+"'");
 		s.addnv("outx", b.snaps[1].x);
 		s.addnv("outy", b.snaps[1].y);
+		s.addnv("outside", "'"+b.snaps[1].side+"'");
 
 		return s.getargs();
 	}
@@ -245,16 +224,103 @@ function wireBit(bit)
 				b.snaps[0].x = val;
 			}else if( param == "iny"){
 				b.snaps[0].y = val;
+			}else if( param == "inside"){
+				b.snaps[0].side = val;
+				if( val == "-t" || val == "-b"){
+					b.snaps[0].w = 50;
+					b.snaps[0].h = 15;
+				}else {
+					b.snaps[0].w = 15;
+					b.snaps[0].h = 50;
+				}
 			}else if( param == "outx"){
 				b.snaps[1].x = val;
 			}else if( param == "outy"){
 				b.snaps[1].y = val;
+			}else if( param == "outside"){
+				b.snaps[1].side = val;
+				if( val == "-t" || val == "-b"){
+					b.snaps[1].w = 50;
+					b.snaps[1].h = 15;
+				}else {
+					b.snaps[1].w = 15;
+					b.snaps[1].h = 50;
+				}
 			}
-
 		}
 
-	}		
-		
+	}	
+	
+	this.doDrag = function(mx, my)
+	{	let ldrag = dragging;
+		let sn = null;
+		let wix,wiy;
+		let wox,woy;
+
+		wox = dragging.snaps[1].x;
+		woy = dragging.snaps[1].y;
+		wix = dragging.snaps[0].x;
+		wiy = dragging.snaps[0].y;
+
+		if( selected == dragging.snaps[0] ){
+			if( dragging.snaps[1].paired != null){		// output snap is paired. use as anchor.
+				sn = dragging.snaps[1];
+				if( (dragging.btype & 1) == 0){
+					// horizontal mode
+					if( wox - mx-15 > 30 ){
+						selected.x = mx;	// only allow if left of output snap.
+					}
+					selected.y = my;
+				}else {
+					// vertical mode
+					if( woy - my-15 > 30 ){
+						selected.y = my;
+					}
+					selected.x = mx;
+				}
+
+				
+				ldrag = null;
+			}
+		}else {
+			if( dragging.snaps[0].paired != null){
+				sn = dragging.snaps[0];
+				if( (dragging.btype & 1 ) == 0){
+					if( mx - wix > 45){
+						selected.x = mx;
+					}
+					selected.y = my;
+				}else {
+					if(  my - wiy > 45 ){
+						selected.y = my;
+					}
+					selected.x = mx;
+				}
+				ldrag = null;
+			}
+		}
+
+		// move bit to anchor.
+		if( sn != null){
+			if( sn.side == "-l"){
+				dragging.x = sn.x+sn.w;
+				dragging.y = sn.y;
+			}else if( sn.side == "-t"){
+				dragging.x = sn.x;
+				dragging.y = sn.y+sn.h;
+			}else if( sn.side == "-r"){
+				dragging.x = sn.x-50;
+				dragging.y = sn.y;
+			}else if( sn.side == "-b"){
+				dragging.x = sn.x;
+				dragging.y = sn.y-50;
+			}
+		}
+
+
+		return ldrag;
+	}
+	
 
 }
 
@@ -278,6 +344,19 @@ function control(bit)
 	this.color = "#000000";
 	this.font = "10px Georgia";
 	this.name = "Control";
+
+	// control
+	this.isbit = function()
+	{
+		return false;
+	}
+
+	// control
+	this.issnap = function()
+	{
+		return false;
+	}
+
 
 	// control
 	this.setBounds = function()
@@ -425,20 +504,28 @@ function control(bit)
 // control
 	this.stopMove = function()
 	{
-//		var sketch=this.bit.parent;
 		selected = this.bit;
 		curctrl = null;			// stop tracking
 	}
 
+	// control default version of doDrag()
+	// WIRE is main module that uses this call.
+	this.doDrag = function(mx, my)
+	{	
+		return dragging;
+	}
+		
+	//control
+	// generic verion of doSave();
 	this.doSave = function()
-	{	var msg = "1,";
+	{	let msg = "1,";
 
 		return msg;
 	}
 		
 //control
 	this.doLoad = function(initdata, idx)
-	{	var i = initdata[idx];
+	{	let i = initdata[idx];
 	}		
 		
 

@@ -258,14 +258,14 @@
                     echo('<td valign="top">');
                     $dir = new DirectoryIterator("kits");
                     // show Basic first
-                    echo('<div  style="width:75px;height:25px;border-color:green; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseKit(\''."Basic".'\');"> Kit '."Basic"."</div>\n");
+                    echo('<div  style="width:75px;height:25px;border-color:green; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseKit_clicked(\''."Basic".'\');"> Kit '."Basic"."</div>\n");
                     foreach ($dir as $fileinfo) {
                       if (!$fileinfo->isDot()) {
                         echo("<!-- filename=".$fileinfo->getPathname()." -->\n");
                         $xid = explode(".", $fileinfo->getFilename());
                         $kid = explode("_", $xid[0]);
                         if( $kid[1] != "Basic"){
-                          echo('<div  style="width:75px;height:25px;border-color:green; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseKit(\''.$kid[1].'\');"> Kit '.$kid[1]."</div>\n");
+                          echo('<div  style="width:75px;height:25px;border-color:green; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseKit_clicked(\''.$kid[1].'\');"> Kit '.$kid[1]."</div>\n");
                         }
                       }
                     }
@@ -287,7 +287,20 @@
                 </tr>
             </table>
           </td>
-          <td valign='top'><?php include("resources/info/intro.htm"); ?>
+          <td valign='top'>
+            <?php
+            $infodir = "resources/info";
+            if( is_dir($infodir)){
+              echo("<div id='info'>\n");
+              $dir = new DirectoryIterator($infodir);
+              foreach ($dir as $fileinfo) {
+                if (!$fileinfo->isDot()) {
+                  include($fileinfo->getPathname());
+                }
+              }
+              echo("</div>\n");
+            }
+            ?>
           </td>
         </tr>
       </table>

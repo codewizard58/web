@@ -566,6 +566,7 @@ function counterBit(bit)
 	this.value = 0;
 
 	this.transport.setTempo(50, 1);
+	this.transport.resume();
 
 	this.setValue = function(data, chan)
 	{	let now;
@@ -586,7 +587,12 @@ function counterBit(bit)
 				this.transport.run(now);
 			}
 		}
-		this.value = this.transport.value;
+		if( this.transport.trigger > 0){
+			this.transport.trigger--;
+		}
+		this.value = this.transport.getValue();
 		this.bit.value = this.value;
 	}
+
+	
 }
