@@ -5,6 +5,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //
 // 1/20/25
+
 var sketch = null;
 var ctx = null;
 var mx, my;
@@ -667,9 +668,6 @@ function findimage(name){
 			return i;
 		}
 	}
-	if( name == "noise"){
-	debugmsg("Find "+name+" not found i="+i);
-	}
 	return null;
 }
 
@@ -698,9 +696,6 @@ function loadimage(name, dst, imagedir)
 	bitpics[ dst ].src = imagedir+name+".png";
 	bitpicnames[dst] = name;
 	bitpicsmap[ dst] = null;
-	if( name == "noise"){
-		debugmsg("Load "+name);
-	}
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -830,6 +825,10 @@ function sbmodule( name )
 		wireboutimg = findimage("wireout-b");
 		defaultimg = findimage("default");
 		seqimg = findimage("seq");
+		audiolinimg = findimage("audioin-l");
+		audiotinimg = findimage("audioin-t");
+		audioroutimg = findimage("audioout-r");
+		audioboutimg = findimage("audioout-b");
 	}
 
 // sbmodule.addctrl

@@ -83,6 +83,18 @@ function kit_sound()
 		"control", "noise", 50, 50, "actionin", "audioout" ,null,  null,		// 0
 				118,	15, "Noise",	"Noise",	 	0x0021, "Input", 0, 1,	// 0
 
+		"control", "mixer", 50, 150, "audioin", "audioout" ,"audioin",  null,		// 0
+				128,	5, "Mixer",	"mixer sound",	 0x0222, "Action", 0, 1,	// 0
+	
+		"control",   "audio_split", 50, 150,	"audioin",  "audioout" ,null,  "audioout",	// 
+				129,	16, "Audio splitter",	"Split one output into two",	0x2022, "Wire", 0, 1,	// 2
+
+		"control", "cable", 50, 50, 	"audioin",  "audioout",null , null,		// 109 is wire code.
+				109,	17, "Wire",	"Join output to input", 0x0022, "Wire", 0, 1,	
+		
+		"control", "corner", 50, 50, 	"audioin",  "audioout",null , null,		// 109 is wire code.
+				109,	18, "Corner",	"Join output to input", 0x0022, "Wire", 0, 1,	
+		
 		null, null, null, null,				null, null, null, null
 		];
 
@@ -102,35 +114,19 @@ function kit_sound()
 		"mic", 0xd,
 		"panner", 0xd,
 		"noise", 0xd,
+		"mixer", 0xd,
+		"split", 0xd,
 		null, null
 	];
 
 	this.ctrltab = [
-//  ID, len, args
-//	"speaker", 3, 1,	// speaker
-//	"osc", 3, 2,		// oscillator
-//	"filter", 3, 3,		// filter
-//	"delay", 3, 4,		// delay
-	"mixer", 3, 5,		// mixer
 	"env", 3, 6,		// envelope
-//	"analyzer", 3, 10,	// scope
-//	"spectrum", 3, 11,	// spectrum
-//	"microphone", 3, 12,	// microphone
-//	"panner", 3, 13,	// stereo panner
 	null, 0, 0, 0, 0	// end of table
 	];
 
 	// defines the op codes for the program. softbitslivs:execProgram
 	this.kitctrlcodes = [
 		"power_on", 0,
-//		"osc", 120,
-//		"speaker", 121,
-//		"filter", 122,
-//		"analyzer", 124,	// audio display
-//		"spectrum", 124,	// audio display
-//		"microphone", 125,	// audio input
-//		"delay", 126,	// audio input
-//		"panner", 127,	// audio panner
 		null, 254
 	];
 
@@ -180,6 +176,7 @@ function kit_sound()
 			// mixer
 			ct = new mixerBit( bit);
 			bit.ctrl = ct;
+			bit.setOrientation(0);
 			ct.setData();
 			return ct;
 		}else if( ctrl == 10){
@@ -215,6 +212,26 @@ function kit_sound()
 			bit.ctrl = ct;
 			ct.setData();
 			return ct;
+		}else if( ctrl == 16){
+			ct = new audioSplitBit( bit);
+			bit.ctrl = ct;
+			bit.setOrientation(0);
+			ct.setData();
+			return ct;
+		}else if( ctrl == 17 || 18){
+			ct = new cableBit( bit);
+			bit.ctrl = ct;
+			if( ctrl == 18){
+				// corner special
+				bit.snaps[1].side = "-b";
+				bit.snaps[1].w = 50;
+				bit.snaps[1].h = 15;
+				bit.snaps[1].x = bit.snaps[0].x + bit.snaps[0].w;
+				bit.snaps[1].y = bit.snaps[0].y + bit.snaps[0].h;
+			}
+//			bit.setOrientation(0);
+			ct.setData();
+			return ct;
 		}
 		return null;
 	}
@@ -228,6 +245,10 @@ function kit_sound()
 				audioRelink();
 			}
 		}
+		if( roundknobimg == 0){
+			roundknobimg = findimage("roundknob");
+		}
+	
 	}
 
 	this.getdomain = function()

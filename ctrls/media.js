@@ -52,15 +52,14 @@ function micBit(bit)
 
 	// microphone
 	this.Draw = function( )
-	{	var b = this.bit;
+	{	const b = this.bit;
 
 		if( b == null){
 			return;
 		}
-		bt = b.btype & 7;	// 0 = horiz, 1 == vert
 
         ctx.fillStyle = "#ffffff";
-		if( bt == 0){
+		if( (b.btype & 1) == 0){
 			drawImage( this.bitimg , b.x, b.y);
 		}else {
 			drawImage( this.bitimg+1 , b.x, b.y);

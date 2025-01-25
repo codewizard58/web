@@ -1,6 +1,7 @@
 // 10/19/24
 // 1/20/25
 
+
 function doBitFormAction()
 {
     bitform = document.getElementById("bitform");
@@ -17,34 +18,30 @@ function doBitFormAction()
 }
 
 ///////////////////////////////////////////////////////////
-wireBit.prototype = Object.create(control.prototype);
 
-function wireBit(bit)
-{	control.call(this, bit);
-
-	this.bit = bit;
-	this.points = [];
-
-
-// wire
-	this.Draw = function( )
-	{	const b = this.bit;
-		let bt;
+function wireDraw(ctrl)
+{
+	const b = ctrl.bit;
 		let dx;
 		let dy;
 		let mx, my;
 		let sx,sy;
 		let sn, sw, sh;
+		let osnap;
 
 		if( b == null){
 			return;
 		}
-		bt = b.btype & 7;	// 0 = horiz, 1 == vert
 
         ctx.fillStyle = "#00ff00";
 
-		dx = b.snaps[1].x - b.snaps[0].x;
-		dy = b.snaps[1].y - b.snaps[0].y;
+		osnap = b.snaps[1];
+		if( osnap == null){
+			osnap = b.snaps[3];
+		}
+
+		dx = osnap.x - b.snaps[0].x;
+		dy = osnap.y - b.snaps[0].y;
 
 		mx = dx / 2;
 		my = dy / 2;
@@ -60,7 +57,7 @@ function wireBit(bit)
 
 	        ctx.fillRect(sx,  sy, mx, 5);
 			sx += mx;
-			if( b.snaps[1].side == "-r"){
+			if( osnap.side == "-r"){
 				ctx.fillRect(sx-5,  sy, 5, dy);
 				sy += dy;
 				ctx.fillRect(sx-5,  sy, mx, 5);
@@ -76,7 +73,7 @@ function wireBit(bit)
 
 	        ctx.fillRect(sx,  sy, 5, my);
 			sy += my;
-			if( b.snaps[1].side == "-b"){
+			if( osnap.side == "-b"){
 		        ctx.fillRect(sx,  sy-5, dx, 5);
 				sx += dx;
 				ctx.fillRect(sx,  sy-5, 5, my);
@@ -94,9 +91,9 @@ function wireBit(bit)
 		// draw input snap
 		if( showsnaps == 1){
 			if( b.snaps[0].side == "-l"){
-				drawImage(wirelinimg, b.snaps[0].x, b.snaps[0].y);
+				drawImage(ctrl.snapimg[0], b.snaps[0].x, b.snaps[0].y);
 			}else {
-				drawImage(wiretinimg, b.snaps[0].x, b.snaps[0].y);
+				drawImage(ctrl.snapimg[2], b.snaps[0].x, b.snaps[0].y);
 			}
 		}else if( b.snaps[0].paired != null){
 			sn = b.snaps[0];
@@ -117,43 +114,219 @@ function wireBit(bit)
 		}
 		// draw output snap
 		if( showsnaps == 1){
-			if( b.snaps[1].side == "-r"){
-				drawImage(wireroutimg, b.snaps[1].x, b.snaps[1].y);
+			if( osnap.side == "-r"){
+				drawImage(ctrl.snapimg[1], osnap.x, osnap.y);
 			}else {
-				drawImage(wireboutimg, b.snaps[1].x, b.snaps[1].y);
+				drawImage(ctrl.snapimg[3], osnap.x, osnap.y);
 			}
 		}
+
+}
+
+function wireSetBitSize(ctrl, ax, ay)
+{
+	var l,r,t,b;
+	var bit = ctrl.bit;
+	let osnaps = bit.snaps[1];
+
+	if(osnaps == null){
+		osnaps = bit.snaps[3];
+	}
+	
+	if( (bit.btype & 1) == 0){
+		l = bit.snaps[0].x +15;
+		r = osnaps.x;
+		t = bit.y;
+		b = bit.y+bit.h;
+
+		bit.x = l;
+
+		bit.w = r-l;
+		bit.initw = bit.w;
+		
+		bit.setOrientation(0);
+	}else {
+		t = bit.snaps[0].y+15;
+		b = osnaps.y;
+		l = bit.x;
+		r = bit.x+bit.w;
+
+		bit.y = t;
+
+		bit.h = b - t;
+		bit.initw = bit.h
+		bit.setOrientation(1);
+	}
+}
+
+function wireDoSave(ctrl)
+{
+	const b = ctrl.bit;
+	let s = new saveargs();
+	let osnap = b.snaps[1];
+	let corner = 0;
+
+	if( osnap == null){
+		osnap = b.snaps[3];
+		corner = 1;
+	}
+
+	s.addnv("control", "'wire'");
+	s.addnv("inx", b.snaps[0].x);
+	s.addnv("iny", b.snaps[0].y);
+	s.addnv("inside", "'"+b.snaps[0].side+"'");
+	s.addnv("outx", osnap.x);
+	s.addnv("outy", osnap.y);
+	s.addnv("outside", "'"+osnap.side+"'");
+	s.addnv("corner", corner);
+
+	return s.getargs();
+}
+
+function wireDoLoad(ctrl, initdata ,idx)
+{
+	let len = initdata[idx];
+	let n = 1;
+	let param="";
+	let val = "";
+	const b = ctrl.bit;
+
+	for(n = 1; n < len ; n += 2){
+		param = initdata[idx+n];
+		val = initdata[idx+n+1];
+
+		if( param == "control"){
+			continue;
+		}
+		if( param == "inx"){
+			b.snaps[0].x = val;
+		}else if( param == "iny"){
+			b.snaps[0].y = val;
+		}else if( param == "inside"){
+			b.snaps[0].side = val;
+			if( val == "-t" || val == "-b"){
+				b.snaps[0].w = 50;
+				b.snaps[0].h = 15;
+			}else {
+				b.snaps[0].w = 15;
+				b.snaps[0].h = 50;
+			}
+		}else if( param == "outx"){
+			b.snaps[1].x = val;
+		}else if( param == "outy"){
+			b.snaps[1].y = val;
+		}else if( param == "outside"){
+			b.snaps[1].side = val;
+			if( val == "-t" || val == "-b"){
+				b.snaps[1].w = 50;
+				b.snaps[1].h = 15;
+			}else {
+				b.snaps[1].w = 15;
+				b.snaps[1].h = 50;
+			}
+		}else if( param == "corner"){
+			b.snaps[3] = b.snaps[1];
+			b.snaps[1] = null;
+			debugmsg("Corner");
+		}
+	}
+}
+
+function wireDoDrag(mx, my)
+{
+	let ldrag = dragging;
+	let sn = null;
+	let dx,dy;
+	const isnap = dragging.snaps[0];
+	const osnap= dragging.snaps[1];
+
+	const wox = osnap.x;
+	const woy = osnap.y;
+	const wix = isnap.x;
+	const wiy = isnap.y;
+
+	if( selected == isnap ){
+		if( osnap.paired != null){		// output snap is paired. use as anchor.
+			sn = osnap;
+			ldrag = null;
+			dx = wox - mx;
+			dy = woy - my;
+		}
+
+
+	}else if( selected == osnap){
+		if( isnap.paired != null){		// input snap is paired. use as anchor.
+			sn = isnap;
+			ldrag = null;
+			dx = mx - wix;
+			dy = my - wiy;
+		}
+	}
+	if( ldrag == null){
+		
+		if( isnap.side == "-l" && osnap.side == "-r"){
+			selected.y = my;
+			if( dx > 50){
+				selected.x = mx;
+			}
+		}else if( isnap.side == "-t" && osnap.side == "-b"){
+			selected.x = mx;
+			if( dy > 50){
+				selected.y = my;
+			}
+		}else {
+			// corner
+			if( dx > 50){
+				selected.x = mx;
+			}
+			if( dy > 50){
+				selected.y = my;
+			}
+		}
+
+	}
+
+
+	// move bit to anchor.
+	if( sn != null){
+		if( sn.side == "-l"){
+			dragging.x = sn.x+sn.w;
+			dragging.y = sn.y;
+		}else if( sn.side == "-t"){
+			dragging.x = sn.x;
+			dragging.y = sn.y+sn.h;
+		}else if( sn.side == "-r"){
+			dragging.x = sn.x-50;
+			dragging.y = sn.y;
+		}else if( sn.side == "-b"){
+			dragging.x = sn.x;
+			dragging.y = sn.y-50;
+		}
+	}
+
+	return ldrag;
+}
+
+wireBit.prototype = Object.create(control.prototype);
+
+function wireBit(bit)
+{	control.call(this, bit);
+
+	this.bit = bit;
+	this.points = [];
+	this.snapimg = [wirelinimg,wireroutimg ,wiretinimg , wireboutimg];
+
+
+// wire
+	this.Draw = function( )
+	{
+		wireDraw(this);
 	}
 
 // wire
 	this.setBitSize = function(ax, ay)
-	{	var l,r,t,b;
-		var bit = this.bit;
-		
-		if( (bit.btype & 1) == 0){
-			l = bit.snaps[0].x +15;
-			r = bit.snaps[1].x;
-			t = bit.y;
-			b = bit.y+bit.h;
-
-			bit.x = l;
-
-			bit.w = r-l;
-			bit.initw = bit.w;
-			
-			bit.setOrientation(0);
-		}else {
-			t = bit.snaps[0].y+15;
-			b = bit.snaps[1].y;
-			l = bit.x;
-			r = bit.x+bit.w;
-
-			bit.y = t;
-
-			bit.h = b - t;
-			bit.initw = bit.h
-			bit.setOrientation(1);
-		}
+	{
+		wireSetBitSize(this, ax, ay);
 	}
 
 // wire 
@@ -163,162 +336,34 @@ function wireBit(bit)
 		return res;
 	}
 
-
+//wire
 	this.setData = function()
-	{	let msg="";
-		let idx;
-		const b = this.bit;
-
+	{
 		if( bitform != null){
 			bitform.innerHTML="";
 		}
-		
-		bitform = document.getElementById("bitform");
-	
 	}
 
+	//wire
 	this.getData = function()
-	{	const b = this.bit;
-		let f = null;
-		f = document.getElementById("wiresize");
-//		if( f != null){
-//			b.snaps[1].side = f.value;
-//		}
-
+	{
 	}
-
-
 
 
 // wire 
 	this.doSave = function()
-	{	const b = this.bit;
-		let s = new saveargs();
-
-		s.addnv("control", "'wire'");
-		s.addnv("inx", b.snaps[0].x);
-		s.addnv("iny", b.snaps[0].y);
-		s.addnv("inside", "'"+b.snaps[0].side+"'");
-		s.addnv("outx", b.snaps[1].x);
-		s.addnv("outy", b.snaps[1].y);
-		s.addnv("outside", "'"+b.snaps[1].side+"'");
-
-		return s.getargs();
+	{
+		return wireDoSave(this);
 	}
 	
 	this.doLoad = function(initdata, idx)
-	{	let len = initdata[idx];
-		let n = 1;
-		let param="";
-		let val = "";
-		const b = this.bit;
-
-		for(n = 1; n < len ; n += 2){
-			param = initdata[idx+n];
-			val = initdata[idx+n+1];
-
-			if( param == "control"){
-				continue;
-			}
-			if( param == "inx"){
-				b.snaps[0].x = val;
-			}else if( param == "iny"){
-				b.snaps[0].y = val;
-			}else if( param == "inside"){
-				b.snaps[0].side = val;
-				if( val == "-t" || val == "-b"){
-					b.snaps[0].w = 50;
-					b.snaps[0].h = 15;
-				}else {
-					b.snaps[0].w = 15;
-					b.snaps[0].h = 50;
-				}
-			}else if( param == "outx"){
-				b.snaps[1].x = val;
-			}else if( param == "outy"){
-				b.snaps[1].y = val;
-			}else if( param == "outside"){
-				b.snaps[1].side = val;
-				if( val == "-t" || val == "-b"){
-					b.snaps[1].w = 50;
-					b.snaps[1].h = 15;
-				}else {
-					b.snaps[1].w = 15;
-					b.snaps[1].h = 50;
-				}
-			}
-		}
-
+	{
+		wireDoLoad(this, initdata, idx);
 	}	
 	
 	this.doDrag = function(mx, my)
-	{	let ldrag = dragging;
-		let sn = null;
-		let wix,wiy;
-		let wox,woy;
-
-		wox = dragging.snaps[1].x;
-		woy = dragging.snaps[1].y;
-		wix = dragging.snaps[0].x;
-		wiy = dragging.snaps[0].y;
-
-		if( selected == dragging.snaps[0] ){
-			if( dragging.snaps[1].paired != null){		// output snap is paired. use as anchor.
-				sn = dragging.snaps[1];
-				if( (dragging.btype & 1) == 0){
-					// horizontal mode
-					if( wox - mx-15 > 30 ){
-						selected.x = mx;	// only allow if left of output snap.
-					}
-					selected.y = my;
-				}else {
-					// vertical mode
-					if( woy - my-15 > 30 ){
-						selected.y = my;
-					}
-					selected.x = mx;
-				}
-
-				
-				ldrag = null;
-			}
-		}else {
-			if( dragging.snaps[0].paired != null){
-				sn = dragging.snaps[0];
-				if( (dragging.btype & 1 ) == 0){
-					if( mx - wix > 45){
-						selected.x = mx;
-					}
-					selected.y = my;
-				}else {
-					if(  my - wiy > 45 ){
-						selected.y = my;
-					}
-					selected.x = mx;
-				}
-				ldrag = null;
-			}
-		}
-
-		// move bit to anchor.
-		if( sn != null){
-			if( sn.side == "-l"){
-				dragging.x = sn.x+sn.w;
-				dragging.y = sn.y;
-			}else if( sn.side == "-t"){
-				dragging.x = sn.x;
-				dragging.y = sn.y+sn.h;
-			}else if( sn.side == "-r"){
-				dragging.x = sn.x-50;
-				dragging.y = sn.y;
-			}else if( sn.side == "-b"){
-				dragging.x = sn.x;
-				dragging.y = sn.y-50;
-			}
-		}
-
-
-		return ldrag;
+	{
+		return wireDoDrag( mx, my);
 	}
 	
 
@@ -339,11 +384,12 @@ function control(bit)
 	this.sval = 0;
 	this.audioin = null;
 	this.audioout = null;
-	this.connected = false;	// audio connected?
+	this.connected = [false, false];	// audio connected?
 	this.background = "#ffffff";
 	this.color = "#000000";
 	this.font = "10px Georgia";
 	this.name = "Control";
+	this.bitimg = 0;
 
 	// control
 	this.isbit = function()
@@ -409,29 +455,24 @@ function control(bit)
 	this.Draw = function( )
 	{	const b = this.bit;
 		let bt;
-		let xval;
-		let p;
+		let img = defaultimg;
 
 		if( b == null){
 			return;
 		}
 		bt = b.btype & 7;	// 0 = horiz, 1 == vert
 
-		p = this.getDockedBit(0);
-
-		if( p == null){
-			xval = 0;
-		}else {
-			xval = p.data;
+		if( this.bitimg != 0){
+			img = this.bitimg;
 		}
 
 		ctx.save();
 		if( bt == 0){
-	       drawImage(defaultimg , b.x,  b.y);
+	       drawImage(img , b.x,  b.y);
 		}else {
 			ctx.translate( b.x, b.y+b.h);
 			ctx.rotate(- Math.PI/2);
-	        drawImage( defaultimg , b.x,  b.y);
+	        drawImage( img , b.x,  b.y);
 		}
 		ctx.restore();
 	}
@@ -557,17 +598,50 @@ this.undock = function(from)
 
 // from is bit
 this.dockto = function(from, dom)
-{
+{	
+	const b = this.bit;
+	let port = 0;		// which input port on the other bit.
+	let oport= 0;		// which output port on this bit.
+	let sn;
+
 	if( dom == 2){
 		this.setup();
 	}
 
+	// input 1 or 2?
+	sn = from.snaps[2];
+	if( sn != null){
+		if( sn.paired != null){
+			if( sn.paired.bit == b){
+				port = 1;
+				if( sn.paired == b.snaps[3]){
+					oport = 1;
+				}
+			}
+		}
+	}
+	sn = from.snaps[0];
+	if( sn != null){
+		if( sn.paired != null){
+			if( sn.paired.bit == b){
+				port = 0;
+				if( sn.paired == b.snaps[3]){
+					oport = 1;
+				}
+			}
+		}
+	}
+	
 	if( from.ctrl != null ){
 
 		if( from.ctrl.audioin != null && this.audioout != null ){
-			debugmsg("link "+this.name+" to next module");
-			this.audioout.connect( from.ctrl.audioin);
-			this.connected = true;
+			debugmsg("link "+this.name+" to next module port="+port+" oport="+oport);
+			if(port == 0){
+				this.audioout.connect( from.ctrl.audioin);
+			}else {
+				this.audioout.connect( from.ctrl.audioin2);
+			}
+			this.connected[oport] = true;
 		}else {
 			debugmsg("DOCKTO null");
 		}
@@ -577,12 +651,39 @@ this.dockto = function(from, dom)
 // control
 this.undockfrom = function(from, dom)
 {	let b = from.ctrl;
+	let port = 0;		// which input port on the other bit.
+	let oport= 0;		// which output port on this bit.
+	let sn;
 
+	// input 1 or 2?
+	sn = from.snaps[2];
+	if( sn != null){
+		if( sn.paired != null){
+			if( sn.paired.bit == b){
+				port = 1;
+				if( sn.paired == b.snaps[3]){
+					oport = 1;
+				}
+			}
+		}
+	}
+	sn = from.snaps[0];
+	if( sn != null){
+		if( sn.paired != null){
+			if( sn.paired.bit == b){
+				port = 0;
+				if( sn.paired == b.snaps[3]){
+					oport = 1;
+				}
+			}
+		}
+	}
+	
 	if( dom == 2){
 		if( b != null){
-			if( from.ctrl.audioin != null && this.connected){
-				debugmsg("unlink "+this.name+" from next module");
-				this.connected = false;
+			if( from.ctrl.audioin != null && this.connected[oport]){
+				debugmsg("unlink "+this.name+" from next module port="+port+" oport="+oport);
+				this.connected[oport] = false;
 				this.audioout.disconnect( from.ctrl.audioin);
 			}
 		}
@@ -619,5 +720,51 @@ this.undockfrom = function(from, dom)
 }
 
 
+splitterBit.prototype = Object.create(control.prototype);
+
+function splitterBit(bit)
+{	control.call(this, bit);
+
+	this.bit = bit;
+	this.points = [];
+	this.snapimg = [wirelinimg,wireroutimg ,wiretinimg , wireboutimg];
+	this.name = "split";
+	this.imagename = this.name;
+	this.bitimg = this.bit.findImage(this.imagename);
+
+
+	this.setOrientation = function(bt)
+	{   const b = this.bit;
+
+		if( bt == 0){
+			b.coords = [ -15, 50, b.w, 10, 0, 0, b.w, 90 ];
+			b.suffix = [ "-l", "-r", "-t", "-r" ];
+		}else {
+			b.coords = [ 50, -15, 10, b.h, 0, 0, 90, b.h ];
+			b.suffix = [ "-t", "-b", "-t", "-b" ];
+		}
+
+        b.setSnaps();
+		return true;
+	}
+
+	//splitter
+	this.Draw = function( )
+	{	const b = this.bit;
+
+		if( b == null){
+			return;
+		}
+
+        ctx.fillStyle = "#ffffff";
+		if( (b.btype & 1) == 0){
+			drawImage( this.bitimg , b.x, b.y);
+		}else {
+			drawImage( this.bitimg+1 , b.x, b.y);
+		}
+	}
+
+
+}
 
 

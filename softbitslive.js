@@ -1,6 +1,6 @@
 // 11/16/24
 // 1/20/25
-////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
 var flipimg = 0;
 var flipvimg = 0;
 var removeimg = 0;
@@ -10,6 +10,10 @@ var wirelinimg = 0;
 var wiretinimg = 0;
 var wireroutimg = 0;
 var wireboutimg = 0;
+var audiolinimg = 0;
+var audiotinimg = 0;
+var audioroutimg = 0;
+var audioboutimg = 0;
 var defaultimg = 0;
 var seqimg = 0;
 const none = null;
@@ -67,6 +71,7 @@ const SCOPE = 124;
 const MICROPHONE = 125;
 const DELAY = 126;
 const PANNER = 127;
+const MIXER = 128;
 
 var divlist = [
 	"headerdiv",
@@ -687,7 +692,7 @@ var bytecode = [
 	null,
 	null,
 
-	[ 4, 16, 0],		// 12 WIRESPLIT
+	[ 4, 16, 0],						// 12 WIRESPLIT
 	[ 5, 0, 37, 20, 21, 0],				// 13 ARITHINVERT
 	[ 5, 0, 39, 20, 29, 0],				// 14 DIMMER
 	null,								// 15 
@@ -842,7 +847,7 @@ var bytecode = [
 	[ 4, 12, 42, 7, 25, 0],				// 127	PANNER
 
 
-	null,		// 128
+	[ 4, 12, 42, 7, 25, 0],				// 128 MIXER
 	null,
 	null,
 	null,
@@ -1083,7 +1088,8 @@ function Program()
 	{	var p;
 		var nbit;
 		var tl;
-		var bit = snxt.bit;
+		let bit = snxt.bit;
+		let osnap;
 		let k = findkit("Basic");
 
 		// need a temp power on for the rest of the chain.
@@ -1101,10 +1107,14 @@ function Program()
 
 		// insert before this bit.
 		p = snxt.paired;
-		snxt.paired = nbit.snaps[1];
+		osnap = nbit.snaps[1];
+		if(osnap == null){
+			osnap = nbit.snaps[3];
+		}
+		snxt.paired = osnap;
 
 		nbit.snaps[0].paired = p;
-		nbit.snaps[1].paired = snxt;
+		osnap.paired = snxt;
 
 		if( p != null){
 			p.paired = nbit.snaps[0];
@@ -1132,15 +1142,18 @@ function Program()
 			code = bit.code;
 
 			// get next in chain.
-			bpair = this.getPair( bit.snaps[1]);
 			xsnap = bit.snaps[1];		// remember which snap bpair is associated with
+			if( xsnap == null){
+				xsnap = bit.snaps[3];	// corner ?
+			}
+			bpair = this.getPair( xsnap);
 
 			// look for wire recv			
 			if( bpair != null){
 				code = bpair.code;
 			}
 			// look for output sends..
-			if(  bit.snaps[3] != null && bit.snaps[3].paired != null){
+			if(  xsnap != bit.snaps[3] && bit.snaps[3] != null && bit.snaps[3].paired != null){
 				bpair2 = bit.snaps[3].paired.bit;
 
 				// need a temp power on for the send chain.
@@ -1152,7 +1165,7 @@ function Program()
 			}
 
 			// make sure that this chain is not a side chain of the next bit
-			if( bpair != null && bpair.snaps[2] == bit.snaps[1].paired){
+			if( bpair != null && bpair.snaps[2] == xsnap.paired){
 				// linked to side input..
 				bpair = null;
 			}
@@ -1239,10 +1252,9 @@ function Program()
 		stail = null;
 		b = bit;
 		while(b!= null){
-			if( b.code == CORNER){
+			stail = b.snaps[1];
+			if( stail == null){
 				stail = b.snaps[3];
-			}else {
-				stail = b.snaps[1];
 			}
 			if( stail != null){
 				p = stail.paired;
@@ -2167,6 +2179,7 @@ function Snap(bit, side, x, srx, y, sry, w, h, idx)
 		let oside;
 		let dom, odom;
 		const b = this.bit;
+		let osnap;
 
 		dom = this.domain;
 
@@ -2205,14 +2218,18 @@ function Snap(bit, side, x, srx, y, sry, w, h, idx)
 							// auto rotate check.
 							if( b.code == WIRE){
 //								debugmsg("FT code="+b.code+" rside="+res.side+" oside="+oside);
+								osnap = b.snaps[1];
+								if( osnap == null){
+									osnap = b.snaps[3];
+								}
 								if( oside == "-l"){
-									b.snaps[1].side = "-b";
-									b.snaps[1].w = 50;
-									b.snaps[1].h = 15;
+									osnap.side = "-b";
+									osnap.w = 50;
+									osnap.h = 15;
 								}else if( oside == "-t"){
-									b.snaps[1].side = "-r";
-									b.snaps[1].w = 15;
-									b.snaps[1].h = 50;
+									osnap.side = "-r";
+									osnap.w = 15;
+									osnap.h = 50;
 								}else if( oside == "-r"){
 									b.snaps[0].side = "-t";
 									b.snaps[0].w = 50;
@@ -2415,9 +2432,12 @@ function Bit( btype, x, y, w, h, k) {
 	// bitpicnames[] are the names
 	this.findImage = function(name){
 		// name, type
+		if( name == null || name == ""){
+			return 0;
+		}
 		let iimg = findimage(name);
 		if( iimg == null){
-			debugmsg("bit.findimage "+name+" not found");
+			debugmsg("bit.findimage '"+name+"' not found");
 			iimg = 0;
 		}
 		return iimg;
@@ -2426,6 +2446,9 @@ function Bit( btype, x, y, w, h, k) {
 	this.setOrientation( bt);
 
 	let imagename = this.kit.bitnames[bidx];
+	if( imagename == ""){
+		imagename = "control";
+	}
 	this.bitimg =this.findImage(imagename);
 	this.name = this.kit.bitnames[bidx+1];
 	if( this.kit.bitnames[bidx+8] > 0){
@@ -2451,7 +2474,7 @@ function Bit( btype, x, y, w, h, k) {
 	}
 
 
-	if( this.kit.bitnames[bidx] == "control" || this.kit.bitnames[bidx+9] > 0){
+	if( this.kit.bitnames[bidx] == "" || this.kit.bitnames[bidx] == "control" || this.kit.bitnames[bidx+9] > 0){
 		this.addCtrl( bidx );
 	}
 
@@ -2672,7 +2695,7 @@ function Bit( btype, x, y, w, h, k) {
 				}
 		}else if( pass == 1 ){
 				snapname = this.snapnames[1];
-				if( this.code != WIRE ){		// wire draw its own snaps
+				if( this.code != WIRE  ){		// wire draw its own snaps
 					if( snapname != null){
 						if( showsnaps == 1){	// output snaps
 							drawImage(snapname, this.x+this.coords[2], this.y+this.coords[3]);
@@ -3400,7 +3423,7 @@ function Sketch() {
 		ch = sketch.canvas.height;
 
         //sketch.snaps.MouseUp(mx, my);
-		if( docktarget != null){
+		if( docktarget != null && scanning != null){
 			docking = dragging;
 			// use scanning object to determine dockX and dockY
 			dockX = docktarget.x - scanning.x;
