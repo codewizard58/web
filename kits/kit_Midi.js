@@ -4,7 +4,6 @@
 // 11/24/24  onstatechange
 // 1/20/25
 
-
 var outputlist = null;
 var midiAccess = null;
 var chosenOutput = 0;
@@ -208,6 +207,7 @@ midiTarget.prototype = Object.create( MIDIfilter.prototype);
 
 function midiTarget( bit, knob, chan)
 {	MIDIfilter.call(this);
+	this.name = "Target";
 	this.bit = bit;
 	this.knob = knob;
 	this.val = 0;
@@ -430,7 +430,7 @@ var nextgroup = 10;
 //	1 Default in, 2 default out 
 
 function midiGroup(n, dir)
-{
+{	
 	this.index = n;
 
 	this.grouptype = dir;		// input default
@@ -470,7 +470,7 @@ function midiGroup(n, dir)
 
 	this.connect_cc = function(obj)
 	{	let f = null;
-		debugmsg("G CONNECT CC");
+		debugmsg("G CONNECT CC "+this.name);
 		this.cc_list.addobj(obj, null);
 		obj.parent = this;	
 
@@ -511,6 +511,30 @@ function midiGroup(n, dir)
 
 		return false;
 	}
+
+	this.print = function()
+	{	let n = this.note_list;
+		let c = this.cc_list;
+
+		debugmsg("___ Group "+this.name);
+		if( n != null){
+			n = n.head;
+			while(n != null){
+				n.ob.print();
+
+				n = n.next;
+			}
+		}
+		if(c != null){
+			c = c.head;
+			while(c != null){
+				c.ob.print();
+				c = c.next;
+			}
+		}
+
+	}
+
 
 	if( dir == 1){
 		midiInGroups_list.addobj(this);
@@ -618,6 +642,7 @@ function findGroupDefault(dir)
 		}
 		g = g.next;
 	}
+	debugmsg("GROUP "+name+" not found");
 	return null;
 }
 
@@ -671,7 +696,7 @@ function midiInitGroups()
 		if( md != null){
 			md.connect(gn);
 		}
-}
+	}
 	if( midiOutGroups_list.head == null){
 		gn = new midiGroup(2, 0);
 		// connect default to local.
@@ -779,12 +804,18 @@ function doMidiClock(op, dev)
 }
 
 function midi_process()
-{
+{	let md;
+
 	if( midiinit){
 		midiinit = false;
 		if( navigator.requestMIDIAccess){
 			navigator.requestMIDIAccess().then( onMIDIInit, onMIDIReject);
 		}
+		// create local interface
+		md = new MIDIinputobj(null);		// local
+		md.setup(md.name);
+		debugmsg("INIT Interface "+md.name+" "+md.index);
+	
 	}
 }
 
@@ -824,6 +855,16 @@ function MIDIfilter()
 
 		return false;
 	}
+
+	this.print = function()
+	{	let l = this.filter_list.head;
+		debugmsg("___ filter "+this.name+" type="+this.type+" int="+this.interface);
+		while(l != null){
+			l.ob.print();
+			l = l.next;
+		}
+		debugmsg("__ end filters");
+	}
 }
 
 
@@ -853,6 +894,16 @@ function transport()
 		}
 		if(this.trigger > 2){		// missing too many ?
 			return false;
+		}
+		if( isNaN(millis)){
+			return false;
+		}
+		if( isNaN(this.value)){
+			debugmsg("TRANS "+this.value+" "+this.delta+" "+millis);
+			this.value = 0.0;
+		}
+		if( isNaN(this.delta)){
+			this.delta = 1.0;
 		}
 
 		this.value += this.delta * millis;
@@ -945,7 +996,12 @@ function MIDIobj(m)
 		this.portid = m.id;
 		this.name = m.name;
 	}
+	
+	this.print = function()
+	{
+		debugmsg("MIDI "+this.name);
 
+	}
 }
 
 
@@ -1040,6 +1096,16 @@ function MIDIinputobj(m)
 		this.index = 0;
 		this.name = "Local";
 		MIDIindev[0] = this;
+	}
+
+	this.print = function()
+	{	let l = this.filter_list.head;
+		debugmsg("__ "+this.name);
+
+		while(l != null){
+			l.ob.print();
+			l = l.next;
+		}
 	}
 
 }
@@ -1141,11 +1207,8 @@ function onMIDIInit(midi){
 		mp.onmidimessage = noMIDIMessageEventHandler;	// disable inputs
 		md = new MIDIinputobj(mp);
 		md.setup(md.name);
-		debugmsg("Interface "+md.name+" "+md.index);
+		debugmsg("INIT Interface "+md.name+" "+md.index);
 	}
-	md = new MIDIinputobj(null);		// local
-	md.setup(md.name);
-	debugmsg("Interface "+md.name+" "+md.index);
 
 	cnt = 1;
 	for( odev = outputs.next(); odev && !odev.done; odev = outputs.next() ){
@@ -1154,7 +1217,7 @@ function onMIDIInit(midi){
 		md.index = cnt;
 		cnt++;
 	}
-	selMIDIoutdev(0);		// local output
+	// selMIDIoutdev(0);		// local output
 	midiAccess.onstatechange = MIDIstateChange;
 
 	activedomains |= 4;		// mark that midi objects can be used.
@@ -1181,6 +1244,7 @@ function MIDIMessageEventHandler0( e){
 	if( MIDIindev[0] == null){
 		return;
 	}
+	debugmsg("Local midi in");
 	MIDIMessageEventHandler( e, 0);
 }
 
@@ -1401,6 +1465,7 @@ function midiinsetvalues( op, chan, arg, arg2, dev)
 	ng = md.filter_list;
 	if( ng != null){
 		ng = md.filter_list.head;
+
 		while(ng != null){
 //			debugmsg("midiin try"+chan+" "+arg+" dev="+dev+" op="+op);
 			if( ng.ob.filter(op, chan, arg, arg2, dev)){
@@ -1410,9 +1475,9 @@ function midiinsetvalues( op, chan, arg, arg2, dev)
 		}
 	}
 
-	if( dev > 0){
+	 if( dev > 0){
 		softprogram.runProgram();
-	}
+	 }
 }
 
 
@@ -1464,9 +1529,9 @@ function kit_midi( )
 				8,	10, "midi_clk",	"Midi Clock",	 0x0011, "Input", 0, 0,	
 		"notegroup", "notegroup",	50, 50,	null, null ,null,  null, // 24
 				0,	11, "note_group",	"Note Group filter",	 0x0000, "Action", 0, 0,	
-		"splitgroup", "splitgroup",	50, 50,	null, null ,null,  null, // 24
+		"splitter", "splitgroup",	50, 50,	null, null ,null,  null, // 24
 				0,	12, "splitter_group",	"Splitter Group filter",	 0x0000, "Action", 0, 0,	
-		"targetgroup", "targetgroup",	50, 50,	null, null ,null,  null, // 24
+		"target", "targetgroup",	50, 50,	null, null ,null,  null, // 24
 				0,	13, "Learn Targets",	"Learn Target filter",	 0x0000, "Action", 0, 0,	
 		null, null, null, null,				null, null, null, null
 	];
@@ -1593,9 +1658,24 @@ function kit_midi( )
 
 	this.selected = function()
 	{	let msg = "";
-
 		midi_process();
 		midiInitGroups();
+		this.print();
+	}
+
+	this.print = function()
+	{	let i;
+		let md;
+
+		debugmsg("Interfaces "+MIDIindev.length);
+		for(i=0; i < MIDIindev.length; i++){
+			if(MIDIindev[i] != null){
+				md = MIDIindev[i];
+				md.print();
+			}
+		}
+		debugmsg("End Interfaces");
+
 	}
 
 

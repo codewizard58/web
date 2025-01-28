@@ -240,8 +240,13 @@ function mandleBit(bit)
 	this.beats = 32;
 	this.contrast = 255 / this.reps;
 	this.sampler = new sampler();
+	this.sx = 0;		// values to draw, based on sampler position, set in setValue.
+	this.sy = 0;
+	this.transport = new transport();
+	this.gate = 128;
 
 	this.power = 2;
+
 
 	this.sampler.setSize(this.bit.w, this.bit.h);
 
@@ -271,10 +276,22 @@ function mandleBit(bit)
 
 	this.mandle = function()
 	{	let a, b;
+		let x,y;
 
-		if( this.power == 2){
+		if( this.power == 2){	// mandelbrot
 			a = this.x * this.x - this.y * this.y + this.initx;
 			b = 2.0 * this.x * this.y + this.inity;
+		}else if( this.power == 3){	// burning ship
+			x = this.x;
+			if (x < 0){
+				x = -x;
+			}
+			y = this.y;
+			if(y < 0){
+				y = -y;
+			}
+			a = x * x - y * y + this.initx;
+			b = 2.0 * x * y + this.inity;
 		}else {
 			a = this.x * this.x* this.x - 3*this.x * this.y * this.y + this.initx;
 			b = 3.0 * this.x * this.x * this.y - this.y* this.y * this.y  + this.inity;
@@ -292,12 +309,10 @@ function mandleBit(bit)
 
 	// create the points
 	this.doMandel = function()
-	{	let b = this.bit;
-		let cnt, n;
+	{	const b = this.bit;
 		let x;
 		let y;
 		let idx;
-		let dx,dy;
 		let max = 0;
 
 		if( b == null){
@@ -357,7 +372,9 @@ function mandleBit(bit)
 	// called about 100 times a second from execProgram.
 	this.setValue = function(data, chan)
 	{	let b = this.bit;
-		let d = checkRange(data);  // 0-255  
+		let d = checkRange(data);  // 0-255
+		let max;
+		let points;
 
 		if(b == null){
 			return;
@@ -373,7 +390,32 @@ function mandleBit(bit)
 			this.doMandel();
 		}
 
-	}
+		this.tick = this.sampler.position();
+		max  = this.sampler.max;
+		points = this.sampler.points;
+
+		if( this.tick < 0){
+			this.tick = 0;
+		}else if( this.tick > max){
+			this.tick = 0;
+			if( max > 0){
+				this.tick = max -1;
+			}
+		}
+
+		if( max > 0){
+			this.sx = Math.floor(points[this.tick].x * b.w/256) + b.x;
+			this.sy = Math.floor(points[this.tick].y * b.h/256) + b.y;
+		}
+//		debugmsg("TR "+this.transport.trigger+" "+this.tick+" "+this.transport.value+" "+this.transport.delta);
+		if( this.transport.trigger > 0){
+			this.transport.trigger--;
+			b.value = this.sampler.getValue();
+		}
+		if( this.transport.value > this.gate){
+			b.value = 0;
+		}
+}
 
 	this.fetchImage = function()
 	{	let stepx, stepy;
@@ -433,8 +475,10 @@ function mandleBit(bit)
 		this.sampler.setData(this.data);
 	}
 
-	this.setTempo = function(tempo)
+	this.setTempo = function(t)
 	{
+//		debugmsg("SETTEMPO "+t);
+		this.transport.setTempo(t, 1);
 	}
 
 // mandelbrot
@@ -507,19 +551,8 @@ function mandleBit(bit)
 		}
 		ctx.stroke();
 
-		this.tick = this.sampler.position();
-
-		if( this.tick < 0){
-			this.tick = 0;
-		}else if( this.tick > max){
-			this.tick = 0;
-			if( max > 0){
-				this.tick = max -1;
-			}
-		}
-
-		x = Math.floor(points[this.tick].x * b.w/256) + b.x;
-		y = Math.floor(points[this.tick].y * b.h/256) + b.y;
+		x = this.sx;
+		y = this.sy;
 		ctx.strokeRect(x, y, 4, 4);
 
 		ctx.fillStyle = "#000000";
@@ -545,13 +578,14 @@ function mandleBit(bit)
 			msg += "</select></td></tr>";
 			msg += "<tr><th>Power</th><td><select id='power'  onchange='UIrefresh(1, 0);' >";
 			msg += "<option value='2' "+isSelected(this.power, 2)+">Power 2</option>";
-			msg += "<option value='3' "+isSelected(this.power, 3)+">Cubic (3)</option>";
+			msg += "<option value='3' "+isSelected(this.power, 3)+">Burning ship</option>";
+			msg += "<option value='3' "+isSelected(this.power, 4)+">Cubic (3)</option>";
 			msg += "</select></td></tr>";
 			msg += "<tr><th>Zoom</th><td><select id='zoom'><option value='1' "+isSelected(this.zoom, 1)+">In</option><option value='2' "+isSelected(this.zoom, 2)+">Out</option></select></td>";
 			msg += "<td><input type='button' value='Reset' onclick='UImandelReset(1, 0);' /></td></tr>\n";
 			msg += "<tr><th>PingPong</th><td><input type='checkbox' id='pingpong' "+isChecked(this.sampler.pingpong)+" /></td>";
 			msg += "<th>Depth</th><td><input type='text' id='reps' value='"+this.reps+"' onchange='UIrefresh(1, 0);'  size='4' /></td></tr>";
-			msg += "<tr><th>Tempo</th><td><input type='text' value='"+this.sampler.tempo+"' id='tempo' onchange='UIrefresh(1, 0);'  size='4' /></td>";
+			msg += "<tr><th>Tempo</th><td><input type='text' value='"+this.transport.tempo+"' id='tempo' onchange='UIrefresh(1, 0);'  size='4' /></td>";
 			msg += "<th>Gate</th><td><input type='text' value='"+this.gate+"' id='gate' onchange='UIrefresh(1, 0);' size='4' /></td></tr>";
 			msg += "</table>\n";
 
@@ -682,7 +716,7 @@ function mandleBit(bit)
 		s.addnv("shape", this.shape);
 		s.addnv("zoom", this.zoom);
 		s.addnv("depth", this.reps);
-		s.addnv("tempo", this.tempo);
+		s.addnv("tempo", this.transport.tempo);
 		s.addnv("gate", this.gate);
 
 		s.addnv("startx", this.startx);
@@ -767,6 +801,9 @@ function mandleBit(bit)
 	}
 
 	setColorMaps();		// init the colour maps.
+	this.setTempo(120);
+	timer_list.addobj(this.transport, null);
+	this.transport.resume();
 
 
 }

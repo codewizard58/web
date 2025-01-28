@@ -717,6 +717,11 @@ this.undockfrom = function(from, dom)
 		debugmsg("Keypress "+bit.name+" "+code+" "+up);
 	}
 
+	this.print = function()
+	{
+		debugmsg("control "+this.name);
+	}
+
 }
 
 

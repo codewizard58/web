@@ -233,6 +233,37 @@ function debugreset()
 	}
 }
 
+var indicator_data = [0, 0, 0, 0, 0, 0];
+
+function indicator(data, ind)
+{
+	if( ind >= 0 && ind < indicator_data.length){
+		indicator_data[ind] = data;
+		drawmode = 2;
+	}
+}
+
+function indicator_spin( ind)
+{
+	if( ind >= 0 && ind < indicator_data.length){
+		indicator_data[ind]+= 20;
+		if(indicator_data[ind] >= 256){
+			indicator_data[ind] = 0;
+		}
+		drawmode = 2;
+	}
+}
+
+function drawIndicator()
+{	let i;
+	ctx.save();
+	for(i=0; i < indicator_data.length ; i++){
+		ctx.fillStyle = m_color(indicator_data[i], 3, 0);
+		ctx.fillRect(20+20*i, 20, 10, 10);
+	}
+	ctx.restore();
+}
+
 function display( bit)
 {
 	if( bitform != null){
@@ -675,17 +706,17 @@ function drawFunction1(idx, arg1)
 }
 
 
-
+// microcode the actions.
 var bytecode = [
 	[1, 0],		// 0 POWERON
 	null,
 	null,
 	null,
 
-	[ 1, 3, 0],	// 4 MIDICV
-	[ 1, 3, 0],	// 5 MIDICC
-	[ 4, 11, 12, 9, 7, 0], // MIDICVOUT
-	[ 4, 6, 11, 12, 9, 7, 0 ],	// MIDICCOUT
+	[ 1, 3, 29, 0],							// 4 MIDICV		poweron getvalue
+	[ 1, 3, 29, 0],							// 5 MIDICC	    poweron getvalue
+	[ 4, 11, 12, 9, 7, 29, 0],			// 6 MIDICVOUT  arg2 curchain if data2 fi setvalue storedata blacksnap
+	[ 4, 11, 12, 9, 7, 29, 0 ],			// 7 MIDICCOUT  arg2 arg2? if data2 fi setvalue storedata blacksnap
 
 	[ 5, 0, 9, 3, 28, 0],				// 8 MIDICLK
 	null,
@@ -1641,6 +1672,7 @@ function Program()
 
 		this.needsend = 0;	
 		this.sendsize = 8;		// allow for 0xf0 S B P 0x06 seqh seql ver
+		indicator_spin(5);
 
 		while( prog != null){
 			ibp = bp;
@@ -3140,6 +3172,8 @@ function Sketch() {
 		        ctx.drawImage(background, ix, iy);
 			}
 		}
+		indicator_spin(4);
+		drawIndicator();
 		let pass;
 		for(pass=0; pass < 4; pass++){
 	        for (i = this.blist ; i != null ; i = i.next) {
@@ -3271,6 +3305,7 @@ function Sketch() {
 			document.getElementById("canvasbox").style.cursor = "help"; // debugging..
 		}
 
+		indicator(255, 2);
         return false;
     }
 
@@ -3290,6 +3325,10 @@ function Sketch() {
 		let cname = "default";
 		let ldrag = dragging;
 		let i;
+
+		indicator(0, 0);
+		indicator(0, 1);
+		indicator(0, 3);
 
 //		message("Mouse Move "+mx+" "+my);
 		cw = sketch.canvas.width;
@@ -3313,6 +3352,7 @@ function Sketch() {
 //		}
 		if( selected != null && scanning == selected && dragging != null && dragging.ctrl != null){
 			ldrag = dragging.ctrl.doDrag(mx, my);
+			indicator(160, 3);
 		}
 
 		if( selected != null && scanning == null){
@@ -3325,6 +3365,7 @@ function Sketch() {
 					cname = "pointer";
 				}
 			}
+			indicator(80, 0);
 		}
 
 		if( curctrl != null){
@@ -3333,6 +3374,7 @@ function Sketch() {
 			sy = 0;
 			ldrag = null;
 			drawmode = 2;
+			indicator(240, 0);
 		}
 
 		if( ldrag != null){
@@ -3358,6 +3400,7 @@ function Sketch() {
 			}
 			cname = "move";
 			drawmode = 2;
+			indicator(80, 1);
 
 		}else if( sx != 0 && sy != 0){
 			// pan 
@@ -3379,8 +3422,10 @@ function Sketch() {
 			}
 			cname = "all-scroll";
 			drawmode = 2;
+			indicator(255, 1);
 		}else {
 			i = sketch.blist;
+			indicator(160, 1);
 			while( i != null ) {
 				ahit = i.bit.HitTest(mx, my);
 				if( ahit != null){
@@ -3404,7 +3449,7 @@ function Sketch() {
 			}
 		}
 
-		doAnimate();	// refresh the display
+//		doAnimate();	// refresh the display
 		document.getElementById("canvasbox").style.cursor = cname;
     }
 
@@ -3421,6 +3466,8 @@ function Sketch() {
 
 		cw = sketch.canvas.width;
 		ch = sketch.canvas.height;
+
+		indicator(0, 2);
 
         //sketch.snaps.MouseUp(mx, my);
 		if( docktarget != null && scanning != null){
@@ -3793,7 +3840,7 @@ function doTimer()
 
 	tock++;
 	if( tock >= 4*drawspeed){
-		tock = 0;
+		tock = 1;	// 
 
 		if( docking != null){
 			doDocking();
