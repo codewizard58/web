@@ -2,7 +2,7 @@
 // kit_basic.js
 // this is the basic kit of parts
 //
-//
+// 1/20/25
 
 kit_basic.prototype = Object.create(sbmodule.prototype);
 
@@ -23,34 +23,34 @@ function kit_basic()
 				0,	0, "Power On",		"Start a chain of SoftBits", 0x0010, "Power", 0, 1,	// 0
 		"poweroff", "power_off", 50, 50,	"powerin", null, null, null,			// 1
 				2,	0, "Power Off",		"End of a chain, optional.", 0x0001, "Power", 0, 1,	// 1
-		"control", "label", 100, 50,	null, null, null, null,			// 
+		"", "label", 100, 50,	null, null, null, null,			// 
 				0,	4, "Label",		"Displays text", 0x0000, "Power", 0, 1,	// 1
-		"control", "map", 100, 100,	null, null, null, null,			// 
+		"", "map", 100, 100,	null, null, null, null,			// 
 				0,	5, "Map",		"Map of bits in world", 0x0000, "Power", 0, 1,	// 1
 	
-		"split",   "wire_split", 100, 50,	"wirein",  "wireout" ,null,  "wireout",	// 2	
-				12,	0, "Wire Split",	"Split one output into two",	0x3033, "Wire", 0, 1,		// 2	"split",   "wire_split"
+		"",   "split", 50, 150,	"wirein",  "wireout" ,null,  "wireout",	// 2	
+				12,	15, "Splitter",	"Split one output into two",	0x3033, "Wire", 0, 1,		// 2	"split",   "wire_split"
 		"patchout",   "patch_out", 50, 50,	null,  "wireout" ,null,  null,	// 2	
 				0,	22, "Patch Out",	"Patch out",	0x0010, "Wire", 0, 1,		// 2	patch cable
 		"patchin",   "patch_in", 50, 50,	"wirein",  null ,null,  null,	// 2	
 				0,	21, "Patch In",	"Patch in",		0x0001, "Wire", 0, 1,		// 2	patch cable
 		"invert", "a_invert", 50, 50,		"actionin", "actionout" , null,  null,	// 3
 				13,	0, "Analog Invert",	"Turn value upside down",		 0x0011, "Action", 0, 1,		// 3
-		"control", "a_dimmer", 100, 50,		"actionin", "actionout" , null,  null,	// 4
+		"", "a_dimmer", 100, 50,		"actionin", "actionout" , null,  null,	// 4
 				14,	1, "Dimmer",		"",								 0x0011, "Action", 0, 1,		// 4
 		"default", "a_setvalue", 100, 50,	"blankin", "actionout" , null,  null,	// 5
 				0,	0, "",				"", 							0x3,  "Action", 0, 0,		// 22
 
-		"and",	"logic_and", 100, 50,		"logicin", "logicout" , "logicin", null,	// 6
-				16,	0, "And",			"", 							0x0111, "Logic", 0, 1,		// 5
-		"default", "logic_or",  100, 50,	"logicin", "logicout" , "logicin",  null,	// 7
-				17,	0, "Or",			"", 							0x0111, "Logic", 0, 1,		// 6
-		"default", "logic_not", 100, 50,	"logicin",  "logicout" , null,  null,	// 8
+		"",	"logic_and", 50, 150,		"logicin", "logicout" , "logicin", null,	// 6
+				16,	24, "And",			"", 							0x0111, "Logic", 0, 1,		// 5
+		"", "logic_or",  50, 150,	"logicin", "logicout" , "logicin",  null,	// 7
+				17,	25, "Or",			"", 							0x0111, "Logic", 0, 1,		// 6
+		"default", "logic_not", 50, 50,	"logicin",  "logicout" , null,  null,	// 8
 				18,	0, "Not",			"", 0x0011,  "Logic", 0, 1,		// 7
-		"default", "logic_nand", 100, 50,	"logicin", "logicout", "logicin",  null,	// 9
-				19,	0, "Nand",			"", 0x0111,  "Logic", 0, 1,		// 8
-		"default", "logic_nor", 100, 50,	"logicin", "logicout" , "logicin",  null,	// 10
-				20,	0, "Nor",			"", 0x0111,  "Logic", 0, 1,		// 9
+		"", "logic_nand", 50, 150,	"logicin", "logicout", "logicin",  null,	// 9
+				19,	26, "Nand",			"", 0x0111,  "Logic", 0, 1,		// 8
+		"", "logic_nor", 50, 150,	"logicin", "logicout" , "logicin",  null,	// 10
+				20,	27, "Nor",			"", 0x0111,  "Logic", 0, 1,		// 9
 
 		"default", "a_plus", 100, 50,		"actionin", "actionout" ,"actionin",  null,		// 11
 				36,	0, "Add ",				"", 0x0111, "Action", 0, 1,		// 22
@@ -70,15 +70,16 @@ function kit_basic()
 		"default", "l_latch", 100, 50,	    "logicin", "logicout" ,"logicin",  null,		// 18
 				0,	0, "",				"", 0x0111, "Logic", 0, 1,		// 22
 
-		"control", "bargraph", 100, 50,		"outputin", "outputout" ,null,  null,		// 19
+		"", "bargraph", 100, 50,		"outputin", "outputout" ,null,  null,		// 19
 				0,	2, "Bargraph",				"", 0x0011, "Output", 0, 1,		// 22
-		"control", "bargraph2", 100, 50,	"outputin", "outputout" ,"outputin",  null,	// 20
+		"", "bargraph2", 100, 50,	"outputin", "outputout" ,"outputin",  null,	// 20
 				0,	3, "Dual Bargraph",				"", 0x111,  "Output", 0, 1,		// 22
 
-		"control", "wire", 50, 50, 		    "wirein",  "wireout",null , null,		// 25	
+		"", "wire", 50, 50, 		    "wirein",  "wireout",null , null,		// 25	
 		109,	12, "Wire",	"Join output to input", 0x0011, "Wire", 0, 1,		// 22
-		"corner", "wire_corner", 100, 50,	"wirein", null ,null ,"wireout",	// 26
-		110,	0, "Corner","Join output to input", 0x1001, "Wire", 0, 1,		// 22
+
+		"", "corner", 50, 50, 		    "wirein",  "wireout",null , null,		// 25	
+		109,	6, "Corner",	"Join output to input", 0x0011, "Wire", 0, 1,		// 22
 
 		"control", "a_counter", 100, 50,	"actionin", "actionout" , null,  null,	// 27
 		111,	23, "Counter",		"", 0x0011, "Action", 0, 1,		// 22
@@ -217,10 +218,18 @@ this.kitctrlcodes = [
 			bit.ctrl = ct;
 			ct.setData();
 			return ct;
-		}else if( ctrl == 12){
+		}else if( ctrl == 12 || ctrl == 6){
 			// wire
 			ct = new wireBit( bit);
 			bit.ctrl = ct;
+			if( ctrl == 6){
+				// corner special
+				bit.snaps[1].side = "-b";
+				bit.snaps[1].w = 50;
+				bit.snaps[1].h = 15;
+				bit.snaps[1].x = bit.snaps[0].x + bit.snaps[0].w;
+				bit.snaps[1].y = bit.snaps[0].y + bit.snaps[0].h;
+			}
 			return ct;
 		}else if( ctrl == 13){
 			// RBG lights
@@ -233,6 +242,12 @@ this.kitctrlcodes = [
 			ct = new mandleBit( bit);
 			bit.ctrl = ct;
 			ct.setData();
+			return ct;
+		}else if( ctrl == 15 ){
+			// wire
+			ct = new splitterBit( bit);
+			bit.ctrl = ct;
+			bit.setOrientation(0);		// modify snaps.
 			return ct;
 		}else if( ctrl == 17){
 			// sequencer
@@ -286,6 +301,38 @@ this.kitctrlcodes = [
 			ct.setData();
 			debugmsg("New counter");
 			return ct;
+		}else if( ctrl == 24){
+			ct = new logicBit( bit);
+			ct.setImage("and2", "And", LOGICAND);
+			ct.values = [];
+			bit.ctrl = ct;
+			bit.setOrientation(0);		// modify snaps.
+			ct.setData();
+			return ct;
+		}else if( ctrl == 25){
+			ct = new logicBit( bit);
+			ct.setImage("or", "Or", LOGICOR);
+			ct.values = [];
+			bit.ctrl = ct;
+			bit.setOrientation(0);		// modify snaps.
+			ct.setData();
+			return ct;
+		}else if( ctrl == 26){
+			ct = new logicBit( bit);
+			ct.setImage("nand", "Nand", LOGICNAND);
+			ct.values = [];
+			bit.ctrl = ct;
+			bit.setOrientation(0);		// modify snaps.
+			ct.setData();
+			return ct;
+		}else if( ctrl == 27){
+			ct = new logicBit( bit);
+			ct.setImage("nor", "Nor", LOGICNOR);
+			ct.values = [];
+			bit.ctrl = ct;
+			bit.setOrientation(0);		// modify snaps.
+			ct.setData();
+			return ct;
 		}else {
 			message("Unknown control "+ctrl);
 		}
@@ -322,7 +369,7 @@ this.kitctrlcodes = [
 		"poweroff",		0xd,
 		"default",		0xd,
 		"defaulta",		0xd,
-		"corner",		0xd,
+//		"corner",		0xd,
 		"straight",		0xd,
 		"control",		0xd,
 		"wiresend",		1,
@@ -341,6 +388,10 @@ this.kitctrlcodes = [
 		"patchout",		0xd,
 		"imagetile",	1,
 		"piano",		1,
+		"and2",			0xd,
+		"or",			0xd,
+		"nand",			0xd,
+		"nor",			0xd,
 		null, null
 	];
 

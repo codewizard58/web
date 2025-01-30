@@ -1,5 +1,6 @@
 // 11/16/24
-////////////////////////////////////////////////////////////////////////////
+// 1/20/25
+///////////////////////////////////////////////////////////////////////////
 var flipimg = 0;
 var flipvimg = 0;
 var removeimg = 0;
@@ -9,6 +10,10 @@ var wirelinimg = 0;
 var wiretinimg = 0;
 var wireroutimg = 0;
 var wireboutimg = 0;
+var audiolinimg = 0;
+var audiotinimg = 0;
+var audioroutimg = 0;
+var audioboutimg = 0;
 var defaultimg = 0;
 var seqimg = 0;
 const none = null;
@@ -25,6 +30,10 @@ var drawspeed = 1;			// fast
 
 // 12/24/24
 var showsnaps = 1;
+
+// 1/21/25
+var animatecolor = "#ffffff";	// debugging
+var startSound = false;		// cannot start sound yet.
 
 const POWERON=0;
 const POWEROFF=1;
@@ -52,6 +61,8 @@ const CORNER = 110;
 const COUNTER = 111;
 const ROTARY = 114;
 const GRAPH = 115;
+const NOISE = 118;
+const VIDEO = 119;
 const OSC = 120;
 const SPEAKER = 121;
 const FILTER = 122;
@@ -60,6 +71,7 @@ const SCOPE = 124;
 const MICROPHONE = 125;
 const DELAY = 126;
 const PANNER = 127;
+const MIXER = 128;
 
 var divlist = [
 	"headerdiv",
@@ -221,6 +233,37 @@ function debugreset()
 	}
 }
 
+var indicator_data = [0, 0, 0, 0, 0, 0];
+
+function indicator(data, ind)
+{
+	if( ind >= 0 && ind < indicator_data.length){
+		indicator_data[ind] = data;
+		drawmode = 2;
+	}
+}
+
+function indicator_spin( ind)
+{
+	if( ind >= 0 && ind < indicator_data.length){
+		indicator_data[ind]+= 20;
+		if(indicator_data[ind] >= 256){
+			indicator_data[ind] = 0;
+		}
+		drawmode = 2;
+	}
+}
+
+function drawIndicator()
+{	let i;
+	ctx.save();
+	for(i=0; i < indicator_data.length ; i++){
+		ctx.fillStyle = m_color(indicator_data[i], 3, 0);
+		ctx.fillRect(20+20*i, 20, 10, 10);
+	}
+	ctx.restore();
+}
+
 function display( bit)
 {
 	if( bitform != null){
@@ -281,7 +324,7 @@ function bitFlip()
 		dy = 0;
 
 		doAnimate();
-		message("Flip: flipped!");
+		debugmsg("Flip: flipped!");
 	}else {
 		message("Flip: cannot flip docked bit");
 	}
@@ -521,10 +564,17 @@ function UIchooseKit(kit)
 		msg = chooseGroup(curbittype);
 		alist.innerHTML = msg;
 		alist.style.border = "2px solid "+curbitcolor;
+		setInfo(kit+"-info");
 	}
 
 }
 
+// the following is called on user interaction.
+function UIchooseKit_clicked(kit)
+{	
+	startSound = true;
+	UIchooseKit(kit);
+}
 //////////////////////////////////////////////////////////////////////////
 //
 // Local SoftBits execution
@@ -656,24 +706,24 @@ function drawFunction1(idx, arg1)
 }
 
 
-
+// microcode the actions.
 var bytecode = [
 	[1, 0],		// 0 POWERON
 	null,
 	null,
 	null,
 
-	[ 1, 3, 0],	// 4 MIDICV
-	[ 1, 3, 0],	// 5 MIDICC
-	[ 4, 11, 12, 9, 7, 0], // MIDICVOUT
-	[ 4, 6, 11, 12, 9, 7, 0 ],	// MIDICCOUT
+	[ 1, 3, 29, 0],							// 4 MIDICV		poweron getvalue
+	[ 1, 3, 29, 0],							// 5 MIDICC	    poweron getvalue
+	[ 4, 11, 12, 9, 7, 29, 0],			// 6 MIDICVOUT  arg2 curchain if data2 fi setvalue storedata blacksnap
+	[ 4, 11, 12, 9, 7, 29, 0 ],			// 7 MIDICCOUT  arg2 arg2? if data2 fi setvalue storedata blacksnap
 
 	[ 5, 0, 9, 3, 28, 0],				// 8 MIDICLK
 	null,
 	null,
 	null,
 
-	[ 4, 16, 0],		// 12 WIRESPLIT
+	[ 4, 16, 0],						// 12 WIRESPLIT
 	[ 5, 0, 37, 20, 21, 0],				// 13 ARITHINVERT
 	[ 5, 0, 39, 20, 29, 0],				// 14 DIMMER
 	null,								// 15 
@@ -814,10 +864,10 @@ var bytecode = [
 
 	null,
 	null,
-	null,
-	null,
+	[ 5, 0, 28, 0],							// 118 noise
+	[ 1, 3, 0],							// 119 camera
 
-	[ 4, 24, 12, 8, 9, 11, 25, 0],			// 120 OSC
+	[ 4, 24, 12, 8, 9, 11, 25, 0],		// 120 OSC
 	[ 4, 8, 11, 10, 9, 7, 0],			// 121 speaker
 	[ 4, 12, 42, 7, 25, 0],				// 122 FILTER
 	[ 5, 0, 9, 3, 28, 0],				// 123 SEQUENCER
@@ -828,7 +878,7 @@ var bytecode = [
 	[ 4, 12, 42, 7, 25, 0],				// 127	PANNER
 
 
-	null,		// 128
+	[ 4, 12, 42, 7, 25, 0],				// 128 MIXER
 	null,
 	null,
 	null,
@@ -999,6 +1049,36 @@ var bytecode = [
 
 ];
 
+function audioRelink( )
+{	let partner;
+	let bl = sketch.blist;
+	let b;
+
+//	debugmsg("Audio Relink");
+	while(bl != null){
+		b = bl.bit;
+
+//		debugmsg("Bit "+b.code);
+		if( b.snaps[1] != null){
+			partner =  b.snaps[1].paired;
+			if( partner != null){
+				b.undock(partner.bit);
+				partner.bit.dock(b, 0);
+//				debugmsg(" partner 1 "+partner.bit.code);
+			}
+		}
+		if( b.snaps[3] != null){
+			partner =  b.snaps[3].paired;
+			if( partner != null){
+				b.undock(partner.bit);
+				partner.bit.dock(b, 2);
+//				debugmsg(" partner 3 "+partner.bit.code);
+			}
+		}
+		bl = bl.next;
+	}
+}
+
 
 function Program()
 {	this.prog = null;
@@ -1039,7 +1119,8 @@ function Program()
 	{	var p;
 		var nbit;
 		var tl;
-		var bit = snxt.bit;
+		let bit = snxt.bit;
+		let osnap;
 		let k = findkit("Basic");
 
 		// need a temp power on for the rest of the chain.
@@ -1057,10 +1138,14 @@ function Program()
 
 		// insert before this bit.
 		p = snxt.paired;
-		snxt.paired = nbit.snaps[1];
+		osnap = nbit.snaps[1];
+		if(osnap == null){
+			osnap = nbit.snaps[3];
+		}
+		snxt.paired = osnap;
 
 		nbit.snaps[0].paired = p;
-		nbit.snaps[1].paired = snxt;
+		osnap.paired = snxt;
 
 		if( p != null){
 			p.paired = nbit.snaps[0];
@@ -1088,15 +1173,18 @@ function Program()
 			code = bit.code;
 
 			// get next in chain.
-			bpair = this.getPair( bit.snaps[1]);
 			xsnap = bit.snaps[1];		// remember which snap bpair is associated with
+			if( xsnap == null){
+				xsnap = bit.snaps[3];	// corner ?
+			}
+			bpair = this.getPair( xsnap);
 
 			// look for wire recv			
 			if( bpair != null){
 				code = bpair.code;
 			}
 			// look for output sends..
-			if(  bit.snaps[3] != null && bit.snaps[3].paired != null){
+			if(  xsnap != bit.snaps[3] && bit.snaps[3] != null && bit.snaps[3].paired != null){
 				bpair2 = bit.snaps[3].paired.bit;
 
 				// need a temp power on for the send chain.
@@ -1108,7 +1196,7 @@ function Program()
 			}
 
 			// make sure that this chain is not a side chain of the next bit
-			if( bpair != null && bpair.snaps[2] == bit.snaps[1].paired){
+			if( bpair != null && bpair.snaps[2] == xsnap.paired){
 				// linked to side input..
 				bpair = null;
 			}
@@ -1195,10 +1283,9 @@ function Program()
 		stail = null;
 		b = bit;
 		while(b!= null){
-			if( b.code == CORNER){
+			stail = b.snaps[1];
+			if( stail == null){
 				stail = b.snaps[3];
-			}else {
-				stail = b.snaps[1];
 			}
 			if( stail != null){
 				p = stail.paired;
@@ -1585,6 +1672,7 @@ function Program()
 
 		this.needsend = 0;	
 		this.sendsize = 8;		// allow for 0xf0 S B P 0x06 seqh seql ver
+		indicator_spin(5);
 
 		while( prog != null){
 			ibp = bp;
@@ -1872,7 +1960,7 @@ function Program()
 								this.chains[ curchain].data = this.getValue2( progbits, ibp, 255);
 							}
 							break;
-	
+
 					}
 					ip++;
 				}
@@ -1923,6 +2011,19 @@ function Snap(bit, side, x, srx, y, sry, w, h, idx)
 
 	this.domain = (bit.domain >> (idx*4)) & 0xf;
 //	debugmsg("SNAP "+bit.name+" "+idx+" "+this.domain);
+
+	// snap
+	this.isbit = function()
+	{
+		return false;
+	}
+
+	// snap
+	this.issnap = function()
+	{
+		return true;
+	}
+
 
 	this.drawIndicator = function(orientation, x, y)
 	{	var val;
@@ -2097,6 +2198,7 @@ function Snap(bit, side, x, srx, y, sry, w, h, idx)
 			res = this;
 		}
 
+//		debugmsg("HT ("+x+","+y+") " +this.side+" x="+this.x+" y="+this.y+" w="+this.w+" h="+this.h);
 		return res;
 	}
 
@@ -2108,6 +2210,8 @@ function Snap(bit, side, x, srx, y, sry, w, h, idx)
 		let j;
 		let oside;
 		let dom, odom;
+		const b = this.bit;
+		let osnap;
 
 		dom = this.domain;
 
@@ -2135,11 +2239,40 @@ function Snap(bit, side, x, srx, y, sry, w, h, idx)
 	        for (i = sketch.blist ; i != null && res == null; i = i.next) {
 				if( i.bit != this.bit){
 					res = i.bit.HitTest(bx, by);
-					if( res != null){
-						if( res.side != oside){
-							res = null;		// cannot dock with this one.
-						}else if( res.paired != null){
+					if( res == i.bit){
+						res = null;
+					}
+					if( res != null ){		// res is a snap.
+						if( res.paired != null){
 							res = null;		// cannot dock with a docked one.
+						}else if( res.side != oside){
+
+							// auto rotate check.
+							if( b.code == WIRE){
+//								debugmsg("FT code="+b.code+" rside="+res.side+" oside="+oside);
+								osnap = b.snaps[1];
+								if( osnap == null){
+									osnap = b.snaps[3];
+								}
+								if( oside == "-l"){
+									osnap.side = "-b";
+									osnap.w = 50;
+									osnap.h = 15;
+								}else if( oside == "-t"){
+									osnap.side = "-r";
+									osnap.w = 15;
+									osnap.h = 50;
+								}else if( oside == "-r"){
+									b.snaps[0].side = "-t";
+									b.snaps[0].w = 50;
+									b.snaps[0].h = 15;
+								}else if( oside == "-b"){
+									b.snaps[0].side = "-l";
+									b.snaps[0].w = 15;
+									b.snaps[0].h = 50;
+								}
+							}
+							res = null;		// cannot dock with this one.
 						}else {
 							// check domain
 							odom = res.domain;
@@ -2178,7 +2311,7 @@ function Snap(bit, side, x, srx, y, sry, w, h, idx)
 		if( repel == 1){
 			ctx.strokeStyle = "#ff0000";
 		}else{
-			ctx.strokeStyle = "#ffffff";
+			ctx.strokeStyle = animatecolor;
 		}
 		ctx.lineWidth = 2;
 
@@ -2260,6 +2393,38 @@ function Bit( btype, x, y, w, h, k) {
 	let bt = (btype & 7);
 	let bidx = btype-bt;
 
+	// bit
+	this.isbit = function()
+	{
+		return true;
+	}
+
+	// bit
+	this.issnap = function()
+	{
+		return false;
+	}
+
+
+
+	this.setSnaps = function()
+	{
+		const sw = 15;
+		const sh = 50;
+
+		for(let i = 0; i < this.snaps.length; i++){
+			snapname = this.snapnames[ i];
+			if( snapname != null){
+				if( this.suffix[i] == "-l" || this.suffix[i] == "-r"){		// vertical orientation
+					this.snaps[i] = new Snap(this, this.suffix[i], this.x, this.coords[i+i], this.y,this.coords[i+i+1], sw, sh, i);
+				}else{
+					this.snaps[i] = new Snap(this, this.suffix[i], this.x, this.coords[i+i], this.y,this.coords[i+i+1], sh, sw, i);
+				}
+			}
+		}
+	
+	
+	}
 
 	// bit 
 	this.setOrientation = function(bt)
@@ -2267,20 +2432,24 @@ function Bit( btype, x, y, w, h, k) {
 		if( bt == 0 ){
 			this.w = this.initw;
 			this.h = this.inith;
-			this.coords = [ -15, 0, this.initw, 0, (this.w / 2) - 25, -10, (this.w / 2) - 25, this.inith ];
-			this.suffix = [ "-l", "-r", "-t", "-b" ];
+			if( this.ctrl == null || !this.ctrl.setOrientation(bt)){
+				this.coords = [ -15, 0, this.w, 0, (this.w / 2) - 25, -10, (this.w / 2) - 25, this.h ];
+				this.suffix = [ "-l", "-r", "-t", "-b" ];
+			}
 		}else if( bt == 1){
 			this.h = this.initw;
 			this.w = this.inith;
-			this.coords = [ 0, -15, 0, this.initw, -15, (this.h / 2) - 25, this.inith, (this.h / 2) - 25 ];
-			this.suffix = [ "-t", "-b", "-l", "-r" ];
+			if( this.ctrl == null || !this.ctrl.setOrientation(bt)){
+				this.coords = [ 0, -15, 0, this.h, -15, (this.h / 2) - 25, this.w, (this.h / 2) - 25 ];
+				this.suffix = [ "-t", "-b", "-l", "-r" ];
+			}
 		}
 		// snaps
 		let sn = 0;
 		let sname = "";
 		let btx = this.btype & 7;
 		let bidx = this.btype - btx;
-		let slen = 4;
+		let slen = this.snapnames.length;
 
 		for(sn=0; sn < slen; sn++){
 			sname = this.kit.bitnames[bidx+sn+4];
@@ -2295,9 +2464,12 @@ function Bit( btype, x, y, w, h, k) {
 	// bitpicnames[] are the names
 	this.findImage = function(name){
 		// name, type
+		if( name == null || name == ""){
+			return 0;
+		}
 		let iimg = findimage(name);
 		if( iimg == null){
-			debugmsg("bit.findimage "+name+" not found");
+			debugmsg("bit.findimage '"+name+"' not found");
 			iimg = 0;
 		}
 		return iimg;
@@ -2306,43 +2478,20 @@ function Bit( btype, x, y, w, h, k) {
 	this.setOrientation( bt);
 
 	let imagename = this.kit.bitnames[bidx];
+	if( imagename == ""){
+		imagename = "control";
+	}
 	this.bitimg =this.findImage(imagename);
 	this.name = this.kit.bitnames[bidx+1];
 	if( this.kit.bitnames[bidx+8] > 0){
 		this.code = this.kit.bitnames[bidx+8];
-		debugmsg("BIT "+this.name+" code="+this.code);
 	}else {
 		this.code = this.kit.findcode( this.name);
 	}
 	this.bitname = imagename;
 	this.domain = this.kit.bitnames[bidx+12];
 
-	// message("New bit("+this.w+","+this.h+")" );
-
-	let snapname="";
-	let idx = this.btype - bt;
-	let sw = 15;
-	let sh = 50;
-
-	if( bt == 1){
-		sw = 50;
-		sh = 15;
-	}
-
-	for(var i = 0; i < this.snaps.length; i++){
-		snapname = this.snapnames[ i];
-		if( snapname != null){
-			if( i < 2){
-			// in out
-				this.snaps[i] = new Snap(this, this.suffix[i], this.x, this.coords[i+i], this.y,this.coords[i+i+1], sw, sh, i);
-			}else{
-			// in2 out2
-				this.snaps[i] = new Snap(this, this.suffix[i], this.x, this.coords[i+i], this.y,this.coords[i+i+1], sh, sw, i);
-			}
-		}
-	}
-
-	debugmsg("Bit: "+ this.kit.name + " idx "+ idx + " name "+this.name+" img "+this.bitimg+" "+this.name+" domain "+this.domain.toString(16));
+	this.setSnaps();
 
 // bit addctrl
 	this.addCtrl = function( idx)
@@ -2357,7 +2506,7 @@ function Bit( btype, x, y, w, h, k) {
 	}
 
 
-	if( this.kit.bitnames[bidx] == "control" || this.kit.bitnames[bidx+9] > 0){
+	if( this.kit.bitnames[bidx] == "" || this.kit.bitnames[bidx] == "control" || this.kit.bitnames[bidx+9] > 0){
 		this.addCtrl( bidx );
 	}
 
@@ -2432,18 +2581,18 @@ function Bit( btype, x, y, w, h, k) {
 	this.HitTest = function(x, y)
 	{	let res = null;
 		let i;
+		let slen = this.snaps.length;
 
-		if( x >= this.x && x <= this.x+this.w &&
+		if(  x >= this.x && x <= this.x+this.w &&
 			y >= this.y && y <= this.y+this.h){
 			res = this;
 		}
-		let slen = this.snaps.length;
+
 		for(i=0; res == null && i < slen; i++){
 			if(  this.snaps[i] != null){
 				res = this.snaps[i].HitTest(x, y);
 			}
 		}
-
 		return res;
 	}
 
@@ -2505,6 +2654,8 @@ function Bit( btype, x, y, w, h, k) {
 	{	var snapname = null;
 		const btmp = this.btype & 7;
 		let img = 0;
+		let sx,sy,sw,sh;
+		let sn;
 
         if( pass == 0){
 			img = this.bitimg;
@@ -2525,32 +2676,72 @@ function Bit( btype, x, y, w, h, k) {
 					ctx.strokeRect(this.x-2, this.y-2, this.w+4, this.h+4);
 				}
 			}
-		}else if( pass == 2 && showsnaps == 1){	// input snaps
-			snapname = this.snapnames[0];
-			if( this.code != WIRE || this.snaps[1].paired == null){		// wire then ctrl draws if paired.
+		}else if( pass == 2){
+				snapname = this.snapnames[0];
+				if( this.code != WIRE ){		
+					if( snapname != null){	
+						if( showsnaps == 1){	// input snaps
+							drawImage(snapname, this.x+this.coords[0], this.y+this.coords[1]);
+							this.snaps[0].drawIndicator( this.suffix[0], this.x+this.coords[0], this.y+this.coords[1]);
+						}else if( this.snaps[0].paired != null){
+							sn = this.snaps[0];
+							if( sn.side == "-l"){
+								sx = sn.x-15;
+								sy = sn.y+sn.h/2 - 2;
+								sw = 30;
+								sh = 5;
+							}else {
+								sx = sn.x+sn.w/2 -2;
+								sy = sn.y-15;
+								sw = 5;
+								sh = 30;
+							}
+
+							ctx.fillStyle = powerColors[this.chain];
+							ctx.fillRect(sx, sy, sw, sh);
+						}
+					}
+				}
+				snapname = this.snapnames[2];
 				if( snapname != null){	
-					drawImage(snapname, this.x+this.coords[0], this.y+this.coords[1]);
-					this.snaps[0].drawIndicator( this.suffix[0], this.x+this.coords[0], this.y+this.coords[1]);
+					if( showsnaps == 1){	// input snaps
+						drawImage(snapname, this.x+this.coords[4], this.y+this.coords[5]);
+						this.snaps[2].drawIndicator( this.suffix[2], this.x+this.coords[4], this.y+this.coords[5]);
+					}else if( this.snaps[2].paired != null){
+						sn = this.snaps[2];
+						if( sn.side == "-l"){
+							sx = sn.x-15;
+							sy = sn.y+sn.h/2 - 2;
+							sw = 30;
+							sh = 5;
+						}else {
+							sx = sn.x+sn.w/2 -2;
+							sy = sn.y-15;
+							sw = 5;
+							sh = 30;
+						}
+
+						ctx.fillStyle = powerColors[sn.paired.bit.chain];
+						ctx.fillRect(sx, sy, sw, sh);
+					}
 				}
-			}
-			snapname = this.snapnames[2];
-			if( snapname != null){	
-				drawImage(snapname, this.x+this.coords[4], this.y+this.coords[5]);
-				this.snaps[2].drawIndicator( this.suffix[2], this.x+this.coords[4], this.y+this.coords[5]);
-			}
-		}else if( pass == 1 && showsnaps == 1){	// output snaps
-			snapname = this.snapnames[1];
-			if( this.code != WIRE || this.snaps[0].paired == null){		// wire
+		}else if( pass == 1 ){
+				snapname = this.snapnames[1];
+				if( this.code != WIRE  ){		// wire draw its own snaps
+					if( snapname != null){
+						if( showsnaps == 1){	// output snaps
+							drawImage(snapname, this.x+this.coords[2], this.y+this.coords[3]);
+							this.snaps[1].drawIndicator( this.suffix[1], this.x+this.coords[2], this.y+this.coords[3]);
+						}
+					}
+				}
+				snapname = this.snapnames[3];
 				if( snapname != null){
-					drawImage(snapname, this.x+this.coords[2], this.y+this.coords[3]);
-					this.snaps[1].drawIndicator( this.suffix[1], this.x+this.coords[2], this.y+this.coords[3]);
+					if( showsnaps == 1){	// output snaps
+						drawImage(snapname, this.x+this.coords[6], this.y+this.coords[7]);
+						this.snaps[3].drawIndicator( this.suffix[3], this.x+this.coords[6], this.y+this.coords[7]);
+					}
 				}
-			}
-			snapname = this.snapnames[3];
-			if( snapname != null){
-				drawImage(snapname, this.x+this.coords[6], this.y+this.coords[7]);
-				this.snaps[3].drawIndicator( this.suffix[3], this.x+this.coords[6], this.y+this.coords[7]);
-			}
 		}else if( pass == 3){
 			if( this.ctrl != null){
 				if( this.code == SPEAKER && this.chain == 0){
@@ -2594,7 +2785,7 @@ function Bit( btype, x, y, w, h, k) {
 		let p = null;
 		let snap = this.snaps[sidx];
 
-		debugmsg("BIT Docked "+this.name+" to "+partner.name+" pdom="+snap.paired.domain);
+//		debugmsg("BIT Docked "+this.name+" to "+partner.name+" pdom="+snap.paired.domain);
 		if( this.ctrl != null){
 			this.ctrl.dock(partner, snap.paired.domain);
 		}
@@ -2602,7 +2793,7 @@ function Bit( btype, x, y, w, h, k) {
 
 	this.dockto = function(partner, dom)
 	{
-		debugmsg("BIT dockto "+this.name+" -> "+partner.name);
+//		debugmsg("BIT dockto "+this.name+" -> "+partner.name);
 		if( this.ctrl != null){
 			this.ctrl.dockto(partner, dom);
 		}
@@ -2612,7 +2803,7 @@ function Bit( btype, x, y, w, h, k) {
 	// bit input / output
 	this.undock = function(partner)
 	{
-		debugmsg("BIT Undock "+this.name+" from "+partner.name);
+//		debugmsg("BIT Undock "+this.name+" from "+partner.name);
 		if( this.ctrl != null ){
 			this.ctrl.undock(partner);
 		}
@@ -2620,7 +2811,7 @@ function Bit( btype, x, y, w, h, k) {
 
 	this.undockfrom = function(partner, dom)
 	{
-		debugmsg("BIT Undock from "+this.name+" <- "+partner.name);
+//		debugmsg("BIT Undock from "+this.name+" <- "+partner.name);
 		if( this.ctrl != null){
 			this.ctrl.undockfrom(partner, dom);
 		}
@@ -2632,10 +2823,7 @@ function Bit( btype, x, y, w, h, k) {
 	this.flip = function()
 	{
 		const btmp = this.btype & 7;
-		let idx = this.btype - btmp;
-		let i, tmp;
-		let nx, ny;
-		const len = this.snaps.length;
+		const idx = this.btype - btmp;
 
 		if( this.isDocked() ){
 			return false;
@@ -2643,33 +2831,13 @@ function Bit( btype, x, y, w, h, k) {
 
 		if( btmp == 0){
 			this.btype = idx + 1;
-			i = 1;
 		}else if( btmp == 1){
 			this.btype = idx;
-			i = 0;
 		}
-		this.setOrientation( i);
+		this.setOrientation( this.btype & 1);
 
-		// re orientate the snaps
-		for(i=0; i < len; i++){
-			if( this.snaps[i] != null){
-				
-				tmp = this.snaps[i].w;
-				this.snaps[i].w = this.snaps[i].h;
-				this.snaps[i].h = tmp;
+		this.setSnaps();
 
-				tmp = this.snaps[i].rx;
-				this.snaps[i].rx = this.snaps[i].ry;
-				this.snaps[i].ry = tmp;
-
-				nx = this.x+this.coords[i+i];
-				ny = this.y+this.coords[i+i+1];
-
-				this.snaps[i].x = nx;
-				this.snaps[i].y = ny;
-				this.snaps[i].side = this.suffix[i];
-			}
-		}
 		return true;
 	}
 
@@ -2681,7 +2849,7 @@ function Bit( btype, x, y, w, h, k) {
 		}
 		t = 9 - t
         ctx.lineWidth = 2;
-        ctx.strokeStyle = "#ff0000";
+        ctx.strokeStyle = "#00ff00";
         ctx.strokeRect(this.x+t, this.y+t, this.w-t-t, this.h-t-t);
 	}
 
@@ -2748,7 +2916,7 @@ function Bit( btype, x, y, w, h, k) {
 				xsnap = this.snaps[ snaporder[1] ];
 			}
 		}else if( ty > 2*tx){
-			// vertical mption
+			// vertical motion
 			if( ary < 0 ){
 				xsnap = this.snaps[snaporder[2] ];
 			}else {
@@ -2958,7 +3126,10 @@ function Sketch() {
         if (!this.canvas || !this.canvas.getContext) {
             return false;
         }
-        ctx = this.canvas.getContext('2d');
+		if( progctx == null){
+	        ctx = this.canvas.getContext('2d');
+			progctx = ctx;
+		}
 
 		ctx.save();
 		ctx.font="18px Georgia";
@@ -2972,7 +3143,10 @@ function Sketch() {
         if (!this.canvas || !this.canvas.getContext) {
             return false;
         }
-        ctx = this.canvas.getContext('2d');
+		if( progctx == null){
+	        ctx = this.canvas.getContext('2d');
+			progctx = ctx;
+		}
 
 		ctx.save();
 		ctx.font="12px Georgia";
@@ -2993,7 +3167,10 @@ function Sketch() {
 			return false;
 		}
 		drawing = 1;
-        ctx = this.canvas.getContext('2d');
+		if( progctx == null){
+	        ctx = this.canvas.getContext('2d');
+			progctx = ctx;
+		}
 
 		cx = this.canvas.width;
 		cy = this.canvas.height;
@@ -3004,6 +3181,8 @@ function Sketch() {
 		        ctx.drawImage(background, ix, iy);
 			}
 		}
+		indicator_spin(4);
+		drawIndicator();
 		let pass;
 		for(pass=0; pass < 4; pass++){
 	        for (i = this.blist ; i != null ; i = i.next) {
@@ -3037,7 +3216,7 @@ function Sketch() {
 
 // sketch
     this.doMouseDown = function() {
-		let ahit = null;
+		let abit = null;
 		let tmp;
 		let i;
 		if( hidetouch){
@@ -3045,9 +3224,9 @@ function Sketch() {
 		}
 
 		if( selected != null){
-			ahit = selected.getDrag();
-			if( !ahit.isDocked() ){
-				tmp = ahit.hitHandle( mx, my);
+			abit = selected.getDrag();
+			if( !abit.isDocked() ){
+				tmp = abit.hitHandle( mx, my);
 				if( tmp == 1 ){
 					bitFlip();
 					return false;
@@ -3058,8 +3237,8 @@ function Sketch() {
 				}
 			}
 
-			if( ahit.ctrl != null){
-				ahit.ctrl.getData();
+			if( abit.ctrl != null){
+				abit.ctrl.getData();
 			}
 		}
 		if( bitform != null){
@@ -3078,18 +3257,13 @@ function Sketch() {
 
 		i = sketch.blist ;
         while( i != null ) {
-			ahit = i.bit.HitTest(mx, my);
-			if( ahit != null){
-				message("X="+ahit.x+" Y="+ahit.y);
-				ahit.setDxDy(mx, my);			// get the dx and dy for dragging
-				dragging = ahit.getDrag();
+			abit = i.bit.HitTest(mx, my);
+			if( abit != null){
+				abit.setDxDy(mx, my);			// get the dx and dy for dragging
+				dragging = abit.getDrag();
 
-				if( dragging != null && dragging.code == WIRE){
-					message("W "+dragging.print() );
-				}
-
-				selected = ahit;
-				scanning = ahit.findSnap();
+				selected = abit;
+				scanning = abit.findSnap();
 				if( scanning != null){
 					docktarget = scanning.paired;
 					if( docktarget != null){
@@ -3097,19 +3271,15 @@ function Sketch() {
 							scanning.bit.code != WIRE){
 							scanning.unDock();		// unlink the snap
 						}else {
-							message("un dock wire");
 							scanning.unDock();		// unlink the snap
 						}
 						sketch.drawProgram();
 					}
 				}
-				if( dragging == selected){		// autosel
-					if( dragging.code != WIRE ){	// not wire...
-						autosel = dragging;
-						autox = mx;
-						autoy = my;
-						//message("Autoselect");
-					}
+				if( dragging == selected ){		// autosel
+					autosel = dragging;
+					autox = mx;
+					autoy = my;
 				}
 			}
 // && i.bit.isDocked()
@@ -3128,14 +3298,14 @@ function Sketch() {
 			if( dragging != null && dragging.ctrl != null){
 				dragging.ctrl.setData();
 			}
-			if( ahit != null){
+			if( abit != null){
 				i = null;
 			}
 			if( i != null){
 				i = i.next;
 			}
 		}
-		if( ahit == null){
+		if( abit == null){
 			sx = mx;	// drag all.
 			sy = my;
 			docking = null;		// cancel any docking...
@@ -3144,6 +3314,7 @@ function Sketch() {
 			document.getElementById("canvasbox").style.cursor = "help"; // debugging..
 		}
 
+		indicator(255, 2);
         return false;
     }
 
@@ -3164,6 +3335,10 @@ function Sketch() {
 		let ldrag = dragging;
 		let i;
 
+		indicator(0, 0);
+		indicator(0, 1);
+		indicator(0, 3);
+
 //		message("Mouse Move "+mx+" "+my);
 		cw = sketch.canvas.width;
 		ch = sketch.canvas.height;
@@ -3176,61 +3351,17 @@ function Sketch() {
 			sx = 0;
 			sy = 0;
 //			message("Outside "+cw+" "+ch);
+			return;
 		}
 
 		// looking for dragging wire snap.
 		// scaning == selected and dragging == wire
-		if( selected != null && scanning == selected && dragging != null && dragging.code == WIRE){
-
-			if( selected == dragging.snaps[0] ){
-				if( dragging.snaps[1].paired != null){
-
-					message("WI "+dragging.snaps[1].x+" "+mx+" "+dragging.print() );
-
-//					if( docktarget == null){
-						if( (dragging.btype & 1 ) == 0){
-							if( dragging.snaps[1].x - mx-15 > 30 ){
-								selected.x = mx;
-							}else {
-								selected.x = dragging.snaps[1].x-46;
-							}
-						}else {
-							if( dragging.snaps[1].y - my - 15 > 30 ){
-								selected.y = my;
-							}else {
-								selected.y = dragging.snaps[1].y-46;
-							}
-						}
-//					}
-					ldrag = null;
-					dragging.ctrl.setBitSize( mx, my);
-				}
-			}else {
-				if( dragging.snaps[0].paired != null){
-
-					message("WO "+dragging.initw+" "+dragging.inith+" "+dragging.print() );
-
-//					if( docktarget == null){
-						if( (dragging.btype & 1 ) == 0){
-							if( mx - dragging.snaps[0].x > 45){
-								selected.x = mx;
-							}else {
-								selected.x = dragging.snaps[0].x+46;
-							}
-						}else {
-							if(  my - dragging.snaps[0].y > 45 ){
-								selected.y = my;
-							}else {
-								selected.y = dragging.snaps[0].y+46;
-							}
-						}
-//					}
-					ldrag = null;
-					dragging.ctrl.setBitSize( mx, my);
-				}
-			}
-//		}else {
-//			message("");
+//		if( selected != null && scanning == selected && dragging != null && dragging.ctrl != null){
+//			dragging.ctrl.doDrag(mx, my);
+//		}
+		if( selected != null && scanning == selected && dragging != null && dragging.ctrl != null){
+			ldrag = dragging.ctrl.doDrag(mx, my);
+			indicator(160, 3);
 		}
 
 		if( selected != null && scanning == null){
@@ -3243,6 +3374,7 @@ function Sketch() {
 					cname = "pointer";
 				}
 			}
+			indicator(80, 0);
 		}
 
 		if( curctrl != null){
@@ -3251,6 +3383,7 @@ function Sketch() {
 			sy = 0;
 			ldrag = null;
 			drawmode = 2;
+			indicator(240, 0);
 		}
 
 		if( ldrag != null){
@@ -3276,6 +3409,7 @@ function Sketch() {
 			}
 			cname = "move";
 			drawmode = 2;
+			indicator(80, 1);
 
 		}else if( sx != 0 && sy != 0){
 			// pan 
@@ -3297,12 +3431,19 @@ function Sketch() {
 			}
 			cname = "all-scroll";
 			drawmode = 2;
+			indicator(255, 1);
 		}else {
 			i = sketch.blist;
+			indicator(160, 1);
 			while( i != null ) {
 				ahit = i.bit.HitTest(mx, my);
 				if( ahit != null){
 					cname = "pointer";
+					if( i.bit.ctrl != null){
+						if( i.bit.ctrl.HitTest(mx, my)){
+							cname = "crosshair";
+						}
+					}
 					i = null;
 				}else {
 					i = i.next;
@@ -3317,7 +3458,7 @@ function Sketch() {
 			}
 		}
 
-		doAnimate();	// refresh the display
+//		doAnimate();	// refresh the display
 		document.getElementById("canvasbox").style.cursor = cname;
     }
 
@@ -3335,8 +3476,10 @@ function Sketch() {
 		cw = sketch.canvas.width;
 		ch = sketch.canvas.height;
 
+		indicator(0, 2);
+
         //sketch.snaps.MouseUp(mx, my);
-		if( docktarget != null){
+		if( docktarget != null && scanning != null){
 			docking = dragging;
 			// use scanning object to determine dockX and dockY
 			dockX = docktarget.x - scanning.x;
@@ -3436,18 +3579,18 @@ function Sketch() {
 			return 0;
 		}
 		if( xbit.isDocked() ){
-			message("Remove: bit is docked");
+//			message("Remove: bit is docked");
 			return 0;
 		}
 		this.getBounds();
 		if( this.bitvisible < 2){
-			message("Remove: cannot remove last visble bit");
+//			message("Remove: cannot remove last visble bit");
 			return 0;
 		}
 // ok to delete bit
 		if( xbit == this.blist.bit){
 			this.blist = this.blist.next;
-			message("First bit");
+//			message("First bit");
 		}
 
 		xbit.carrier.delBit();
@@ -3540,11 +3683,12 @@ function Sketch() {
 			if( hidetouch){
 				UIhidetouch();
 			}
-			e.preventDefault();
+//			debugmsg("TS "+e.touches.length);
 			if( e.touches.length == e.targetTouches.length){
 				mx = touchobj.pageX-ox;
 				my = touchobj.pageY-oy;
 				sketch.doMouseDown();
+//				e.preventDefault();
 			}
 			}, false);
  
@@ -3556,11 +3700,14 @@ function Sketch() {
 			if( hidetouch){
 				UIhidetouch();
 			}
-			e.preventDefault();
+//			debugmsg("TM "+e.touches.length);
+			if(e.changedTouches.length == 1){
+				e.preventDefault();
 
-			mx = touchobj.pageX-ox;
-			my = touchobj.pageY-oy;
-			sketch.doMouseMove();
+				mx = touchobj.pageX-ox;
+				my = touchobj.pageY-oy;
+				sketch.doMouseMove();
+			}
 		}, false);
  
 		this.canvas.addEventListener('touchend', function(e){
@@ -3571,11 +3718,14 @@ function Sketch() {
 			if( hidetouch){
 				UIhidetouch();
 			}
-			e.preventDefault();
+//			debugmsg("TE "+e.touches.length);
+			if(e.changedTouches.length == 0){
+//				e.preventDefault();
 
-			mx = touchobj.pageX-ox;
-			my = touchobj.pageY-oy;
-			sketch.doMouseUp();
+				mx = touchobj.pageX-ox;
+				my = touchobj.pageY-oy;
+				sketch.doMouseUp();
+			}
 		}, false);
  
 
@@ -3611,8 +3761,10 @@ function doAnimate()
 			drawmode--;
 		}
 		if( selected != null){
+			animatecolor = "#ff0000";
 			selected.Animate( tick);
 			drawmode = 2;
+			animatecolor = "#ffffff";
 		}
 		if( docktarget != null){
 			docktarget.Animate( tick);
@@ -3704,7 +3856,7 @@ function doTimer()
 
 	tock++;
 	if( tock >= 4*drawspeed){
-		tock = 0;
+		tock = 1;	// 
 
 		if( docking != null){
 			doDocking();
@@ -3734,6 +3886,23 @@ function doTimer()
 			t = tn;
 		}
 		slowTimer_list.head = tafter;
+
+		if( startSound ){
+			t = audio_list.head;
+			tafter = null;
+			while(t != null){
+				tn = t.next;
+				if( !t.ob.setup() ){
+					t.next = tafter;
+					tafter = t;
+				}else {
+					t.obj = null;	// deref
+				}
+		
+				t = tn;
+			}
+			audio_list.head = tafter;
+		}
 	}
 }
 
@@ -3788,9 +3957,7 @@ function initFindTab(initdata, i, n)
 
 function loadInitData( initdata)
 {	let i,j, num;
-	let bl, bp;
-	let pair;
-	let snap;
+	let bl;
 	let bit, bit2;
 	let nbit;
 	let idx;
@@ -3859,7 +4026,7 @@ function loadInitData( initdata)
 		}else if( len > 1 && initdata[i] == "options"){
 			debugmsg("INIT options");
 		}else if( len > 2 ){
-			message("Bad load data, expected 'bit' got "+initdata[i] +" len="+len);
+//			message("Bad load data, expected 'bit' got "+initdata[i] +" len="+len);
 			return;
 		}
 		obj = next;

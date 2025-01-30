@@ -1,7 +1,6 @@
 // midibit.js
 // midi control bits
 
-
 // manage how notes are distributed
 
 function MIDInoOutput()
@@ -25,7 +24,7 @@ function localMidiOut()
 		let msg3 = [0,0,0];
 		let msg2 = [0,0];
 
-//		debugmsg("LOCALOUT "+msg[0].toString(16)+" "+msg[1].toString(16));
+//		debugmsg("LOCALOUT["+msg.length+"] "+msg[0].toString(16)+" "+msg[1].toString(16));
 
 		this.sending++;
 		if( this.sending < 2){
@@ -128,9 +127,9 @@ function selMIDIindev(dev)
 {	let l = MIDIindev_list.head;	// list of interfaces
 	let useMIDIin = null;
 
+
 	if( dev == 0){
 		if( MIDIindev[dev] == null){
-			debugmsg("Local Midi In");
 			useMIDIin = new MIDIinputobj(null);
 			useMIDIin.name = "local";
 		}
@@ -138,7 +137,7 @@ function selMIDIindev(dev)
 	}
 
 	if( l != null){
-		debugmsg("Sel "+dev+" "+l.ob.name+" "+l.ob.index);
+		debugmsg("Sel in "+dev+" "+l.ob.name+" "+l.ob.index);
 	}
 	while(l != null){
 		if( l.ob.index == dev){
@@ -198,7 +197,7 @@ function selMIDIoutdev(dev)
 		}else {
 			useMIDIout = localOut;
 		}
-
+// debugmsg("sel local");
 		return useMIDIout;
 	}
 	while( l != null){
@@ -378,21 +377,48 @@ function midiCVBit(bit)
 // midi CV (notes)
 	this.getData = function()
 	{	let f = null;
-		let curgrp = this.groupobj;
+		let s = new saveargs();
 
 
 		f = document.getElementById("groupname");
 		if( f != null){
-			debugmsg("CVgroupname "+f.value);
-			this.groupobj = getMidiInGroup(f.value);
-			if( this.groupobj.name != curgrp.name){
-				debugmsg("CV change group");
-				curgrp.disconnect_cv(this);
-				this.groupobj.connect_cv(this);
-			}
+			s.addarg("groupname");
+			s.addarg(f.value);
 		}
 
-		debugmsg("CV "+this.groupobj.name+" "+this.groupobj.channel);
+		this.doLoad(s.getdata(), 0);
+
+	}
+
+	//midicv
+	this.doLoad = function(initdata, idx)
+	{	let len = initdata[idx];
+		let n = 1;
+		let param="";
+		let val = "";
+		let curgrp = this.groupobj;
+
+		for(n = 1; n < len ; n += 2){
+			param = initdata[idx+n];
+			val = initdata[idx+n+1];
+
+			if( param == "'control'" || param == "control"){
+				continue;
+			}
+			if( param == "groupname"){
+				if( val > 0){
+					debugmsg("CVgroupname "+val);
+					this.groupobj = getMidiInGroup(val);
+					if( this.groupobj.name != curgrp.name){
+						debugmsg("CV change group");
+						curgrp.disconnect_cv(this);
+						this.groupobj.connect_cv(this);
+					}
+				}
+			}
+		}
+		debugmsg("CV doload "+this.groupobj.name+" "+this.groupobj.channel);
+
 	}
 
 	this.onRemove = function()
@@ -518,28 +544,69 @@ function midiCCBit(bit)
 	// midicc
 	this.getData = function()
 	{	let f = null;
-		let curgrp = this.groupobj;
+		let s = new saveargs();
+
 
 		f = document.getElementById("groupname");
 		if( f != null){
-			this.groupobj = getMidiInGroup(f.value);
-			if( this.groupobj.name != curgrp.name){
-				debugmsg("CC change group");
-				curgrp.disconnect_cc(this);
-				this.groupobj.connect_cc(this);
-			}
-		}
-
-		f = document.getElementById("control");
-		if( f != null){
-			this.cc = f.value;
+			s.addarg("groupname");
+			s.addarg(f.value);
 		}
 		f = document.getElementById("usercontrol");
 		if( f != null){
 			if( f.value != ""){
-				this.cc = f.value;
+				s.addarg("cc");
+				s.addarg(f.value);
+			}else {
+				f = document.getElementById("control");
+				if( f != null){
+					s.addarg("cc");
+					s.addarg(f.value);
+				}
 			}
 		}
+
+		this.doLoad(s.getdata(), 0);
+
+	}
+
+	//midicc
+	this.doLoad = function(initdata, idx)
+	{	let len = initdata[idx];
+		let n = 1;
+		let param="";
+		let val = "";
+		let curgrp = this.groupobj;
+
+		for(n = 1; n < len ; n += 2){
+			param = initdata[idx+n];
+			val = initdata[idx+n+1];
+
+			if( param == "'control'" || param == "control"){
+				continue;
+			}
+			if( param == "groupname"){
+				if( val > 0){
+					this.groupobj = getMidiInGroup(val);
+					if( this.groupobj.name != curgrp.name){
+						debugmsg("CC change group");
+						curgrp.disconnect_cc(this);
+						this.groupobj.connect_cc(this);
+					}
+				}
+			}
+			if( param == "cc"){
+				this.cc = val;
+			}
+			if( param == "mod"){
+				this.mod = val;		// modulation routing
+			}
+			if( param == "offset"){
+				this.offset = val;		// modulation routing
+			}
+		}
+		debugmsg("CV doload "+this.groupobj.name+" "+this.groupobj.channel);
+
 	}
 
 	this.onRemove = function()
@@ -652,8 +719,6 @@ function midiCVOutBit(bit)
 	this.setValue = function(data, chan)
 	{	let msg = [ 0x90, 60, 127];
 		let note = Math.floor(data/ 2);	// 0-127
-		let mid = null;
-		let send=null;
 		let output = null;
 		const grp = this.groupobj;
 		let chanx = grp.channel-1;
@@ -803,6 +868,7 @@ function midiCCOutBit(bit)
 	this.bitimg =this.bit.findImage(imagename);
 	this.bitname = "midiccout";
 	this.name = "MidiCCout";
+	this.prevnote.changed(256);		// no prev value can match
 
     // Midi note out bit self draw
 	this.Draw = function( )
@@ -919,37 +985,83 @@ function midiCCOutBit(bit)
 	{	let f = null;
 		let val = 0;
 		let g = null;
+		let s = new saveargs();
 
+		s.addnv("control", "'midiccout'");
+	
 		f = document.getElementById("groupname");
 		if( f != null){
-			if( f.value > 0){
-				this.groupobj = getMidiOutGroup(f.value);
-				debugmsg("CC Out "+this.groupobj.name+" "+this.groupobj.channel);
-			}
-		}
-		f = document.getElementById("control");
-		if( f != null){
-			this.cc = f.value;
-			debugmsg("CC OUT control "+this.cc);
+			s.addarg("groupname");
+			s.addarg( f.value);
 		}
 		f = document.getElementById("usercontrol");
 		if( f != null){
 			if( f.value != ""){
-				this.cc = f.value;
-				debugmsg("CC USER control "+this.cc);
+				s.addarg("cc");
+				s.addarg( f.value);
+			}else {
+				f = document.getElementById("control");
+				if( f != null){
+					s.addarg("cc");
+					s.addarg( f.value);
+				}
 			}
+	
 		}
 
 		f = document.getElementById("mod");
 		if( f != null){
+			s.addarg("mod");
+			s.addarg( f.value);
 			this.mod = f.value;		// modulation routing
 		}
 		f = document.getElementById("offset");
 		if( f != null){
+			s.addarg("offset");
+			s.addarg( f.value);
 			this.offset = f.value;		// modulation routing
 		}
 
+		this.doLoad(s.getdata(), 0);
+
 	}
+
+	this.doLoad = function(initdata, idx)
+	{	let len = initdata[idx];
+		let n = 1;
+		let param="";
+		let val = "";
+
+		for(n = 1; n < len ; n += 2){
+			param = initdata[idx+n];
+			val = initdata[idx+n+1];
+
+			if( param == "'control'" || param == "control"){
+				continue;
+			}
+			if( param == "groupname"){
+				if( val > 0){
+					this.groupobj = getMidiOutGroup(val);
+				}
+			}
+//			debugmsg("Midiccout  "+idx+" "+len+ " "+param+"="+val);
+			if( param == "cc"){
+				if( val != this.cc){
+					this.prevnote.changed(256);	// make sure to re-send on change
+				}
+				this.cc = val;
+				//			debugmsg("CC OUT control "+this.cc);
+			}
+			if( param == "mod"){
+				this.mod = val;		// modulation routing
+			}
+			if( param == "offset"){
+				this.offset = val;		// modulation routing
+			}
+		}
+	}		
+
+
 
 	// finish init.
 	midiccout_list.adduniq( this, null);
@@ -1138,7 +1250,6 @@ function midiGroupBit(bit)
 		let gn = null;
 		let md = null;
 		let cur;
-		let l = null;
 
 		f = document.getElementById("newname");
 		if( f != null){
@@ -1199,7 +1310,7 @@ function midiGroupBit(bit)
 			cur = gn.midicnt;
 			f = document.getElementById("midiinsel");
 			if( f != null){
-				val = f.value;
+				val = 1*f.value;
 				gn.midicnt = val;
 				if( val < 10){
 					selMIDIindev(val);
@@ -1324,21 +1435,7 @@ function midiClockBit(bit)
 	this.paramnames = ["source", "beats", "tempo"];
 
     // Midi note bit self draw
-	this.Draw = function( )
-	{	var b = this.bit;
-
-		if( b == null){
-			return;
-		}
-		bt = b.btype & 7;	// 0 = horiz, 1 == vert
-
-        ctx.fillStyle = "#ffffff";
-		if( bt == 0){
-			drawImage( this.bitimg , b.x, b.y);
-		}else {
-			drawImage( this.bitimg+1 , b.x, b.y);
-		}
-	}
+	// draw() generic control
 
 	// midi clock
 	this.setValue = function(data, chan)
@@ -1451,25 +1548,7 @@ function noteGroupBit(bit)
 	this.bitimg =this.bit.findImage(imagename);
 	this.bitname = imagename;
 
-	this.Draw = function( )
-	{	var b = this.bit;
-		var md = null;
-
-		if( b == null){
-			return;
-		}
-		bt = b.btype & 7;	// 0 = horiz, 1 == vert
-
-		ctx.save();
-        ctx.fillStyle = "#ffffff";
-		if( bt == 0){
-			drawImage( this.bitimg , b.x, b.y);
-		}else {
-			drawImage(this.bitimg+1 , b.x, b.y);
-		}
-		ctx.restore();
-	}
-
+	// draw() generic control
 
 	// for the interface, show which notegroups are attached.
 	this.showNotes = function(md)
@@ -1640,24 +1719,7 @@ function splitGroupBit(bit)
 	this.bitname = imagename;
 
 	// splitter
-	this.Draw = function( )
-	{	var b = this.bit;
-		var md = null;
-
-		if( b == null){
-			return;
-		}
-		bt = b.btype & 7;	// 0 = horiz, 1 == vert
-
-		ctx.save();
-        ctx.fillStyle = "#ffffff";
-		if( bt == 0){
-			drawImage( this.bitimg , b.x, b.y);
-		}else {
-			drawImage(this.bitimg+1 , b.x, b.y);
-		}
-		ctx.restore();
-	}
+	// draw - generic control
 
 	this.showSplits = function(md)
 	{	let msg = "";
@@ -1711,24 +1773,6 @@ function targetGroupBit(bit)
 	this.bitimg =this.bit.findImage(imagename);
 	this.bitname = imagename;
 
-	this.Draw = function( )
-	{	var b = this.bit;
-		var md = null;
-
-		if( b == null){
-			return;
-		}
-		bt = b.btype & 7;	// 0 = horiz, 1 == vert
-
-		ctx.save();
-        ctx.fillStyle = "#ffffff";
-		if( bt == 0){
-			drawImage( this.bitimg , b.x, b.y);
-		}else {
-			drawImage(this.bitimg+1 , b.x, b.y);
-		}
-		ctx.restore();
-	}
 
 	// targetting editor
 

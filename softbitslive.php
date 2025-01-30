@@ -1,6 +1,7 @@
 ﻿<?php
   // 11/16/24
   // 11/24/24
+  
   $port = "";
   $nonet = 0;
   $loaddata="";
@@ -258,14 +259,14 @@
                     echo('<td valign="top">');
                     $dir = new DirectoryIterator("kits");
                     // show Basic first
-                    echo('<div  style="width:75px;height:25px;border-color:green; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseKit(\''."Basic".'\');"> Kit '."Basic"."</div>\n");
+                    echo('<div  style="width:75px;height:25px;border-color:green; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseKit_clicked(\''."Basic".'\');"> Kit '."Basic"."</div>\n");
                     foreach ($dir as $fileinfo) {
                       if (!$fileinfo->isDot()) {
                         echo("<!-- filename=".$fileinfo->getPathname()." -->\n");
                         $xid = explode(".", $fileinfo->getFilename());
                         $kid = explode("_", $xid[0]);
                         if( $kid[1] != "Basic"){
-                          echo('<div  style="width:75px;height:25px;border-color:green; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseKit(\''.$kid[1].'\');"> Kit '.$kid[1]."</div>\n");
+                          echo('<div  style="width:75px;height:25px;border-color:green; border-width:10px; border-style:solid;cursor:pointer;" onclick="UIchooseKit_clicked(\''.$kid[1].'\');"> Kit '.$kid[1]."</div>\n");
                         }
                       }
                     }
@@ -287,6 +288,21 @@
                 </tr>
             </table>
           </td>
+          <td valign='top'>
+            <?php
+            $infodir = "resources/info";
+            if( is_dir($infodir)){
+              echo("<div id='info'>\n");
+              $dir = new DirectoryIterator($infodir);
+              foreach ($dir as $fileinfo) {
+                if (!$fileinfo->isDot()) {
+                  include($fileinfo->getPathname());
+                }
+              }
+              echo("</div>\n");
+            }
+            ?>
+          </td>
         </tr>
       </table>
       <hr />
@@ -303,12 +319,15 @@
     </div> <!-- end of progdiv -->
     <div id="playdiv" style="display:none;">
       <p>Play area</p>
+
       <table>
           <tr>
             <td valign="top">
               <div id="playbox">
                   <canvas width ="800" height="600" tabindex="2" id="playcanvas">
                   </canvas>
+                  <video id='video' style='display:none'>
+                  </video >
                 </div>
             </td>
           </tr>

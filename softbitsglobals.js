@@ -4,8 +4,12 @@
 //
 //////////////////////////////////////////////////////////////////////////////
 //
+// 1/20/25
+
 var sketch = null;
 var ctx = null;
+var playctx = null;
+var progctx = null;
 var mx, my;
 var sx = 0;
 var sy = 0;	// when dragging background
@@ -76,6 +80,9 @@ var animation_list = new objlist();
 
 // debug messages
 var debug = null;
+
+var info_list = new objlist();
+var audio_list = new objlist();		// for delayed audio setup.
 
 ////////////////////////////////////////////////////////////////
 // link list of objects
@@ -394,6 +401,16 @@ function outBitValues()
 }
 
 
+/////////////////////////////////////////////////////////////////////////////////////////
+function setInfo(name)
+{	let f = document.getElementById("info");
+
+	if( f != null){
+		debugmsg("Show "+name);
+	}
+
+}
+
 // length counted objects.
 // len,type, ...
 function UIdoSave()
@@ -653,7 +670,6 @@ function findimage(name){
 			return i;
 		}
 	}
-//	debugmsg("Find "+name+" not found i="+i);
 	return null;
 }
 
@@ -704,7 +720,7 @@ function sbmodule( name )
 		"power_off", 2,
 	];
 
-
+//sbmodule
 	this.findkitcode = function(name)
 	{	let n = 0;
 		for(n=0; n < this.kitctrlcodes.length; n = n+2){
@@ -735,12 +751,7 @@ function sbmodule( name )
 		return 253;
 	}
 
-	this.getdomain = function(name)
-	{
-		debugmsg("getdomain "+name);
-		return 0;
-	}
-
+//sbmodule
 	this.imagefetch = function(name, dst, folder)
 	{	let imagedir="";
 
@@ -748,6 +759,7 @@ function sbmodule( name )
 			imagedir="resources/snaps/";
 		}else if(folder == 1) {
 			imagedir="resources/bits/";
+//			debugmsg("Load "+name+" "+folder);
 		}else if(folder == 2) {
 			imagedir="resources/images/";
 		}
@@ -815,6 +827,10 @@ function sbmodule( name )
 		wireboutimg = findimage("wireout-b");
 		defaultimg = findimage("default");
 		seqimg = findimage("seq");
+		audiolinimg = findimage("audioin-l");
+		audiotinimg = findimage("audioin-t");
+		audioroutimg = findimage("audioout-r");
+		audioboutimg = findimage("audioout-b");
 	}
 
 // sbmodule.addctrl
@@ -882,7 +898,6 @@ function addkit( sbmod)
 
 function findkit( name)
 {	var t;
-	var xmlhttp;
 
 	t = kitlist;
 
