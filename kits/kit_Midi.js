@@ -1533,6 +1533,10 @@ function kit_midi( )
 				0,	12, "splitter_group",	"Splitter Group filter",	 0x0000, "Action", 0, 0,	
 		"target", "targetgroup",	50, 50,	null, null ,null,  null, // 24
 				0,	13, "Learn Targets",	"Learn Target filter",	 0x0000, "Action", 0, 0,	
+
+		"", "midiplayer",	400, 400,	"actionin", "actionout" ,null,  null, 				// 25	
+			11,	14, "midi_player",	"Midi file player",	 0x0011, "Action", 0, 0,	
+
 		null, null, null, null,				null, null, null, null
 	];
 
@@ -1640,6 +1644,12 @@ function kit_midi( )
 		}else if( ctrl == 13){
 			// Learn target		manage targets
 			ct = new targetGroupBit( bit);
+			bit.ctrl = ct;
+			ct.setData();
+			return ct;
+		}else if( ctrl == 14){
+			// Midi file player - a midi interface.
+			ct = new playerBit( bit);
 			bit.ctrl = ct;
 			ct.setData();
 			return ct;

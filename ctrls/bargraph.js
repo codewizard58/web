@@ -759,6 +759,9 @@ function mandleBit(bit)
 				}
 				this.power = val;
 			}else if(param == "gate"){
+				if( val < 10){
+					val = 10;
+				}
 				this.gate = checkRange(val);
 			}else if(param == "zoom"){
 				this.zoom = val;
@@ -766,8 +769,8 @@ function mandleBit(bit)
 				if( val < 10){
 					val = 10;
 				}
-				if( val > 250){
-					val = 250;
+				if( val > 255){
+					val = 255;
 				}
 				if( val != this.reps){
 					this.resetPath(this.shape);

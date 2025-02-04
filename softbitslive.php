@@ -212,8 +212,8 @@
       <table>
         <tr>
           <td valign="top">
-            <div id="canvasbox">
-              <canvas width ="1024" height="768" tabindex="1" id="canvas">
+            <div id="canvasbox" ondrop="UIondrop(event);" ondragover="UIondragover(event);">
+              <canvas width ="1024" height="768" tabindex="1" id="canvas"  >
               </canvas>
             </div>
           </td>

@@ -3,6 +3,7 @@
 
 // manage how notes are distributed
 
+// null midi output interface
 function MIDInoOutput()
 {	this.sending = 0;
 
@@ -16,6 +17,7 @@ var noOutput = null;
 
 // local Midi output handler.
 var localOut = null;
+
 function localMidiOut()
 {	this.sending = 0;
 
@@ -428,7 +430,7 @@ function midiCVBit(bit)
 	// midicv
 	this.filter = function(op, chan, arg2, arg3, dev)
 	{	let b = this.bit;
-		let note = arg2+arg2;
+		let note = arg2+arg2;				// use * 2
 		let channel = this.groupobj.channel;
 
 		if( dev != this.groupobj.midicnt){

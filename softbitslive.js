@@ -73,6 +73,42 @@ const DELAY = 126;
 const PANNER = 127;
 const MIXER = 128;
 
+// keycodes
+const KEYDEL = 46;
+const KEYC = 67;
+const KEYV = 88;
+
+function UIondrop(e)
+{	let item;
+	e.preventDefault();
+	if (e.dataTransfer.items) {
+		const data = e.dataTransfer.items;
+		for (let i = 0; i < data.length; i += 1) {
+			item = data[i];
+			if (data[i].kind === "string" && data[i].type.match("^text/plain")) {
+				debugmsg("DROP "+data[i].type);
+			} else if (data[i].kind === "string" && data[i].type.match("^text/html")) {
+			  // Drag data item is HTML
+			  data[i].getAsString((s) => {
+				debugmsg("… Drop: HTML "+s);
+				});
+			}else if (item.kind === "file") {
+				const file = item.getAsFile();
+				debugmsg("… file["+i+"].name = "+file.name);
+				previewFile(file);
+			}
+		}
+	}
+	  
+
+	debugmsg("Dropped");
+}
+
+function UIondragover(e)
+{
+	e.preventDefault();
+}
+
 var divlist = [
 	"headerdiv",
 	"logger",
@@ -80,6 +116,21 @@ var divlist = [
 	"playdiv",
 	"aboutdiv"
 ];
+
+function previewFile(file) {
+	let reader = new FileReader();
+	reader.readAsText(file);
+	reader.onloadend = function(e) {
+	  let msg = e.target.result;
+	  let data = msg.split("\n");
+	  debugmsg("DATA "+data.length);
+	  loadInitString( msg);
+	  reLabel(sketch.blist);
+	  drawmode = 2;
+	  execmode = 2;
+	}
+  }
+  
 
 function UIhidetouch()
 {
@@ -243,6 +294,7 @@ function indicator(data, ind)
 	}
 }
 
+// change colors
 function indicator_spin( ind)
 {
 	if( ind >= 0 && ind < indicator_data.length){
@@ -721,7 +773,8 @@ var bytecode = [
 	[ 5, 0, 9, 3, 28, 0],				// 8 MIDICLK
 	null,
 	null,
-	null,
+	[ 5, 0, 9, 3, 28, 0],				// 11 midi file player
+
 
 	[ 4, 16, 0],						// 12 WIRESPLIT
 	[ 5, 0, 37, 20, 21, 0],				// 13 ARITHINVERT
@@ -1672,7 +1725,7 @@ function Program()
 
 		this.needsend = 0;	
 		this.sendsize = 8;		// allow for 0xf0 S B P 0x06 seqh seql ver
-		indicator_spin(5);
+//		indicator_spin(5);
 
 		while( prog != null){
 			ibp = bp;
@@ -3090,15 +3143,126 @@ function reLabel( bl)
 	// message("reLabel "+n);
 }
 
-function Keyboard(){
+function history(cmd, data)
+{	this.command = cmd;
+	this.data = data;
+
+	history_list.addobj(this, null);
+}
+
+function Keyboard()
+{	this.modifiers = 0;
+	this.last = 0;
 
 	this.KeyPress = function( code, up)
 	{	let i;
 		let bit = null;
+		let msg="";
+		let net = 0;
+		let bl = null;
+		let bn = null;
+		let num = 1;
+		let f;
 
 		if( up != 0){
 			up = 127;
 		}
+		if( code == 16 || code == 17){
+			if( up != 0){
+				if( code == 16){
+					this.modifiers |= 1;
+				}else if( code == 17){
+					this.modifiers |= 2;
+				}
+			}else {
+				if( code == 16){
+					this.modifiers &= 0xfe;
+				}else if( code == 17){
+					this.modifiers &= 0xfd;
+				}
+			}
+			return;
+		}else {
+			debugmsg("Mod2 "+code+" "+up);
+		}
+
+		if( code == 86 && (this.modifies & 2)== 0 && up != 0){	// paste ^v
+			if( copyBuffer != null && copyBuffer != ""){
+				loadInitString(copyBuffer);
+				reLabel(sketch.blist);
+				drawmode = 2;
+				execmode = 2;
+			}else {
+				debugmsg("Paste no copy '"+copyBuffer+"'");
+			}
+			return;
+		}
+
+		if( selected != null && up != 0){
+			bit = selected;
+			net = bit.net;
+			bl = sketch.blist;
+			while(bl != null){
+				if( bl.bit.net == net){
+					bl.num = num;
+//					debugmsg("BL bit="+bl.bit.name+" "+bl.num);
+					num++;
+				}
+				bl = bl.next;
+			}
+			// pass two get save data
+			msg += "2, 'module', // bit="+bit.name+" net="+net+"\n";
+			msg += saveSub(sketch.blist, net);
+//			debugmsg("SAVE "+msg+" "+code+" "+this.modifiers);
+
+			if( (code == KEYDEL && this.modifiers == 0) || (code == KEYV && (this.modifiers & 2)== 2 )|| (code == KEYC && (this.modifiers & 2)== 2 )){		// delete, cut, copy
+				// remove net 
+				copyBuffer = null;
+
+				if( code == KEYDEL){
+					new history("delete", msg);
+				}else if(code == KEYV){
+					new history("cut", msg);
+					copyBuffer = msg;
+				}else if( code == KEYC){
+					copyBuffer = msg;
+					return;
+				}
+
+				selected = null;
+				if( code == 46 || code == 88){	// delete or cut
+					bl = sketch.blist;
+					while(bl != null){
+						bn = bl.next;
+						bit = bl.bit;
+						if( bit.net == net){
+							debugmsg("REM bit="+bit.name);
+							// un connect.
+							for(i=0; i < bit.snaps.length; i++){
+								if( bit.snaps[i] != null){
+									bit.snaps[i].paired = null;
+								}
+							}
+							selected = bit;
+							docktarget = null;
+							bitRemove();
+	//						sketch.delBit(bit);
+						}
+						bl = bn;
+					}
+
+					f = document.getElementById('savedata');
+					f.innerHTML=msg;
+				
+					f = document.getElementById('saveform');
+					f.submit();
+					reLabel( sketch.blist);
+					drawmode = 2;
+					execmode = 2;
+				}
+			}
+		}
+
 
 		if( bitformaction != null){
 			bit = bitformaction.bit;
@@ -3181,7 +3345,7 @@ function Sketch() {
 		        ctx.drawImage(background, ix, iy);
 			}
 		}
-		indicator_spin(4);
+//		indicator_spin(4);
 		drawIndicator();
 		let pass;
 		for(pass=0; pass < 4; pass++){
@@ -3539,8 +3703,9 @@ function Sketch() {
 
 	// sketch.KeyDown
     this.KeyDown = function(e) {
+		let code = e.keyCode;
         if (document.activeElement == document.getElementById("canvas")) {
-            sketch.keyboard.KeyPress(e.keyCode, 1);
+            sketch.keyboard.KeyPress(code, 1);
             return false;
         }
     }
@@ -3926,14 +4091,8 @@ function initFindBit( i)
 		bl = bl.next;
 	}
 	// not found
-	debugmsg("Initfind not found "+i);
-	bl = sketch.blist;
-	while( bl != null){
-		debugmsg("Initfind bit "+bl.num+" != "+i);
-		bl = bl.next;
-	}
 
-	return bl.bit;
+	return null;
 }
 
 // find bit N in the initdata
@@ -3945,14 +4104,30 @@ function initFindTab(initdata, i, n)
 
 //	debugmsg("initFindtab "+i+" "+n+" "+initdata[i]);
 
-	while( idx < initdata.length && initdata[idx+1] != n){
+	while( idx < initdata.length ){
 		if( initdata[idx] == "bit" ){
-			idx += 10 + initdata[idx+10] +1;
+			if(  initdata[idx+1] != n){
+				idx += 10 + initdata[idx+10] +1;
+			}else {
+				break;
+			}
 		}else if( initdata[idx] == "kit"){
-			idx += 3;
+			idx += initdata[idx-1];
+		}else if( initdata[idx] == "module"){
+			idx += initdata[idx-1];
 		}
 	}
 	return idx;
+}
+
+function countBits(bl)
+{	let count = 0;
+
+	while(bl != null){
+		count++;
+		bl = bl.next;
+	}
+	return count;
 }
 
 function loadInitData( initdata)
@@ -3966,6 +4141,8 @@ function loadInitData( initdata)
 	let len;
 	let obj;
 	let next = initdata.length;
+	let oldblist = sketch.blist;	// module will restore bit list
+	let mod = 0;					// module bit offset
 
 	// pass 1 create the bits.
 	num = 1;
@@ -3985,7 +4162,15 @@ function loadInitData( initdata)
 //		}else {
 //			debugmsg("INIT["+initdata.length+"] len="+len+" obj="+obj);
 //		}
-		if( len > 1 && initdata[i] == "kit"){
+// if module is first then do not resey the bit list.
+		if( len > 1 && initdata[i] == "module"){
+			sketch.blist = oldblist;
+			oldblist = null;
+			mod = countBits(sketch.blist);
+			debugmsg("Module count="+mod);
+			i += 2;
+		}
+		else if( len > 1 && initdata[i] == "kit"){
 			UIchooseKit(initdata[i+1]);
 			i += 2;
 		}else if( len > 10 && initdata[i] == "bit"){
@@ -3999,7 +4184,7 @@ function loadInitData( initdata)
 			}
 
 			bl = new Bitlist(nbit);
-			bl.num = num;
+			bl.num = num+mod;
 			bl.next = sketch.blist;
 			if( sketch.blist != null){
 				sketch.blist.prev = bl;
@@ -4046,9 +4231,9 @@ function loadInitData( initdata)
 			i += 2;
 		}else if( initdata[i] == 'bit'){
 			num = initdata[i+1];
-			bit = initFindBit( num);
+			bit = initFindBit( num+mod);
 			if( initdata[i+6] != 0){
-				bit2 = initFindBit( initdata[i+6]);
+				bit2 = initFindBit( initdata[i+6]+mod);
 				idx = initFindTab( initdata, 0, initdata[i+6]);
 				for(j=0; j < 4; j++){
 					if( initdata[idx+6+j] == num){
@@ -4059,7 +4244,7 @@ function loadInitData( initdata)
 				}
 			}
 			if( initdata[i+8] != 0){
-				bit2 = initFindBit( initdata[i+8]);
+				bit2 = initFindBit( initdata[i+8]+mod);
 				idx = initFindTab( initdata, 0, initdata[i+8]);
 				for(j=0; j < 4; j++){
 					if( initdata[idx+6+j] == num){
@@ -4070,7 +4255,7 @@ function loadInitData( initdata)
 				}
 			}
 
-			if( bit.ctrl != null){
+			if( bit != null && bit.ctrl != null){
 				bit.ctrl.doLoad( initdata, i+10);
 				// do dock logic.
 				if( bit.snaps[0] != null){
@@ -4119,4 +4304,48 @@ function loadInitData( initdata)
 	softprogram.drawProgram();
 }
 
+function loadInitString(data)
+{	let i, j;
+	let initData = [];
+	let cnt = 0;
+	let lines = data.split("\n");
+	let line;
+	let fields;
+	let f;
+	let pos ;
 
+//	debugmsg("Load init string "+lines.length);
+	for(i=0; i < lines.length; i++){
+		line = lines[i];
+		fields = line.split(",");
+		if( fields.length < 1){
+			continue;
+		}
+		for(j = 0; j < fields.length; j++){
+			f = fields[j];
+
+			pos = 0;
+			while( pos < f.length && (f.charAt(pos) == ' ' || f.charAt(pos) == '\r') ){
+				pos++;
+			}
+			if(pos == f.length){
+				break;
+			}
+			if( f.charAt(pos) == "'"){
+				initData[cnt] = f.substr(pos+1, f.length-pos-2);
+		//		debugmsg("String "+initData[cnt]);
+			}else if(f.charAt(pos) == "/" || f.charAt(pos) == "#") {
+				// comment 
+				break;
+			}else {
+				initData[cnt] = parseFloat(f);
+		//		debugmsg("Number "+initData[cnt]);
+			}
+			cnt++;
+		}
+	}
+
+//	debugmsg("initdata length "+initData.length+" "+initData[0]+" "+initData[1]);
+	loadInitData( initData);
+
+}

@@ -84,6 +84,10 @@ var debug = null;
 var info_list = new objlist();
 var audio_list = new objlist();		// for delayed audio setup.
 
+// for cut and paste
+var history_list = new objlist();
+var copyBuffer = "";
+
 ////////////////////////////////////////////////////////////////
 // link list of objects
 //
@@ -411,30 +415,21 @@ function setInfo(name)
 
 }
 
-// length counted objects.
-// len,type, ...
-function UIdoSave()
+function saveSub(bl, net)
 {	let msg = "";
-	let bl = sketch.blist;
-	let bit;
-	var bt;
-	var idx;
-	var i;
-	let msg2="";
-	let slen = 4;
-	let ckit = "";
+	let ckit="";
+	let slen;
+	let idx;
+	let bt;
+	let i;
 
-	// number the list
-	idx = 1;
-	bl = sketch.blist;
-	while(bl != null){
-		bl.num = idx++;
-		bl = bl.next;
-	}
-
-	bl = sketch.blist;
 	while(bl != null){
 		bit = bl.bit;
+		if( net != -1 && bit.net != net){
+//			debugmsg("NET "+bit.net+" "+net);
+			bl = bl.next;
+			continue;
+		} 
 		if( bit.kit.name != ckit){
 			msg += "3, 'kit','"+bit.kit.name+"',\n";
 			ckit = bit.kit.name;
@@ -460,6 +455,31 @@ function UIdoSave()
 
 		bl = bl.next;
 	}
+	return msg;
+}
+
+// length counted objects.
+// len,type, ...
+function UIdoSave()
+{	let msg = "";
+	let bl = sketch.blist;
+	let bit;
+	var bt;
+	var idx;
+	var i;
+	let msg2="";
+	let slen = 4;
+	let ckit = "";
+
+	// number the list
+	idx = 1;
+	bl = sketch.blist;
+	while(bl != null){
+		bl.num = idx++;
+		bl = bl.next;
+	}
+
+	msg += saveSub( sketch.blist, -1);
 //	message(msg);
 
 	msg += "5,'options',"+showchains+","+showprogram+","+showcode+", 1, \n"
