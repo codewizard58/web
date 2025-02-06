@@ -80,6 +80,9 @@ const KEYV = 88;
 
 function UIondrop(e)
 {	let item;
+	let ext;
+	let fname;
+
 	e.preventDefault();
 	if (e.dataTransfer.items) {
 		const data = e.dataTransfer.items;
@@ -94,8 +97,19 @@ function UIondrop(e)
 				});
 			}else if (item.kind === "file") {
 				const file = item.getAsFile();
-				debugmsg("… file["+i+"].name = "+file.name);
-				previewFile(file);
+//				debugmsg("… file["+i+"].name = "+file.name);
+				fname = file.name;
+				if( fname.length > 3){
+					ext = fname.substr(fname.length-4, 4);
+				}
+//				debugmsg("EXT="+ext);
+				if(ext == ".sbl"){
+					previewFile(file);
+				}else if( ext == ".mid"){
+					loadMidiFile(file);
+				}else {
+					debugmsg("Unsupported file type '"+ext+"'");
+				}
 			}
 		}
 	}
@@ -123,7 +137,7 @@ function previewFile(file) {
 	reader.onloadend = function(e) {
 	  let msg = e.target.result;
 	  let data = msg.split("\n");
-	  debugmsg("DATA "+data.length);
+//	  debugmsg("DATA "+data.length);
 	  loadInitString( msg);
 	  reLabel(sketch.blist);
 	  drawmode = 2;
@@ -447,6 +461,28 @@ function UIaddBit(idx, x, y, kit)
 
 
 // domains are now per snap in bitnames[+12]
+function createBit(bname, kit)
+{	let i;
+	let dcw, dch;
+	let msg="";
+	let greyed = 0;
+	let bits = null;
+	let k = findkit(kit);
+
+	dcw = sketch.canvas.width;
+	dch = sketch.canvas.height;
+
+	bits = k.bitnames;
+
+	for(i=0; bits[i] != null ; i += 16){
+		if( bits[i+10] == bname){
+			UIaddBit(i, dcw-50, 50, kit);
+			return;
+		}
+	}
+	return;
+}
+
 function drawChoice(bname, domain, kit)
 {	let i;
 	let dcw, dch;
@@ -3875,22 +3911,24 @@ function Sketch() {
 			}
 		}, false);
  
-		this.canvas.addEventListener('touchend', function(e){
-			var touchobj = e.changedTouches[0] // reference first touch point for this event
+		this.canvas.addEventListener('touchend', function(e)
+		{
 			let rect=this.getBoundingClientRect();
 			let ox = rect.left + window.scrollX;
 			let oy = rect.top + window.scrollY;
 			if( hidetouch){
 				UIhidetouch();
 			}
+
+
 //			debugmsg("TE "+e.touches.length);
-			if(e.changedTouches.length == 0){
+			if(e.changedTouches.length > 0){
 //				e.preventDefault();
 
-				mx = touchobj.pageX-ox;
-				my = touchobj.pageY-oy;
-				sketch.doMouseUp();
+				mx = e.changedTouches[0].pageX-ox;
+				my = e.changedTouches[0].pageY-oy;
 			}
+			sketch.doMouseUp();
 		}, false);
  
 

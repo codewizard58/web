@@ -64,11 +64,11 @@ function m_color(data, contrast, bright)
 		return "#ffffff";
 	}
 	if( data < 80){
-		msg = "#00"+m_hex(data*contrast+bright)+m_hex((80-data)*contrast+bright);
+		msg = "#00"+m_hex(data*contrast+bright)+m_hex((80-data)*contrast+bright);		// blue green
 	}else if( data < 160){
-		msg = "#"+m_hex(contrast*(data-80)+bright) +m_hex(contrast*(160-data) +bright)+"00";
+		msg = "#"+m_hex(contrast*(data-80)+bright) +m_hex(contrast*(160-data) +bright)+"00";	// red green
 	}else if( data < 240){
-		msg = "#"+m_hex(contrast*(240-data)+bright)+"00"+m_hex(contrast*(data-160) +bright);
+		msg = "#"+m_hex(contrast*(240-data)+bright)+"00"+m_hex(contrast*(data-160) +bright);	// red blue
 	}else {	// greys
 		msg = "#"+m_hex((data-240)*16)+m_hex((data-240)*16)+m_hex((data-240)*16);
 	}
