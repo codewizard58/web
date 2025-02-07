@@ -943,7 +943,7 @@ var bytecode = [
 	null,
 	null,
 	null,
-	[ 5, 0, 9, 3, 28, 40, 41, 0],			// 111 COUNTER   curchain not if exit fi 0 setvalue getvalue white execmode dispmode exit
+	[ 5, 0, 9, 3, 28, 40, 41, 0],			// 111 COUNTER   [5] curchain not if [0] exit fi 0 setvalue [3] getvalue [28] white execmode dispmode exit
 
 
 	[ 5, 0, 44, 20, 25, 0],		// 112 SWITCH
@@ -953,11 +953,11 @@ var bytecode = [
 
 	null,
 	null,
-	[ 5, 0, 28, 0],							// 118 noise
-	[ 1, 3, 0],							// 119 camera
+	[ 5, 0, 28, 0],						// 118 noise
+	[ 4, 8, 9, 29, 40, 41, 0],				// 119 camera		[29] black
 
 	[ 4, 24, 12, 8, 9, 11, 25, 0],		// 120 OSC
-	[ 4, 8, 11, 10, 9, 7, 0],			// 121 speaker
+	[ 4, 8, 11, 10, 9, 7, 0],			// 121 speaker	[4] arg2 [8] curchain not if 0 data ! fi [11]  
 	[ 4, 12, 42, 7, 25, 0],				// 122 FILTER
 	[ 5, 0, 9, 3, 28, 0],				// 123 SEQUENCER
 
@@ -2833,9 +2833,9 @@ function Bit( btype, x, y, w, h, k) {
 				}
 		}else if( pass == 3){
 			if( this.ctrl != null){
-				if( this.code == SPEAKER && this.chain == 0){
-					this.ctrl.setValue(0, 0);
-				}
+//				if( this.code == SPEAKER && this.chain == 0){
+//					this.ctrl.setValue(0, 0);
+//				}
 				this.ctrl.Draw();
 			}
 		}
@@ -2901,6 +2901,9 @@ function Bit( btype, x, y, w, h, k) {
 	this.undockfrom = function(partner, dom)
 	{
 //		debugmsg("BIT Undock from "+this.name+" <- "+partner.name);
+		if(partner.ctrl != null){
+			partner.ctrl.setValue(0,0);
+		}
 		if( this.ctrl != null){
 			this.ctrl.undockfrom(partner, dom);
 		}

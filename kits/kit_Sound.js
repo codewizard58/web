@@ -74,8 +74,8 @@ function kit_sound()
 		"control", "microphone", 50, 50, null, "audioout" ,null,  null,		// 0
 				125,	12, "Microphone",	"Input sound",	 0x0020, "Input", 0, 1,	// 0
 				
-		"control", "camera", 200, 200, null, "audioout" ,null,  null,		// 0
-				119,    14, "Camera",	"Input video",	 0x0020, "Input", 0, 1,	// 0
+		"control", "camera", 200, 200, "actionin", "audioout" ,"actionin",  null,		// 0
+				119,    14, "Camera",	"Input video",	 0x0121, "Input", 0, 1,	// 0
 
 		"control", "panner", 100, 50, "audioin", "audioout" ,"actionin",  null,		// 0
 				127,	13, "Panner",	"Pan sound",	 0x0122, "Action", 0, 1,	// 0

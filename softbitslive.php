@@ -328,6 +328,8 @@
                   </canvas>
                   <video id='video' style='display:none'>
                   </video >
+                  <canvas width ="800" height="600" tabindex="2" id="videocanvas"  style='display:none'>
+                  </canvas>
                 </div>
             </td>
           </tr>

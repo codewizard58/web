@@ -678,11 +678,15 @@ this.undockfrom = function(from, dom)
 			}
 		}
 	}
+
+	if( b != null){
+		b.setValue(0, 0);
+	}
 	
 	if( dom == 2){
 		if( b != null){
 			if( from.ctrl.audioin != null && this.connected[oport]){
-				debugmsg("unlink "+this.name+" from next module port="+port+" oport="+oport);
+				debugmsg("unlink audio "+this.name+" from next module port="+port+" oport="+oport);
 				this.connected[oport] = false;
 				this.audioout.disconnect( from.ctrl.audioin);
 			}

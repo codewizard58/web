@@ -344,12 +344,11 @@ function oscBit(bit)
 	{
 		if( chan == 0){
 			if( this.val != data){
-				this.val = data;
 				if( data <= 16){
 					// silence OSC
-					this.vol = 0;
+					this.val = 0;
 				}else {
-					this.vol = 255;
+					this.val = 255;
 					this.freq = data / 2;
 					this.setoscfreq(0);
 				}
@@ -443,10 +442,14 @@ function oscBit(bit)
 
 	this.setoscgain = function( )
 	{
-		let vol = this.vol / 255;
+		let vol = this.val / 255;
 		let mix = vol+(this.modgain-128)/512;
 		if( this.osc == null){
 			return;
+		}
+
+		if( this.val < 20){	// mute
+			mix = 0.0;
 		}
 
 		if( this.prevmix.changed(mix)){
@@ -533,7 +536,7 @@ function oscBit(bit)
 		let param="";
 		let val = "";
 
-		debugmsg("OSC doload "+idx+" "+len);
+//		debugmsg("OSC doload "+idx+" "+len);
 		for(n = 1; n < len ; n += 2){
 			param = initdata[idx+n];
 			val = initdata[idx+n+1];
@@ -599,12 +602,13 @@ function speakerBit(bit)
 	this.selknob = 0;
 	this.val = 0;
 	this.audioin = null;
-	this.mix = 50;
+	this.mix = 128;
 	this.modmix = 128;				// 128 bias
 	this.prevmix = new delta();
 	this.deg = degree;
 	this.ival = 0;
 	this.name = "speaker";
+	this.muted = true;
 
 	this.HitTest = function(mx, my)
 	{	
@@ -616,25 +620,29 @@ function speakerBit(bit)
 	// speaker
 	this.setValue = function(data, chan)
 	{
-		let sound = true;
 		let mix = 0.0;
 		
 		if( chan == 0){		// muting
 			this.val = data;
 			if( data < 16){
-				sound = false;
+				this.muted = true;
+			}else {
+				this.muted = false;
 			}
 		}else if(chan == 2){ // mix
 			this.mix = checkRange(data);
 		}else if(chan == 1){ // modmix
 			this.modmix = checkRange(data);
 		}
-		if( sound){
+		if( ! this.muted){
 			mix = (this.mix+this.modmix-128) / 255;
 			if( mix < 0){
 				mix = 0;
+			}else if(mix > 1.0){
+				mix = 1.0;
 			}
 		}
+
 		if( this.prevmix.changed(mix)){
 			if(this.gain != null){
 				this.gain.gain.setTargetAtTime( mix, 0, 0.05);
@@ -657,6 +665,10 @@ function speakerBit(bit)
         ctx.fillStyle = "#ffffff";
 		if( bt == 0){
 			drawImage( speaker , b.x, b.y);
+			if( this.muted){
+				ctx.fillStyle = "#ff0000";
+				ctx.fillRect(b.x+b.w - 20, b.y+10, 10, 10);
+			}
 			ctx.save();
 			ctx.translate( b.x+10, b.y+40);
 			ctx.rotate( (xval-120 )*this.deg );
@@ -664,6 +676,10 @@ function speakerBit(bit)
 			ctx.restore();
 		}else {
 			drawImage( speaker+1 , b.x, b.y);
+			if( this.muted){
+				ctx.fillStyle = "#ff0000";
+				ctx.fillRect(b.x+b.w - 20, b.y+10, 10, 10);
+			}
 			ctx.save();
 			ctx.translate( b.x+10, b.y+10);
 			ctx.rotate( (xval-120 )*this.deg );
