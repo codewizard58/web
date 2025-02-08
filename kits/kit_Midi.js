@@ -46,7 +46,7 @@ function MIDIremove(list, obj)
 // also show notegroups
 // and splitters
 
-function showMIDIinterfaces(inout, cur)
+function showMIDIinterfaces(inout, cur, id)
 {
 	let msg="";
 	let m;
@@ -59,15 +59,19 @@ function showMIDIinterfaces(inout, cur)
 	if( dir == 1){	// inputs
 		l = MIDIindev_list.head;
 
-		msg += "<select id='midiinsel' onchange='UImidiIndev();' >\n";
+		if( id != null){
+			msg += "<select id='"+id+"' onchange='UImidiIndev();' >\n";
+		}else {
+			msg += "<select id='midiinsel' onchange='UImidiIndev();' >\n";
+		}
 		msg += "<option value='0' "+isSelected(0, cur)+">Local</option>\n";
 
 		while(l != null){
 			m = l.ob;
-			if(l.ob.connected){
+			if(l.ob.connected == true){
 				sel = isSelected(cnt, cur);
 				if( sel == "selected"){
-					ocnt ++;
+					ocnt++;
 				}
 				msg += "<option value='"+cnt+"' "+sel+">"+l.ob.name+"</option>";
 			}
@@ -93,15 +97,18 @@ function showMIDIinterfaces(inout, cur)
 
 	if( dir == 0){
 		msg = "";
-
-		msg += "<select id='midioutsel' >\n";
+		if( id != null){
+			msg += "<select id='"+id+"' >\n";
+		}else {
+			msg += "<select id='midioutsel' >\n";
+		}
 		//  msg += "<option value='0'>Web Audio</option>\n";
 		msg += "<option value='0' "+isSelected(0, cur)+">Local</option>\n";
 
 		cnt = 1;
 		l = MIDIoutdev_list.head;
 		while(l != null){
-			if(l.ob.connected){
+			if(l.ob.connected == true){
 				msg += "<option value='"+l.ob.index+"' "+isSelected(l.ob.index, cur)+" >"+l.ob.name+"</option>";
 			}
 			cnt++;
@@ -605,6 +612,7 @@ function listMidiGroups(dir, arg)
 		}
 		g = g.next;
 	}
+	msg += "<option value='-1' "+isSelected(-1, arg)+" > -- </option>\n";
 	return msg;
 }
 
@@ -642,7 +650,7 @@ function findGroupDefault(dir)
 		}
 		g = g.next;
 	}
-	debugmsg("GROUP "+name+" not found");
+//	debugmsg("GROUP "+name+" not found");
 	return null;
 }
 
@@ -858,9 +866,11 @@ function MIDIfilter()
 
 	this.print = function()
 	{	let l = this.filter_list.head;
+		let obj = null;
 		debugmsg("___ filter "+this.name+" type="+this.type+" int="+this.interface);
 		while(l != null){
-			l.ob.print();
+			obj = l.ob;
+			obj.print();
 			l = l.next;
 		}
 		debugmsg("__ end filters");
@@ -979,8 +989,10 @@ function transport()
 }
 
 ///
+// len, type, name, args
 var midi_configs = [ 
 	9, "interface", "Seaboard Block", "zone", 0, "chans", 15, "mpe", 1, 
+	9, "interface", "Player", "zone", 0, "chans", 15, "mpe", 0, 
 	0
 ];
 
@@ -1043,7 +1055,10 @@ function MIDIinputobj(m)
 				while(cnt < len){
 					if( config[i+cnt] == "mpe"){
 						this.mpe = config[i+cnt+1];
-						ng.ichannel = -1;	// MPE mode
+						if( this.mpe != 0){
+							ng.ichannel = -1;	// MPE mode
+							debugmsg("MPE mode");
+						}
 					}else if( config[i+cnt] == "zone"){
 						ng.zone = config[i+cnt+1];
 					}else if( config[i+cnt] == "chans"){
@@ -1087,6 +1102,16 @@ function MIDIinputobj(m)
 		
 	}
 
+	this.print = function()
+	{	let l = this.filter_list.head;
+		debugmsg("__ "+this.name);
+
+		while(l != null){
+			l.ob.print();
+			l = l.next;
+		}
+	}
+
 	if( m != null){		// null is local ...
 		MIDIindev_list.addobj(this, null);
 		nextMidiIndex++;
@@ -1096,16 +1121,6 @@ function MIDIinputobj(m)
 		this.index = 0;
 		this.name = "Local";
 		MIDIindev[0] = this;
-	}
-
-	this.print = function()
-	{	let l = this.filter_list.head;
-		debugmsg("__ "+this.name);
-
-		while(l != null){
-			l.ob.print();
-			l = l.next;
-		}
 	}
 
 }
@@ -1467,7 +1482,7 @@ function midiinsetvalues( op, chan, arg, arg2, dev)
 		ng = md.filter_list.head;
 
 		while(ng != null){
-//			debugmsg("midiin try"+chan+" "+arg+" dev="+dev+" op="+op);
+			debugmsg("midiin try"+chan+" "+arg+" dev="+dev+" op="+op);
 			if( ng.ob.filter(op, chan, arg, arg2, dev)){
 				break;
 			}
@@ -1793,11 +1808,11 @@ function noteGroup(idx)
 
 		len = this.notes.length;
 
-//		debugmsg("NGFilt "+this.name+" "+op+" "+chan+" "+arg+" ichan="+this.ichannel);
 		if( this.ichannel > 0 && this.ichannel != (chan +1)){
 			// channel mismatch.
 			return false;
 		}
+		debugmsg("NGFilt "+this.name+" "+op+" "+chan+" "+arg+" ichan="+this.ichannel);
 
 		// notemode 0: round robin
 		// notemode 1: unison, send note to all listeners.
@@ -1912,6 +1927,11 @@ function noteGroup(idx)
 	
 		MIDIremove(this.notefilters, obj );		
 		MIDIremove(this.ccfilters, obj );		
+	}
+
+	this.print = function()
+	{
+		debugmsg("Notegroup "+this.name);
 	}
 
 	if( idx == 0){

@@ -134,6 +134,7 @@ function selMIDIindev(dev)
 		if( MIDIindev[dev] == null){
 			useMIDIin = new MIDIinputobj(null);
 			useMIDIin.name = "local";
+			MIDIindev[dev] = useMIDIin;
 		}
 		return;
 	}
@@ -205,7 +206,7 @@ function selMIDIoutdev(dev)
 	while( l != null){
 		if( l.ob.index == dev){
 			useMIDIout = l.ob;
-			debugmsg("sel ret "+dev+" "+useMIDIout.name);
+//			debugmsg("sel ret "+dev+" "+useMIDIout.name);
 			return useMIDIout;
 		}
 		l = l.next;
@@ -1228,13 +1229,13 @@ function midiGroupBit(bit)
 			msg += "<tr><th><input type='button' value='Name' onclick='UIeditname();' /></th><td><span id='groupedit'>"+showMidiGroups(this.grouptype, this.groupname,true)+"</span></td></tr>\n";
 			if( this.grouptype == 1){
 				// input
-				msg += "<tr><th>Interface</th><td>"+showMIDIinterfaces(5, g.midicnt)+"</td></tr>\n";
+				msg += "<tr><th>Interface</th><td>"+showMIDIinterfaces(5, g.midicnt, null)+"</td></tr>\n";
 				msg += "<tr><th align='right'>Channel</th><td > "+MidiChannelSelector(g.channel, true)+"</td></tr>\n";
 				if( tempo > 0){
 					msg += "<tr><th>Tempo</th><td><input type='text' value='"+tempo+"' /></td></tr>\n";
 				}
 			}else {
-				msg += "<tr><th>Interface</th><td>"+showMIDIinterfaces(0, g.midicnt)+"</td></tr>\n";
+				msg += "<tr><th>Interface</th><td>"+showMIDIinterfaces(0, g.midicnt, null)+"</td></tr>\n";
 				msg += "<tr><th align='right'>Channel</th><td > "+MidiChannelSelector(g.channel, false)+"</td></tr>\n";
 			}
 		}
@@ -1627,9 +1628,9 @@ function noteGroupBit(bit)
 			msg += "<tr><th><select id='notemode' ><option value='0' "+isSelected(notemode, 0)+">Poly</option><option value='1' "+isSelected(notemode, 1)+">Unison</option></select></th>";
 			msg += "</tr>\n";
 			if( ichannel >= 0){
-				msg += "<tr><th>Interface</th><td>"+showMIDIinterfaces(1, midi)+"</td><th>Input Channel</th><td>"+MidiChannelSelector(ichannel, true)+"</td></tr>\n";
+				msg += "<tr><th>Interface</th><td>"+showMIDIinterfaces(1, midi, null)+"</td><th>Input Channel</th><td>"+MidiChannelSelector(ichannel, true)+"</td></tr>\n";
 			}else {
-				msg += "<tr><th>Interface</th><td>"+showMIDIinterfaces(1, midi)+"</td><th>Input Mode</th><td>MPE</td></tr>\n";
+				msg += "<tr><th>Interface</th><td>"+showMIDIinterfaces(1, midi, null)+"</td><th>Input Mode</th><td>MPE</td></tr>\n";
 			}
 			if( md != null){
 				msg += this.showNotes(md);
@@ -1815,7 +1816,7 @@ function targetGroupBit(bit)
 		bitform = document.getElementById("bitform");
 		if( bitform != null){
 			msg += "<table>\n";
-			msg += "<tr><th>Interface</th><td>"+showMIDIinterfaces(5, this.midicnt)+"</td></tr>\n";
+			msg += "<tr><th>Interface</th><td>"+showMIDIinterfaces(5, this.midicnt, null)+"</td></tr>\n";
 			msg += "<tr><th align='right'>Channel</th><td > "+MidiChannelSelector(this.channel, true)+"</td></tr>\n";
 			msg += "<tr><th>New</th><td><input type='button' value='Learn' onclick='UIlearn();' /></td><td>";
 			msg += "<select id='chantype' ><option value='2' "+isSelected(this.chantype, 2)+">Control Change</option>\n";

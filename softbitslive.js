@@ -1780,7 +1780,7 @@ function Program()
 			bytes = bytecode[code];						// is there a bytecode sequence for this?
 			if( bytes != null){
 				ip = 0;
-				while( bytes[ip] != 0){
+				while( bytes[ip] != 0 && ip < 20){
 					if( trace){
 						msg += bytes[ip]+",";
 					}
@@ -2052,6 +2052,9 @@ function Program()
 
 					}
 					ip++;
+				}
+				if( ip > 10){
+					debugmsg("Bad IP code="+code);
 				}
 //			}else {
 //				debugmsg("No bytes "+msg);
