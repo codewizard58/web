@@ -285,6 +285,7 @@ function track()
   this.midiout = "";
   this.midioutdev = 0;
   this.player = null;
+  this.ppq = 96;
 
   this.getvlen = function(data)
   { var n = data[this.pos];
@@ -512,6 +513,38 @@ function UIstartPos(delta)
 //////////////////////////////////////////////////////////////////////////////
 // step sequencer and midi file player
 
+function theGrid(beats, bars, rows)
+{   this.beats = beats;
+    this.bars = bars;
+    this.gridRows = rows;
+    this.grid = new Uint8Array( bars * beats * rows);
+    const idata = [0, 0, 0];
+
+
+    this.update = function(data)
+    {   let n = data.length;
+        let i;
+        let len = this.bars * this.beats * this.gridRows;
+
+        if( n > len){
+            n = len;
+        }
+        for(i=0; i < n; i++){
+            this.grid[i] = data[i];
+        }
+        while( i < len){
+            this.grid[i] = 0;
+            i++;
+        }
+//        debugmsg("Update "+n+" "+len+" "+this.grid.length);
+
+    }
+
+    // init the grid
+    this.update( idata);
+    debugmsg("New grid("+beats+","+bars+","+rows+")");
+}
+
 playerBit.prototype = Object.create(control.prototype);
 
 function playerBit(bit)
@@ -519,9 +552,9 @@ function playerBit(bit)
 	this.bit = bit;
     this.transport = new transport();
     this.gate = 128;
-    this.gridRows = 48;         // notes in grid.
+    this.gridRows = 37;         // notes in grid.
     this.bar = 0;
-    this.bars = 12;
+    this.bars = 8;
     this.beat = 0;
     this.beats = 4;
     this.page = 0;          // one screens worth
@@ -532,8 +565,12 @@ function playerBit(bit)
     this.max = 0;
     this.step = 0.0;
     this.octave = 3;
+    this.scale = 0;     // 0 normal, 1 white notes only, 2 black notes only
     this.playing = new Array( this.gridRows+2);
-    this.grid = new Uint8Array( this.bars * this.beats * this.gridRows);
+    this.grids = null;
+    this.ngrids = 40;
+    this.curgrid = 0;
+    this.grid = null;
     this.values = new Array(this.bars * this.beats);
     this.tracklist = null;
     this.filename = "";
@@ -545,12 +582,35 @@ function playerBit(bit)
     this.noteStates = new Array( this.gridRows+2);
     this.curcol = new delta();
     this.ppq = g_ppqn;
+    this.prevdata = new delta();
+    this.endtune = 0;       // set to end time at finish;
+    this.effect = 0;       // various effects
+    this.arp = 0;
+    this.arpnote = 48;
+    this.prevarp = 48;
+
+    this.prevdata.changed(-1);
 
     //player
     this.setup = function()
     {   let i;
         
         UIchooseKit("Midi");            // make sure Midi kit is init.
+        if( this.grids == null){
+            this.grids = new Array(this.ngrids);
+        }
+        for(i=0; i < this.ngrids; i++){
+            this.grids[i] = new theGrid(this.beats, this.bars, this.gridRows);
+        }
+        this.curgrid = 0;
+        this.grid = this.grids[0].grid;
+
+        this.values = new Array(this.bars * this.beats);
+        // bit output stuff
+        for(i=0; i < this.values.length; i++){
+            this.values[i] = 0;
+        }
+    
 
         for(i=0; i < this.playing.length; i++){
             this.playing[i] = 0;
@@ -562,16 +622,7 @@ function playerBit(bit)
         }
         this.curcol.changed(-1);
 
-        // bit output stuff
-        for(i=0; i < this.values.length; i++){
-            this.values[i] = 0;
-        }
-    
-        // grid setup
-        for(i=0; i < this.grid.length; i++){
-            this.grid[i] = 0;
-        }
-    
+   
         this.max = this.bars * this.beats;
         this.setTempo(120);
         this.transport.resume();
@@ -632,6 +683,9 @@ function playerBit(bit)
         let i,j;
         let bw, bh;
         let dx, dw;
+        let pagew = this.beats*this.bars;
+        let curg;
+        let bright = 0;
 
         bw = Math.floor( (bit.w-kw )/ this.gridRows);
         bh = Math.floor( (bit.h )/ this.gridRows);
@@ -643,8 +697,9 @@ function playerBit(bit)
         // draw grid background
         dx = kw;
         dw = bw*this.beats;
+        pagew = pagew * bw + kw;
         i = 0;
-        while( dx < bit.w){
+        while( dx < bit.w && dx < pagew){
             if( i == 0){
                 ctx.fillStyle = this.evenColor;
                 i = 1;
@@ -671,6 +726,28 @@ function playerBit(bit)
         }
         // draw notes
         if( this.tracklist == null){
+            curg = this.curgrid+1;
+            if(curg >= this.ngrids){
+                curg = 0;
+            }
+            bright = 160-this.ngrids*5;            // oldest color
+            while(curg != this.curgrid){
+//                debugmsg("CURG "+curg+" "+this.curgrid);
+                ctx.fillStyle = m_color(bright, 3, 0);
+                bright += 6;
+                for(i=0; i < this.beats*this.bars; i++){
+                    for(j = this.gridRows-1; j >= 0; j--){
+                        dx = i + j * this.beats*this.bars;
+                        if( this.grids[curg].grid[ dx] > 0){
+                            ctx.fillRect(bit.x+kw+i*bw, bit.y+j*bh, bw, bh);
+                        }
+                    }
+                }
+                curg++;
+                if(curg >= this.ngrids){
+                    curg = 0;
+                }
+            }
             ctx.fillStyle = "#ffffff";
             for(i=0; i < this.beats*this.bars; i++){
                     for(j = this.gridRows-1; j >= 0; j--){
@@ -836,23 +913,188 @@ function playerBit(bit)
         }
     }
 
+    this.doScale = function(o)
+    {   let ox;
+        
+        if( this.scale != 0){
+            if( this.scale == 1 || this.scale == 2){
+                ox = o % 12;
+                if( ox == 1 || ox == 3 || ox == 6 || ox == 8 || ox == 10){
+                    // black notes
+                    if( this.scale ==1){        // white only
+                        o = 0;
+                    }
+                }else {
+                    // white note
+                    if( this.scale ==2){        // black only
+                        o = 0;
+                    }
+                }
+            }else if(this.scale == 3){
+                ox = o % 12;
+                if( ox != 0 && ox != 4 && ox != 7){ // not major ?
+                    o = 0;
+                }
+            }else if(this.scale == 4){
+                ox = o % 12;
+                if( ox != 0 && ox != 3 && ox != 7){ // not minor ?
+                    o = 0;
+                }
+
+            }
+        }
+        return o;
+
+    }
+
+
+    this.life = function()
+    {   let i,j;
+        const perrow = this.beats*this.bars;
+        let last;
+        let cur;
+        let next;
+        let cnt = 0;
+
+        // wrap top-bottom
+        last = perrow*(this.gridRows-2);
+        for(i = 0; i < perrow; i++){
+            this.grid[i ] = this.grid[i + last] ;
+            this.grid[i + last+perrow] = this.grid[i +perrow];
+        }
+        // wrap left right
+        last = perrow;
+        for(i = 1; i < this.gridRows-1; i++){
+            this.grid[last ] = this.grid[last + perrow-2] ;
+            this.grid[last + perrow-1] = this.grid[last+1];
+            last += perrow;
+        }
+        // corners
+        this.grid[0] = this.grid[(this.gridRows-1)*perrow-2];
+        this.grid[perrow-1] = this.grid[(this.gridRows-2)*perrow+1];
+        this.grid[(this.gridRows-1)*perrow] = this.grid[perrow+perrow-2];
+        this.grid[this.gridRows * perrow -1] = this.grid[perrow+1];
+        last = 0;
+        cur = perrow;
+        next = cur+perrow;
+
+        for(j = 1; j < this.gridRows-1; j++){
+            for(i = 1; i < perrow-1; i++){
+                cnt =(this.grid[ last + i] & 1) + (this.grid[ last + i+1] & 1) + (this.grid[ last + i -1] & 1);
+                cnt += (this.grid[ cur + i+1] & 1) + (this.grid[ cur + i -1] & 1);
+                cnt +=(this.grid[ next + i] & 1) + (this.grid[ next + i+1] & 1) + (this.grid[ next + i -1] & 1);
+                if( cnt > 3 || cnt < 2){
+                    this.grid[ cur + i] &= 0xd;
+                }else if( (this.grid[ cur + i] & 1) == 0){
+                    if( cnt == 3){
+                        this.grid[ cur + i] |= 2;
+                    }
+                }else {
+                    this.grid[ cur + i] |= 2;
+                }
+            }
+            last = cur;
+            cur = next;
+            next += perrow;
+        }
+        for(i=0 ; i < this.grid.length; i++){
+            if( (this.grid[i] & 2) == 2){
+                this.grid[i] = 1;
+            }else {
+                this.grid[i] = 0;
+            }
+        }
+        this.curgrid++;
+        if( this.curgrid >= this.ngrids){
+            this.curgrid = 0;
+        }
+        this.grids[this.curgrid].update( this.grid);        // save as previous
+    }
+
+
+    // called with highest note in column
+    this.doArp = function(o)
+    {   let step;
+        let dir;
+        let ox;
+
+        step = o - this.prevarp;
+        this.prevarp = o;
+        if(step < 0){
+            dir = -1;
+            step = - step;
+        }else {
+            dir = 1;
+        }
+        step = Math.floor(step / 3);
+        if( step == 0){
+            dir = 0;
+        }
+        // move up or down by n steps
+//        debugmsg("ARP "+step+" "+dir+" "+o+" "+this.arpnote);
+        if( dir != 0){
+            step = 1;
+            ox = this.arpnote;      // cur value
+            while( step > 0){       // move n steps in the scale.
+                ox = ox+dir;
+                if( this.doScale(ox) != 0){
+                    step--;
+                }
+            }
+            o = ox;
+            if( o >= 72){
+                o -= 12;
+            }else if( o < 36){
+                o += 12;
+            }
+            this.arpnote = o;
+        }else {
+            o = this.arpnote;
+        }
+        return o;
+
+    }
     // 
     this.newColumn = function()
     {   let col;
         let i;
         let n;
         let perrow = this.beats*this.bars;
+        let o, ox;
+        let step = 0;       
 
         col=this.beat+this.bar*this.beats;
-        this.values[col] = 0;
+//        if( this.transport.mode == 1){      // in global mode
+//            debugmsg("col="+col+" beat="+this.beat+" bar="+this.bar);
+//        }
         for(i=0; i < this.gridRows; i++){
             n = this.grid[col + i*perrow];
             this.playing[this.gridRows - i -1] = n;
-            if( this.values[col] == 0 && n != 0){
-                this.values[col] = this.gridRows-i+ this.octave*12 -1; // midi values
+        }
+
+        // look for highest note.
+        this.values[col] = 0;
+        for(i=0; i < this.gridRows; i++){
+            n = this.grid[col + i*perrow];
+
+            if( n != 0){           // first note on.
+                o = this.gridRows - i + (this.octave-2)*12 - 1;
+                if( this.arp == 1){
+                    o = this.doArp(o);
+                }
+                o = this.doScale(o);
+                this.values[col] = o+o;
+                break;              // only process highest
             }
         }
-//                    debugmsg("N "+col+" "+this.values[col]);
+        if( this.effect == 1){
+            this.life();
+            this.curgrid++;
+            if( this.curgrid >= this.ngrids){
+                this.curgrid = 0;
+            }
+            this.grids[ this.curgrid].update(this.grid);
+        }
 
     }
 
@@ -861,6 +1103,8 @@ function playerBit(bit)
 	{   let beat;
         let col=this.beat+this.bar*this.beats;
         let perrow = this.beats*this.bars;
+        let step;
+        let gate = Math.floor(this.gate / this.beats);
 
         if( this.max >= perrow){
             this.max = perrow;
@@ -871,21 +1115,27 @@ function playerBit(bit)
             this.doMidi();
             this.doPlay();
 			if( data == 255){     // transport run
+                if( this.prevdata.changed(data)){
+                    if( this.transport.mode == 0 ){      // local mode
+                        this.transport.resume();
+                    }else {
+                    // skip to where we should be.
+                   }
+                }
 				this.step = this.transport.getValue();
 				this.transport.trigger = 0;			// show that the transport is still being used.
-				
-				this.transport.resume();
+
 				execmode = 2;
-                beat = this.getstep();
-                if( this.beat != beat){
-                    this.beat = beat;
-                    if( beat == 0){
-                        this.bar++;
-                        if( this.bar == this.bars){
-                            this.bar = 0;
-                            this.page++;
-                        }
-                    }
+                beat = this.transport.getBeat();
+                step = Math.floor(this.step %  Math.floor(256 / this.beats) );
+                if( step > gate){
+                    this.bit.value = 0;
+                }
+                if( this.beat != beat% this.beats){
+                    this.beat = beat % this.beats;
+                    this.bar = Math.floor(beat / this.beats) % this.bars;
+                    this.page = Math.floor(beat / (this.beats * this.bars));
+//                    debugmsg("Beat "+beat+" beat="+this.beat+" bar"+this.bar+" page="+this.page);
                     // new column
                     this.newColumn();
 
@@ -893,13 +1143,17 @@ function playerBit(bit)
 
 //                debugmsg("Player "+this.step+" "+this.beat);
 			}else if( data == 0){       //  paused 
-                this.transport.stop();
+                if( this.prevdata.changed(data)){
+                    this.transport.localPause();     // local only
+                }
             }else {		
-                this.transport.stop();
-                col = Math.floor(data/ 256 * (this.beats*this.bars) );
-                this.beat = col % this.beats;
-                this.bar = Math.floor(col / this.beats);
-                this.newColumn();
+                if( this.prevdata.changed(data)){
+                    this.transport.localPause();     // local only
+                    col = Math.floor(data/ 256 * (this.beats*this.bars) );
+                    this.beat = col % this.beats;
+                    this.bar = Math.floor(col / this.beats);
+                    this.newColumn();
+                }
 			}
 		}else if( chan > 1){
 			this.values[chan-2] = checkRange(data);
@@ -958,10 +1212,25 @@ function playerBit(bit)
             // start position
             msg += "<tr><th><input type='button' value='<<' onclick='UIstartPos(-4);' /></th><th><input id='startposition' type='text' value='"+this.start+"' size='3'/></th>";
             msg += "<th><input type='button' value='>>' onclick='UIstartPos(4);' /></th></tr>\n";
-			msg += "<tr><th>Tempo</th><td colspan='2'><input type='text' id='tempo' value='"+this.transport.tempo+"'  size='4'  onchange='UIrefresh(1, 0);' /></td>\n";
-			msg += "<th>Gate</th><td colspan='2'><input type='text' id='gate' value='"+this.gate+"'  size='4'  onchange='UIrefresh(1, 0);' /></td>\n";
-            msg += "<tr><th>Debug</th><td>"+this.mididev+"</td></tr>\n";
-			msg += "</tr>\n";
+            msg += "<tr><td colspan='4'>"+this.transport.setData()+"</td></tr>\n";
+			msg += "<tr><th>Gate</th><td colspan='2'><input type='text' id='gate' value='"+this.gate+"'  size='4'  onchange='UIrefresh(1, 0);' /></td></tr>\n";
+//          msg += "<tr><th>Debug</th><td>"+this.mididev+"</td></tr>\n";
+            msg += "<tr><th>Effect</th><td><select id='effect' >";
+            msg += "<option value='0' "+isSelected(0, this.effect)+">None</option>";
+            msg += "<option value='1' "+isSelected(1, this.effect)+">Life</option>";
+            msg += "</select></td></tr>\n";
+            msg += "<tr><th>Scale</th><td><select id='scale' >";
+            msg += "<option value='0' "+isSelected(0, this.scale)+">12 notes</option>";
+            msg += "<option value='1' "+isSelected(1, this.scale)+">8 notes</option>";
+            msg += "<option value='2' "+isSelected(2, this.scale)+">5 notes</option>";
+            msg += "<option value='3' "+isSelected(3, this.scale)+">Major</option>";
+            msg += "<option value='4' "+isSelected(4, this.scale)+">Minor</option>";
+            msg += "</select></td>";
+            msg += "<th>Arp</th><td><select id='arp' >";
+            msg += "<option value='0' "+isSelected(0, this.arp)+">Off</option>";
+            msg += "<option value='1' "+isSelected(1, this.arp)+">On</option>";
+            msg += "</select></td>";
+            msg += "</tr>\n";
 			msg += "</table>\n";
 
 			bitform.innerHTML = msg;
@@ -1001,6 +1270,21 @@ function playerBit(bit)
             s.addarg("gate");
             s.addarg(f.value);
         }
+        f = document.getElementById("effect");
+        if( f != null){
+            s.addarg("effect");
+            s.addarg(f.value);
+        }
+        f = document.getElementById("scale");
+        if( f != null){
+            s.addarg("scale");
+            s.addarg(f.value);
+        }
+        f = document.getElementById("arp");
+        if( f != null){
+            s.addarg("arp");
+            s.addarg(f.value);
+        }
         if( this.tracklist != null){
             t = this.tracklist;
             while(t != null){
@@ -1014,7 +1298,23 @@ function playerBit(bit)
             }
         }
 
+        this.transport.getData();
+
         this.doLoad( s.getdata(), 0);
+    }
+
+    this.doSave = function()
+    {
+        let s = new saveargs();
+
+        s.addnv("control", "'player'");
+
+        s.addnv("effect", this.effect);
+        s.addnv("scale", this.scale);
+        s.addnv("arp", this.arp);
+        s.addnv("tempo", this.transport.getTempo() );
+
+        return s.getargs();
     }
 
     this.doLoad = function(initdata, idx)
@@ -1022,10 +1322,12 @@ function playerBit(bit)
 		let n = 1;
 		let param="";
 		let val = "";
-        let tempo = this.transport.tempo;
+        let tempo = this.transport.getTempo();
         let t;
         let gn;
         let md;
+        let beats = this.beats;
+        let bars = this.bars;
 
         for(n = 1; n < len ; n += 2){
 			param = initdata[idx+n];
@@ -1045,6 +1347,12 @@ function playerBit(bit)
 				this.beats = checkRange(val);
 			}else if( param == "gate"){
 				this.gate = checkRange(val);
+			}else if( param == "effect"){
+				this.effect = checkRange(val);
+			}else if( param == "scale"){
+				this.scale = checkRange(val);
+			}else if( param == "arp"){
+				this.arp = checkRange(val);
 			}else {
 //                debugmsg("Load "+param+" "+val);
                 t = this.tracklist;
@@ -1071,9 +1379,12 @@ function playerBit(bit)
             }
 
         }
-        if( this.transport.tempo != tempo){
+        if( this.transport.getTempo() != tempo){
             this.setTempo(tempo);
 //            debugmsg("Tempo "+tempo);
+        }
+        if( this.beats != beats || this.bars != bars){
+            this.setup();
         }
 
     }
@@ -1156,6 +1467,7 @@ function playerBit(bit)
         while(t != null){
             if( t.tempo != 0){
                 this.setTempo(t.tempo);
+                this.transport.localStop();     // local stop
             }
             if( t.hasnotes != 0){
                 if( this.active == 0){
@@ -1268,6 +1580,7 @@ function playerBit(bit)
     }
 
     // player
+    // adjust by the scale mod.
     this.doMidi = function()
     {   let col=this.beat+this.bar*this.beats;
         const perrow = this.beats*this.bars;
@@ -1276,6 +1589,7 @@ function playerBit(bit)
         let note;
         let row;
         let octave = this.octave * 12;
+        let o, ox;
 
         if( this.tracklist != null && this.drawmode != 0){
             return;
@@ -1296,8 +1610,12 @@ function playerBit(bit)
                 // new note?
                 if( note != 0){
 //                debugmsg("On Col="+col+" "+note+" row="+row+" n="+n);
-                    this.noteon(9, 0, this.gridRows - n + octave - 1, 127, this.mididev);
-                    this.noteStates[n] = 1;
+                    o = this.gridRows - n + octave - 1;
+                    o = this.doScale(o);
+                    if( o != 0){
+                        this.noteon(9, 0, o, 127, this.mididev);
+                        this.noteStates[n] = 1;
+                    }
                 }
 
                 row += perrow;
@@ -1313,13 +1631,17 @@ function playerBit(bit)
         if( this.tracklist == null){
             return;
         }
+        if( this.transport.running == 0){
+            // stopped or paused
+            return;
+        }
+//        if( this.endtune != 0){
+//            return;     // tune has ended.
+//        }
         this.step = this.transport.getValue();
         this.transport.trigger = 0;
         now = ((this.step/(256/this.beats)) + this.bar*this.beats + this.page * this.bars*this.beats)*this.ppq;
 
-//        if( now < this.ppq*8){
-//            debugmsg("doplay '"+now+"' step='"+this.step+"'");
-//        }
         stillplaying = false;
         while(t != null){
             if( t.player != null){
@@ -1336,13 +1658,14 @@ function playerBit(bit)
 
             while(t != null){
                 if( t.player != null){
+                    t.player.allOff();
                     t.player.start();
                 }
                 t = t.next;
             }
-            this.page = 0;
-            this.beat = 0;
-            this.bar = 0;
+            this.endtune = now;
+            this.transport.localStop();
+//            this.transport.localResume();
     
         }
 
@@ -1382,88 +1705,155 @@ function trackPlayer( data)
 	this.curevent = null;
     this.midioutdev = 0;        // use 1 offset so 0 is not set.
     this.output = null;
+    this.notes = new Uint8Array(128);
 
 //    debugmsg("trackplayer "+data.name+" "+data.track);
 
     this.start = function()
-    {   let g;
+    {   let i;
 
+        for(i=0; i < this.notes.size; i++){
+            this.notes[i] = 0;
+        }
         this.period = 0;
         if( data.eventlist != null){
-            this.period=data.eventlist.delta;
+            this.period = data.eventlist.delta;
             this.curevent = data.eventlist;
         }
+        this.output = null;
     }
 
+    this.setOutput = function()
+    {   let g;
+
+        if( this.midioutdev != 0){
+            g = getMidiOutGroup(this.midioutdev-1);      // use 1 offset
+            if( g == null){
+                debugmsg("setOutput "+this.midioutdev);
+                return;
+            }
+        }
+        if(this.midioutdev == 0 || g.outdev == null){
+                if(localOut == null){
+                    useMIDIout = new MIDIoutputobj(null);
+                    useMIDIout.output = new localMidiOut();
+                    localOut = useMIDIout;
+                    MIDIoutdev_list.addobj(localOut, null);
+                }
+                this.output = localOut.output;
+        }else{
+            this.output = g.outdev.output;
+        }
+    
+    }
+
+    this.allOff = function()
+    {   let n;
+        let msg = [0x80, 0, 0];
+
+        if(this.output == null){
+            this.setOutput();
+        }
+//        debugmsg("All off ");
+        for(n=0; n < this.notes.length; n++){
+            if( this.notes[n] != 0){
+                msg[0] = 0x80 | (this.notes[n]-1);  // 1 origin
+                msg[1] = n;
+                msg[2] = 127;
+                this.output.send(msg);
+            }
+        }
+
+    }
+
+    // trackplayer
     this.play = function(now)
     {   let ev = this.curevent;
         let cmd;
         let chan;
         let outdev = null;
-        let md = null;
-        let g;
         let msg = [ 0x90, 60, 127];
+        let msg2 = [ 0, 0];
         let sent = false;
+        let skipping = false;
         
         if( this.output == null){
-            g = getMidiOutGroup(this.midioutdev-1);      // use 1 offset
-            if( g == null){
-                return;
-            }
-            if( g.outdev == null){
-                    if(localOut == null){
-                        useMIDIout = new MIDIoutputobj(null);
-                        useMIDIout.output = new localMidiOut();
-                        localOut = useMIDIout;
-                        MIDIoutdev_list.addobj(localOut, null);
-                    }
-                    this.output = localOut.output;
-            }else{
-                this.output = g.outdev.output;
-            }
+            this.setOutput();
         }
         outdev = this.output;
 //        debugmsg("Now "+now+" "+this.period);
         
-        while( this.period <= now && ev != null){
+        if( ev != null && now - this.period > 384){
+            // more than 4 notes behind
+            skipping = true;
+//            debugmsg("SKIP "+this.period+" "+now);
+        }
+        while( ev != null){
+            if( this.period > now ){
+                break;
+            } 
+            if( skipping && now - this.period < 384){
+                skipping = false;
+                debugmsg("SKIP END"+Math.floor(this.period)+" "+Math.floor(now) );
+            }
             cmd = ev.status & 0xf0;
             chan = ev.status & 0xf;
 //            debugmsg("Now "+now+" "+this.period+" "+cmd.toString(16)+" "+chan+" delta="+ev.delta+" dev="+this.midioutdev);
-            if( cmd == 0x90 || cmd == 0x80 || cmd == 0xb0 || cmd == 0xe0){
+            if( cmd == 0x90 || cmd == 0x80 || cmd == 0xa0 || cmd == 0xb0 || cmd == 0xe0){
                 msg[0] = ev.status;
                 msg[1] = ev.data;
                 msg[2] = ev.arg;
-            }
-            if( msg[1] > 127 || msg[2] > 127){
-                debugmsg("Error code "+ev.status.toString(16)+' '+msg[1].toString(16)+" "+msg[2].toString(16));
-                cmd = 0xfe;
+                if( msg[1] > 127 || msg[2] > 127){
+                    debugmsg("Error code "+ev.status.toString(16)+' '+msg[1].toString(16)+" "+msg[2].toString(16));
+                    cmd = 0xfe;
+                }
+            }else if( cmd == 0xc0 || cmd == 0xd0){
+                msg2[0] = ev.status;
+                msg2[1] = ev.data;
             }
             sent = false;
             if( cmd == 0x90){
                 // note out
                 if( ev.arg != 0){
 //                    debugmsg("Player ON("+chan+") "+ev.data+" "+ev.arg);
-                    outdev.send(msg);
+                    this.notes[msg[1] ]= chan+1;    // 1 origin
+                    if( !skipping){
+                        outdev.send(msg);
+                    }
+                    sent = true;
                 }else {
                     cmd = 0x80;
                     msg[0] = chan | cmd;
                     msg[2] = 127;
+//                    debugmsg("Player Running("+chan+") "+msg[0].toString(16)+" "+ev.data.toString(16));
                 }
-                sent = true;
             }
             if( cmd == 0x80){
                 // note out
 //                debugmsg("Player OFF("+chan+") "+ev.data);
-                outdev.send(msg);
+                this.notes[msg[1] ]= 0;
+                if( !skipping){
+                    outdev.send(msg);
+                }
                 sent = true;
-                this.output = null;     // check for updates after note
+//                this.output = null;     // check for updates after note
             }
-            if( cmd == 0xb0 || cmd == 0xe0){
-                outdev.send(msg);
+            if( cmd == 0xa0  || cmd == 0xb0 || cmd == 0xe0){
+                if( !skipping){
+                    outdev.send(msg);
+                }
+                sent = true;
+            }
+            if( cmd == 0xd0 || cmd == 0xc0){
+                if( !skipping){
+                    outdev.send(msg2);
+                }
                 sent = true;
             }
             if( sent == false){
-                debugmsg("Player not sent "+ev.status.toString(16));
+                if( !skipping){
+                    debugmsg("Player not sent "+ev.status.toString(16)+" "+ev.data.toString(16));
+                }
             }
             ev = ev.next;
             if( ev != null){

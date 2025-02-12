@@ -226,6 +226,13 @@
                 <input type="button" value="Reload" onclick="UIdoReload()"></input>
               </span>
             </div>
+            <div style="padding:20px; display: none;" id="transport_controls" >
+              <span class="box" style="padding:10px;border-color:red;">
+                <input type="button" id="runbutton" value="Run" onclick="UItransport(2)"></input>
+                <input type="button" id="pausebutton" value="Pause" onclick="UItransport(1)"></input>
+                <input type="button" id="stopbutton" value="Stop" onclick="UItransport(0)"></input>
+              </span>
+            </div>
             <table>
               <tr>
                 <td colspan="3">

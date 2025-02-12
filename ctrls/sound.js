@@ -1702,7 +1702,8 @@ function seqBit(bit)
 
 		if( chan == 0){
 			if( data == 0){
-				this.bit.value = this.values[this.getstep()];
+//				this.bit.value = this.values[this.getstep()];
+				this.bit.value = 0;
 			}else if( data == 255){
 				this.step = this.transport.getValue();
 				this.transport.trigger = 0;			// show that the transport is still being used.
@@ -1759,8 +1760,8 @@ function seqBit(bit)
 			}
 			msg += "</tr>\n";
 			if( this.clksrc == null){
-				msg += "<tr><th>Tempo</th><td colspan='2'><input type='text' id='tempo' value='"+this.transport.tempo+"'  size='4' /></td>\n";
-				msg += "<th>Gate</th><td colspan='2'><input type='text' id='gate' value='"+this.gate+"'  size='4' /></td>\n";
+				msg += "<tr><td colspan='4'>"+this.transport.setData()+"</td></tr>\n";
+				msg += "<tr><th>Gate</th><td colspan='2'><input type='text' id='gate' value='"+this.gate+"'  size='4' /></td>\n";
 				msg += "</tr>\n";
 			}
 			msg += "</table>\n";

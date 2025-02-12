@@ -11,6 +11,7 @@ var midiavail = false;
 var midiinit = true;
 var midiclockmode = 0;		// all
 var miditargeting = null;	// if not null this is used to tell that the next knob moved is to be the target.
+var g_transport = null;
 
 MIDIoutdev_list = new objlist();
 MIDIindev_list = new objlist();
@@ -289,7 +290,7 @@ function midiTarget( bit, knob, chan)
 				}else if(op == 6){
 					val = arg+arg;
 				}else {
-					debugmsg("TFilt "+op+" "+val);
+//					debugmsg("TFilt "+op+" "+val);
 					val = arg;
 				}
 				this.bit.setValue(val, this.knob*1+2);
@@ -358,7 +359,7 @@ function midiClearTargets()
 function UImidiTarget(op, id)
 {	let md = null;
 	let grp = null;
-	let t = miditarget_list.head;
+	let t = null;
 	let tar=null;
 
 	if(bitformaction == null){
@@ -366,6 +367,7 @@ function UImidiTarget(op, id)
 	}
 	md = findMIDIinterface(bitformaction.midicnt);
 
+	t = miditarget_list.head;
 	while(t != null){
 		tar = t.ob;
 
@@ -512,7 +514,9 @@ function midiGroup(n, dir)
 //			debugmsg("Group Filt "+op+" "+chan+" "+arg);
 		}
 		while(l != null){
-			l.ob.filter(op, chan, arg, arg2, dev);
+			if( l.ob != null ){
+				l.ob.filter(op, chan, arg, arg2, dev);
+			}
 			l = l.next;
 		}
 
@@ -527,7 +531,9 @@ function midiGroup(n, dir)
 		if( n != null){
 			n = n.head;
 			while(n != null){
-				n.ob.print();
+				if( n.ob != null){
+					n.ob.print();
+				}
 
 				n = n.next;
 			}
@@ -535,7 +541,9 @@ function midiGroup(n, dir)
 		if(c != null){
 			c = c.head;
 			while(c != null){
-				c.ob.print();
+				if( c.ob != null){
+					c.ob.print();
+				}
 				c = c.next;
 			}
 		}
@@ -803,7 +811,7 @@ function doMidiClock(op, dev)
 
 	// run through the filter list
 	while(f != null){
-		if( f.ob.filter(op, dev)){
+		if( f.ob != null && f.ob.filter(op, dev)){
 			break;	// processed it.
 		}
 		f = f.next;
@@ -855,7 +863,7 @@ function MIDIfilter()
 	{	let f = this.filter_list.head;
 
 		while(f != null){
-			if( f.ob.filter(op,chan, arg,arg1, dev)){
+			if( f.ob != null && f.ob.filter(op,chan, arg,arg1, dev)){
 				return true;
 			}
 			f = f.next;
@@ -870,7 +878,9 @@ function MIDIfilter()
 		debugmsg("___ filter "+this.name+" type="+this.type+" int="+this.interface);
 		while(l != null){
 			obj = l.ob;
-			obj.print();
+			if( obj != null){
+				obj.print();
+			}
 			l = l.next;
 		}
 		debugmsg("__ end filters");
@@ -881,6 +891,23 @@ function MIDIfilter()
 // 
 // transport - provide a value that goes from 0-255 in a specified time/tempo
 //
+
+function UItransport(code)
+{
+	if( code == 0){
+		g_transport.stop();
+
+	}else if( code == 1){
+		g_transport.pause();
+
+	}else if( code == 2){
+
+		g_transport.resume();
+	}
+
+}
+
+
 function transport()
 {
 	this.clock = 0;
@@ -892,6 +919,8 @@ function transport()
 	this.beats = 0;
 	this.trigger = 0;
 	this.name = "";
+	this.mode = 0; 	// local, 1 global
+	this.bar = 0;
 
 	// called with current time in milliseconds
 	this.run = function( now)
@@ -902,8 +931,10 @@ function transport()
 		if( this.running == 0){
 			return false;
 		}
-		if(this.trigger > 2){		// missing too many ?
-			return false;
+		if( this != g_transport){		// do not check on the global transport
+			if(this.trigger > 2){		// missing too many ?
+				return false;
+			}
 		}
 		if( isNaN(millis)){
 			return false;
@@ -922,30 +953,112 @@ function transport()
 			while( this.value >= 256){
 				this.value -= 256;
 				this.trigger++;
+				this.bar++;
 			}
 		}else {
 			while( this.value < 0 ){
 				this.value += 256;
 				this.trigger++;
+				this.bar--;
+				if( this.bar < 0){
+					this.bar = 0;
+				}
 			}
 		}
 		return false;		// keep running.
 	}
 
 	// transport
+	this.localStop = function()
+	{
+		this.trigger = 0;
+		this.running = 0;
+		this.value = 0;
+		this.bar = 0;
+	}
+
 	this.stop = function()
 	{
+		if( this.mode == 1){
+			this.checkGlobal();
+			g_transport.mode = 0;
+			g_transport.stop();
+			return;
+		}
+		this.localStop();
+	}
+
+	this.localPause = function()
+	{
+		this.trigger = 0;
 		this.running = 0;
 	}
 
+	this.pause = function()
+	{
+		if( this.mode == 1){
+			this.checkGlobal();
+			g_transport.mode = 0;
+			g_transport.pause();
+			return;
+		}
+		this.localPause();
+	}
+
+	this.localResume = function()
+	{
+		this.trigger = 0;
+		this.running = 1;
+	}
+
+
 	this.resume = function()
 	{
-		this.running = 1;
+		if( this.mode == 1){
+			this.checkGlobal();
+			g_transport.mode = 0;
+			g_transport.resume();
+			return;
+		}
+		this.localResume();
+	}
+
+	this.checkGlobal = function()
+	{	let f;
+		if( g_transport == null){
+			g_transport = new transport();
+			g_transport.setTempo(120, 4);
+			timer_list.addobj(g_transport, null);
+			g_transport.name = "Global-transport";		// for debugging
+					
+			f = document.getElementById("transport_controls");
+			if( f != null){
+				f.style.display = "block";
+			}
+		}
+
 	}
 
 	this.getValue = function()
 	{
-		return this.value;
+		if( this.mode == 0){
+			return this.value;
+		}
+		this.checkGlobal();
+		g_transport.mode = 0;
+		return g_transport.getValue();
+	}
+
+	// transport getBeat assumes 4 per bar. bar is 0 - 256 value.
+	this.getBeat = function()
+	{	let step;
+		if( this.mode == 1){
+			this.checkGlobal();
+			g_transport.mode = 0;
+			return g_transport.getBeat();
+		}
+		step = Math.floor(this.value / (256 / this.beats) );
+		return this.bar * this.beats + step;
 	}
 
 	this.timer = function()
@@ -956,6 +1069,12 @@ function transport()
 	// transport
 	this.setTempo = function(tempo, beats)
 	{
+		if( this.mode == 1){
+			this.checkGlobal();
+			g_transport.mode = 0;
+			g_transport.setTempo(tempo, beats);
+			return;
+		}
 		if( tempo <= 0){
 			this.delta = 0.0;
 		}else {
@@ -970,21 +1089,86 @@ function transport()
 //	    debugmsg("Settempo "+tempo+" "+beats+" "+this.delta);
 	}
 
+	this.getTempo = function()
+	{
+		if( this.mode == 0){
+			return this.tempo;
+		}
+		this.checkGlobal();
+		g_transport.mode = 0;			// stop possible looping
+		return g_transport.getTempo();
+
+	}
+
 	// called for a midi clock event
 	this.midiclock = function()
 	{
 		this.clock++;
 	}
 
-	// transport for debug
+	// transport 
 	this.setData = function()
 	{	let msg = "";
+		let mmode = "Local";
+		if(this.mode  == 1){
+			mmode = "Global";
+		}
 
 		msg += "<table>\n";
+		msg += "<tr><th>Mode</th><td><select id='transport_mode' onchange='UIrefresh(1, 0);' >";
+		msg += "<option value='0' "+isSelected(0, this.mode)+" >Local</option>";
+		msg += "<option value='1' "+isSelected(1, this.mode)+" >Global</option></select> </td></tr>\n";
+		msg += "<tr><th>Tempo</th><td><input type='text' id='transport_tempo' value='"+this.getTempo()+"' size='4' onchange='UIrefresh(1, 0);'  /></td></tr>\n";
 		msg += "<tr><th>Delta</th><td>"+this.delta+"</td><th>trigger</th><td>"+this.trigger+"</td></tr>\n";
 		msg += "</table>\n";
 
 		return msg;
+	}
+
+	this.getData = function()
+	{	let i = 0;
+		let f = null;
+		let val = 0;
+		let s = new saveargs();
+
+		f = document.getElementById("transport_mode");
+		if( f != null){
+			s.addarg("transport_mode");
+			s.addarg(f.value);
+		}
+		f = document.getElementById("transport_tempo");
+		if( f != null){
+			s.addarg("transport_tempo");
+			s.addarg(f.value);
+		}
+
+
+		this.doLoad( s.getdata(), 0);
+	}
+
+	this.doLoad = function(initdata, idx)
+	{	var len = initdata[idx];
+		let n = 1;
+		let param="";
+		let val = "";
+        let tempo = this.tempo;
+
+        for(n = 1; n < len ; n += 2){
+			param = initdata[idx+n];
+		    val = initdata[idx+n+1];
+            if( param == "'control'"){
+				continue;
+			}else if( param == "transport_tempo"){
+				if( val < 10){
+					val = 10;
+				}else if( val > 300){
+					val = 300;
+				}
+				this.setTempo(val, this.beats);
+			}else if( param == "transport_mode"){
+				this.mode = val;
+			}
+		}
 	}
 }
 
@@ -1107,7 +1291,9 @@ function MIDIinputobj(m)
 		debugmsg("__ "+this.name);
 
 		while(l != null){
-			l.ob.print();
+			if( l.ob != null){
+				l.ob.print();
+			}
 			l = l.next;
 		}
 	}
@@ -1438,6 +1624,12 @@ function MIDIMessageEventHandler( e, dev){
 
 		return;
 
+	case 0xc0:
+		arg0 = e.data[0];
+		arg1 = e.data[1];
+		midiinsetvalues(8, chan, arg1, 0, dev);
+		return;
+
 	case 0xd0:
 		arg0 = e.data[0];
 		arg1 = e.data[1];
@@ -1482,8 +1674,8 @@ function midiinsetvalues( op, chan, arg, arg2, dev)
 		ng = md.filter_list.head;
 
 		while(ng != null){
-			debugmsg("midiin try"+chan+" "+arg+" dev="+dev+" op="+op);
-			if( ng.ob.filter(op, chan, arg, arg2, dev)){
+//			debugmsg("midiin try"+chan+" "+arg+" dev="+dev+" op="+op);
+			if( ng.ob != null && ng.ob.filter(op, chan, arg, arg2, dev)){
 				break;
 			}
 			ng = ng.next;
@@ -1753,7 +1945,7 @@ function noteGroup(idx)
 		}
 		// send on nth filter
 		while(nl != null){
-			if( nl.ob.filter(1, chan, arg, arg2, dev)){
+			if( nl.ob != null && nl.ob.filter(1, chan, arg, arg2, dev)){
 				break;
 			}
 			nl = nl.next;
@@ -1768,7 +1960,7 @@ function noteGroup(idx)
 		nl = this.notefilters.head;
 	
 		while(nl != null){
-			if(	nl.ob.filter(op, chan, arg, arg2, dev)){
+			if(	nl.ob != null && nl.ob.filter(op, chan, arg, arg2, dev)){
 				break;
 			}
 			nl = nl.next;
@@ -1791,7 +1983,7 @@ function noteGroup(idx)
 		nl = this.ccfilters.head;
 	
 		while(nl != null){
-			if(	nl.ob.filter(op, chan, arg, arg2, dev)){
+			if( nl.ob != null && nl.ob.filter(op, chan, arg, arg2, dev)){
 				return true;
 			}
 			nl = nl.next;
@@ -1812,7 +2004,7 @@ function noteGroup(idx)
 			// channel mismatch.
 			return false;
 		}
-		debugmsg("NGFilt "+this.name+" "+op+" "+chan+" "+arg+" ichan="+this.ichannel);
+//		debugmsg("NGFilt "+this.name+" "+op+" "+chan+" "+arg+" ichan="+this.ichannel);
 
 		// notemode 0: round robin
 		// notemode 1: unison, send note to all listeners.

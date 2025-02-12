@@ -49,6 +49,10 @@ function localMidiOut()
 					this.sending--;
 					return;
 
+				case 0xa0:				// 
+					this.sending--;
+					return;
+			
 				case 0xb0:		// control change
 //					debugmsg("Local out CC"+msg[1]+" "+msg[2]);
 					msg3[0] = msg[0];
@@ -92,7 +96,7 @@ function localMidiOut()
 					return;
 				}
 			// send msg
-			debugmsg("Local send "+msg.length);
+			debugmsg("Local send "+msg.length+" "+code.toString(16));
 		}else {
 			debugmsg("Sending > 1 "+this.sending);
 		}
@@ -393,6 +397,21 @@ function midiCVBit(bit)
 
 	}
 
+	// midicv input
+	this.doSave = function()
+	{	let msg = "";
+		let s = new saveargs();
+		let b = this.bit;
+
+		if( b == null){
+			return;
+		}
+		s.addnv("control", "'midicv-in'")
+
+		return s.getargs();
+	}
+
+
 	//midicv
 	this.doLoad = function(initdata, idx)
 	{	let len = initdata[idx];
@@ -443,7 +462,7 @@ function midiCVBit(bit)
 
 		// if not OMNI and not this channel
 		if( channel != 0 && channel != chan){
-			debugmsg("FILT CV "+channel+" chan="+chan);
+//			debugmsg("FILT CV "+channel+" chan="+chan);
 			return false;
 		}
 		if( note == 0){
@@ -572,6 +591,26 @@ function midiCCBit(bit)
 		this.doLoad(s.getdata(), 0);
 
 	}
+	// midicv input
+	this.doSave = function()
+	{	let msg = "";
+		let s = new saveargs();
+		let b = this.bit;
+
+		if( b == null){
+			return;
+		}
+		s.addnv("control", "'midicc-in'");
+
+		if( this.groupobj != null){
+			s.addarg("groupname");
+			s.addarg(stringValue(this.groupobj.name));
+		}
+
+		return s.getargs();
+	}
+
+
 
 	//midicc
 	this.doLoad = function(initdata, idx)
@@ -1357,6 +1396,7 @@ function midiGroupBit(bit)
 	{	let msg = "";
 		let s = new saveargs();
 		let b = this.bit;
+		let g = this.groupobj;
 
 		if( b == null){
 			return;
@@ -1364,7 +1404,7 @@ function midiGroupBit(bit)
 		// strings, numbers
 // this.paramnames = ["name", "type", "interface", "channel"];
 		let vs = [this.groupname, null, null, null];
-		let vn =[0, this.grouptype, this.midicnt, this.channel];
+		let vn =[0, this.grouptype, g.midicnt, g.channel];
 		let i = 0;
 
 		for(i=0; i < this.paramnames.length; i++){

@@ -4283,7 +4283,9 @@ function loadInitData( initdata)
 					if( initdata[idx+6+j] == num){
 						// snap j is linked to bit.snaps[0]
 						bit.snaps[0].paired = bit2.snaps[j];
-						bit2.snaps[j].paired = bit.snaps[0];
+						if(bit2.snaps[j] != null){
+							bit2.snaps[j].paired = bit.snaps[0];
+						}
 					}
 				}
 			}
@@ -4294,7 +4296,9 @@ function loadInitData( initdata)
 					if( initdata[idx+6+j] == num){
 						// snap j is linked to bit.snaps[2]
 						bit.snaps[2].paired = bit2.snaps[j];
-						bit2.snaps[j].paired = bit.snaps[2];
+						if(bit2.snaps[j] != null){
+							bit2.snaps[j].paired = bit.snaps[2];
+						}
 					}
 				}
 			}
