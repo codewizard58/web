@@ -809,7 +809,7 @@ var bytecode = [
 	[ 5, 0, 9, 3, 28, 0],				// 8 MIDICLK
 	null,
 	null,
-	[ 5, 0, 9, 3, 28, 0],				// 11 midi file player
+	[ 5, 0, 9, 3, 28, 0],				// 11 midi file player curchain not if exit fi setvalue getvalue [28] white]
 
 
 	[ 4, 16, 0],						// 12 WIRESPLIT
@@ -882,7 +882,7 @@ var bytecode = [
 	null,
 
 
-	[ 4, 6, 5, 0, 9, 12, 3, 28, 0],		// 64 Mandlebrot  arg2? if exit fi setv 1 setv 2 getv
+	[ 4, 6, 5, 0, 9, 12, 3, 28, 0],		// 64 Mandlebrot  arg2? if exit fi setv 1 setv 2 getv [28] white]
 	null,
 	null,
 	null,
@@ -1758,6 +1758,7 @@ function Program()
 		let msg = "";
 		let trace = false;
 		let ctrl = null;
+		let bytes = null;
 
 		this.needsend = 0;	
 		this.sendsize = 8;		// allow for 0xf0 S B P 0x06 seqh seql ver
@@ -1773,7 +1774,9 @@ function Program()
 			}else {
 				data = 0;
 			}
-			msg += "["+code+":"+curchain+":"+data+"]";
+			if(trace){
+				msg += "["+code+":"+curchain+":"+data+"]";
+			}
 			data2 = data;
 
 
@@ -1781,12 +1784,11 @@ function Program()
 			if( bytes != null){
 				ip = 0;
 				while( bytes[ip] != 0 && ip < 20){
-					if( trace){
+					if( trace ){
 						msg += bytes[ip]+",";
 					}
 					switch(bytes[ip]){
 						case 0:							// null, used as end of code.
-							trace = false;
 							break;
 						case 1:							// poweron etc
 							chain = prog[bp];
@@ -2054,8 +2056,9 @@ function Program()
 					ip++;
 				}
 				if( ip > 10){
-					debugmsg("Bad IP code="+code);
+					debugmsg("Bad IP code="+code+" ip="+ip+" msg="+msg);
 				}
+				trace = false;
 //			}else {
 //				debugmsg("No bytes "+msg);
 			}

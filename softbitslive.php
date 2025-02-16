@@ -337,6 +337,8 @@
                   </video >
                   <canvas width ="800" height="600" tabindex="2" id="videocanvas"  style='display:none'>
                   </canvas>
+                  <canvas width ="400" height="400" tabindex="2" id="playercanvas"  >
+                  </canvas>
                 </div>
             </td>
           </tr>

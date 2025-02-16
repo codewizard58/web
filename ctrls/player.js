@@ -5,6 +5,7 @@ var player = null;      // global used below.
 var tracklist = null;
 var g_millis = 0;       // set by parsetrack
 var g_ppqn = 96;        // modified by parsetrack
+var pctx = null;        // off screen image of player               
 
 var sounds = [
     "pardon", "/sound/pardon" ,
@@ -540,9 +541,14 @@ function theGrid(beats, bars, rows)
 
     }
 
+    this.clear = function()
+    {
+        this.update( idata);
+    }
+
     // init the grid
-    this.update( idata);
-    debugmsg("New grid("+beats+","+bars+","+rows+")");
+    this.clear();
+//    debugmsg("New grid("+beats+","+bars+","+rows+")");
 }
 
 playerBit.prototype = Object.create(control.prototype);
@@ -552,21 +558,24 @@ function playerBit(bit)
 	this.bit = bit;
     this.transport = new transport();
     this.gate = 128;
-    this.gridRows = 37;         // notes in grid.
+    this.image = null;
+    this.gridRows = 61;         // notes in grid.
+    this.octave = 2;
     this.bar = 0;
-    this.bars = 8;
     this.beat = 0;
     this.beats = 4;
+    this.bars = 16;             // adjust based on rows.
     this.page = 0;          // one screens worth
-    this.start = 0;
+    this.prevpage = -1;
+    this.start = 0;         // start beat
+    this.curstart = -1;      // used by draw track
     this.oddColor = "#000000";
     this.evenColor = "#808080";
     this.cursorColor = "#c0c0c0";
     this.max = 0;
     this.step = 0.0;
-    this.octave = 3;
     this.scale = 0;     // 0 normal, 1 white notes only, 2 black notes only
-    this.playing = new Array( this.gridRows+2);
+    this.playing = new Array(128);
     this.grids = null;
     this.ngrids = 40;
     this.curgrid = 0;
@@ -588,13 +597,17 @@ function playerBit(bit)
     this.arp = 0;
     this.arpnote = 48;
     this.prevarp = 48;
+    this.key = 48;
+    this.starts = null;
 
     this.prevdata.changed(-1);
 
     //player
     this.setup = function()
     {   let i;
-        
+        const b = this.bit;
+        let f;
+             
         UIchooseKit("Midi");            // make sure Midi kit is init.
         if( this.grids == null){
             this.grids = new Array(this.ngrids);
@@ -630,18 +643,24 @@ function playerBit(bit)
         if( this.mididev == -1){
             useMIDIin = new MIDIinputobj(this);
             this.mididev = nextMidiIndex;       // setup by midiinputobj
-            useMIDIin.setup("Player");
+            useMIDIin.setup("Player");          // add notegroup
+            debugmsg("Setup midi in "+"player"+" "+this.mididev);
         }
-        
+        this.starts = new Array(128);           // used by file draw
+
+        if( pctx == null){
+			f = document.getElementById("playercanvas");
+			if( f != null){
+				pctx = f.getContext('2d');
+            }
+        }
     }
 
     // 
-    this.setNote = function(note, beat, bar)
+    this.setNote = function(note, beat, bar, chan)
     {   let col=0;
         let abeat = beat % this.beats;
         let abar = bar % this.bars;
-        let cnt = 0;
-        let i;
         let perrow = this.beats*this.bars;
         let row = 0;
         let prev = 0;
@@ -661,19 +680,57 @@ function playerBit(bit)
             prev = this.grid[col+row];
             this.grid[col+row] = val;
         }else {
-            debugmsg("setnote range "+note+" octave="+(this.octave*12));
             return 0;
         }
 
-        cnt = 0;
-        for(i=0; i < this.gridRows; i++){
-            if( this.grid[col + i* perrow] != 0){
-                cnt++;
+        return prev;
+    }
+
+    // only changes when resized.
+    this.drawGrid = function(pctx)
+    {   const bit = this.bit;
+        const kw = bit.w/5;
+        const kh = bit.h;
+        let dx;
+        let dw;
+        let i;
+        let bw,bh;
+        let pagew = this.beats*this.bars;
+
+        bw = Math.floor( (bit.w-kw )/ this.gridRows);
+        bh = Math.floor( (bit.h )/ this.gridRows);
+
+        // draw grid background
+        dx = kw;
+        dw = bw*this.beats;
+        pagew = pagew * bw + kw;
+        i = 0;
+        while( dx < bit.w && dx < pagew){
+            if( i == 0){
+                pctx.fillStyle = this.evenColor;
+                i = 1;
+            }else {
+                pctx.fillStyle = this.oddColor;
+                i = 0;
+            }
+            if( bit.w - dx < dw){
+                dw = bit.w - dx;        // right side may not be multiple.
+            }
+            pctx.fillRect(dx, 0, dw, bit.h);
+
+            dx += dw;
+        }
+        // draw grid
+        pctx.strokeStyle = "#0000ff";
+        if( this.drawmode == 0){
+            for(i=kw; i < bit.w-bw; i += bw){
+                pctx.strokeRect(i, 0, bw, kh);      // vert
             }
         }
-        return prev;
+        for(i = 0; i < bit.h-bh; i += bh){
+            pctx.strokeRect(kw, i, bit.w-kw, bh);   // horiz
+        }
 
-//        debugmsg("setNote "+note+" "+col+" ");
     }
 
     this.Draw = function()
@@ -683,7 +740,7 @@ function playerBit(bit)
         let i,j;
         let bw, bh;
         let dx, dw;
-        let pagew = this.beats*this.bars;
+//        let pagew = this.beats*this.bars;
         let curg;
         let bright = 0;
 
@@ -691,46 +748,52 @@ function playerBit(bit)
         bh = Math.floor( (bit.h )/ this.gridRows);
 
         ctx.strokeStyle = "#0000ff";
-        ctx.strokeRect(bit.x,bit.y, bit.w, bit.h);
+        ctx.strokeRect(bit.x-1, bit.y-1, bit.w+2, bit.h+2);
 
-        this.drawKeyboard();
-        // draw grid background
-        dx = kw;
-        dw = bw*this.beats;
-        pagew = pagew * bw + kw;
-        i = 0;
-        while( dx < bit.w && dx < pagew){
-            if( i == 0){
-                ctx.fillStyle = this.evenColor;
-                i = 1;
-            }else {
-                ctx.fillStyle = this.oddColor;
-                i = 0;
-            }
-            if( bit.w - dx < dw){
-                dw = bit.w - dx;        // right side may not be multiple.
-            }
-            ctx.fillRect(bit.x+dx, bit.y, dw, bit.h);
+        if(this.image == null || this.page != this.prevpage){
 
-            dx += dw;
-        }
+            pctx.fillStyle = "#202040";
+            pctx.fillRect(0,0, bit.w, bit.h);
 
-        // draw grid
-        if( this.drawmode == 0){
-            for(i=kw; i < bit.w-bw; i += bw){
-                ctx.strokeRect(bit.x+i, bit.y+0, bw, kh);
+            this.drawKeyboard(pctx);
+            this.drawGrid(pctx);
+
+            // draw notes
+            if( this.tracklist != null ){
+                // draw tracks
+                bright = 240;
+                t = this.tracklist;
+                while(t != null){
+                    if( this.active -1 != t.track && t.hasnotes == 1){
+                        this.drawTrack(pctx, t, bright);
+                        bright -= 5;
+                    }
+                    t = t.next;
+                }       
+                t = this.tracklist;
+                while(t != null){
+                    if( this.active -1 == t.track){
+                        this.drawTrack(pctx, t, 255);
+                    }
+                    t = t.next;
+                }
+                this.prevpage = this.page;
             }
+
+            this.image = pctx.getImageData(0, 0, bit.w, bit.h);
+            this.prevpage = this.page;
+        
         }
-        for(i = 0; i < bit.h-bh; i += bh){
-            ctx.strokeRect(bit.x+kw, bit.y+i, bit.w-kw, bh);
+        if( this.image != null){
+            ctx.putImageData(this.image, bit.x, bit.y);
         }
-        // draw notes
-        if( this.tracklist == null){
+        // grid modes
+        if( this.tracklist == null || this.effect != 0){
             curg = this.curgrid+1;
             if(curg >= this.ngrids){
                 curg = 0;
             }
-            bright = 160-this.ngrids*5;            // oldest color
+            bright = 240-this.ngrids*7;            // oldest color
             while(curg != this.curgrid){
 //                debugmsg("CURG "+curg+" "+this.curgrid);
                 ctx.fillStyle = m_color(bright, 3, 0);
@@ -759,10 +822,7 @@ function playerBit(bit)
             }
         }
 
-        if( this.tracklist != null){
-            // draw tracks
-            this.drawTrack(this.active-1, "#ffff00");
-        }
+        this.drawPlaying(ctx);
 
         // draw bar marker
         dx = kw+(this.bar * this.beats+this.beat) * bw;
@@ -773,7 +833,7 @@ function playerBit(bit)
         execmode = 2;
     }
 
-    this.drawKeyboard = function()
+    this.drawKeyboard = function(pctx)
     {   const bit = this.bit;
         const kw = bit.w/5;
         const kh = bit.h;
@@ -782,40 +842,32 @@ function playerBit(bit)
         let dx,dw;
         let i,j;
         let note;
+        let octave = 0;         // 1*this.octave*12;
 
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(bit.x, bit.y, kw, kh);
+        pctx.fillStyle = "#ffffff";
+        pctx.fillRect(0, 0, kw, kh);
         // draw black notes
-        dx = bit.y;
+        dx = 0;
         note = this.gridRows-1;
         for(i=this.gridRows-1; i >= 0; i--){
             j = i % 12;
-            ctx.fillStyle = "#ffffff";
-            ctx.fillRect(bit.x, dx, kw, bnh);
+            pctx.fillStyle = "#ffffff";
+            pctx.fillRect(0, dx, kw, bnh);
 
-            ctx.fillStyle = "#000000";
+            pctx.fillStyle = "#000000";
             if( j == 10 || j == 8 || j == 6 || j == 3 || j == 1){
                 // Black notes.
-                if( this.playing[note] != 0){
-                    ctx.fillStyle = "#ff0000";
-                }
-                ctx.fillRect(bit.x, dx, bnw, bnh);
-                ctx.fillStyle = "#000000";
+                pctx.fillRect(0, dx, bnw, bnh);
+                pctx.fillStyle = "#000000";
                 if(j == 10){
-                    ctx.strokeRect(bit.x+bnw, dx+bnh/2+2, bnw, 1);
+                    pctx.strokeRect(bnw, dx+bnh/2+2, bnw, 1);
                 }else if( j == 6){
-                    ctx.strokeRect(bit.x+bnw, dx+bnh/2-2, bnw, 1);
+                    pctx.strokeRect(bnw, dx+bnh/2-2, bnw, 1);
                 }else {
-                    ctx.strokeRect(bit.x+bnw, dx+bnh/2, bnw, 1);
+                    pctx.strokeRect(bnw, dx+bnh/2, bnw, 1);
                 }
             }else if(j == 0 || j == 5 ){
-                ctx.strokeRect(bit.x, dx+bnh-1, kw, 1);
-            }
-            if( this.playing[note] != 0){
-                ctx.fillStyle = "#ff0000";
-                if( j == 0 || j == 2 || j == 4 || j == 5 || j == 7 || j == 9 || j == 11){
-                    ctx.fillRect(bit.x+bnw+2, dx+1, bnw-4, bnh);
-                }
+                pctx.strokeRect(0, dx+bnh-1, kw, 1);
             }
             dx += bnh;
             note--;
@@ -823,48 +875,50 @@ function playerBit(bit)
 
     }
 
-    this.findTrack = function(track)
-    {   let t = this.tracklist;
+    this.drawPlaying = function(pctx)
+    {   const bit = this.bit;
+        const kw = bit.w/5;
+        const kh = bit.h;
+        const bnw = Math.floor(kw/2);
+        const bnh = Math.floor(kh/this.gridRows);
+        let dx,dw;
+        let i,j;
+        let x = this.grid_rows % 12;
 
-        while(t != null){
-            if( t.track == track){
-                break;
+        // draw black notes
+        dx = 0;
+        pctx.fillStyle = "#ff0000";
+        for(i =0; i < this.gridRows; i++){
+            j = 11 - ((i-1) % 12);
+            x =this.gridRows - i-1;
+            if( this.playing[x] != 0){
+//                debugmsg("DP "+i+" "+j+" "+x);
+                if( j == 10 || j == 8 || j == 6 || j == 3 || j == 1){
+                // Black notes.
+                    pctx.fillRect(bit.x+0, bit.y+dx, bnw, bnh);
+                }
+
+                if( j == 0 || j == 2 || j == 4 || j == 5 || j == 7 || j == 9 || j == 11){
+                    pctx.fillRect(bit.x+bnw+2, bit.y+dx+1, bnw-4, bnh);
+                }
             }
-            t =t.next;
+            dx += bnh;
         }
-        return t;
-    }
-
-    this.skipEvents = function( eventList, start)
-    {   let ev;
-        let now = 0;
-
-        ev = eventList;
-        // skip to first note visible.
-        while(ev != null){
-            if( now >= start){
-                break;
-            }
-            now += ev.delta;
-
-            ev = ev.next;
-        }
-        return ev;
-
-    }
+   }
 
     // player
-    this.drawTrack = function(track, color)
-    {   let t;
+    // show on grid
+    this.drawTrack = function(pctx, track, coloridx)
+    {   let t = track;
         const bit = this.bit;
         let now = 0;
         let ev = null;
         let start = this.start *this.ppq;
         const end = this.beats * this.bars * this.ppq;
         let cmd;
-        let starts = new Array(128);
         let i;
         let row;
+        let rowy;
         let kw = bit.w/5;
         const bh = Math.floor(bit.h / this.gridRows);
         const bw = Math.floor( (bit.w-kw )/ this.gridRows);
@@ -872,45 +926,75 @@ function playerBit(bit)
         let x;
         let w;
         let r;
+        const color = m_color(coloridx, 3, 0);
+        const page = this.page * this.beats * this.bars * this.ppq;
+//        const curg = (this.curgrid+t.track) % this.ngrids;
+        const curg = this.curgrid;
 
         for(i=0; i < 128; i++){
-            starts[i] = 0;          // all notes are off
+            this.starts[i] = 0;          // all notes are off
+        }
+//        debugmsg("Tr "+t.name+" "+coloridx);
+        if( this.start != this.curstart){
+            this.grids[curg].clear();
         }
 
-        t = this.findTrack(track);
-        if( t == null){
-            return;
-        }
         ev = t.eventlist;
         now = -start;
         while(ev != null){
             now += ev.delta;
             cmd = Math.floor(ev.status / 16);
             if( cmd == 9){
-                starts[ev.data] = now;
+                this.starts[ev.data] = now;
             }else if( cmd == 8 || now >= end){      // note off or end of grid.
                 // end of note.
-                if( starts[ev.data] != 0){
+                if( this.starts[ev.data] != 0){
                     // drawline
                     row = ev.data - this.octave*12;
                     row = this.gridRows - row - 1;
-                    row = row * bh;
-                    x = Math.floor(starts[ev.data] * bw96);
-                    w = Math.floor((now - starts[ev.data])  * bw96);
+                    rowy = row * bh;
+                    x = Math.floor(this.starts[ev.data] * bw96);
+                    w = Math.floor((now - this.starts[ev.data])  * bw96);
                     r = x+w;
                     if( x < 0){
                         w = w + x;
                         x = 0;
                     }
+                    if( w < 5){
+                        w = 5;
+                    }
 
-                    if( x < bit.w-kw && r < bit.w-kw && r > 0){
-                        ctx.fillStyle = color;
-                        ctx.fillRect(bit.x+x+kw, bit.y+row+2, w, 2);
+                    if( x < bit.w-kw && r < bit.w-kw && r > 0){     // check column
+                        pctx.fillStyle = color;
+                        if( rowy > 0 && rowy < bit.h){    // check in range
+                            pctx.fillRect(x+kw, bit.y+rowy+2, w, 4);
+//                            if( this.start != this.curstart){
+                                // update the grid.
+                                col = Math.floor(this.starts[ev.data] / this.ppq);
+                                if( col < 0){
+                                    col = 0;
+                                }else if( col > this.beats*this.bars){
+                                    col = this.beats*this.bars-1;
+                                }
+                                w = Math.floor((now - this.starts[ev.data]) / this.ppq);
+                                if( w < 1){
+                                    w = 1;
+                                }
+//                                debugmsg("DG "+col+" "+w+" "+row+" "+this.page+" "+curg);
+                                col = col+row * this.beats*this.bars;
+                                while(w> 0){
+                                    this.grids[curg].grid[col] = 1;
+                                    col++;
+                                    w--;
+                                }
+//                          }
+                        }
                     }
                 }
             }
             ev = ev.next;
         }
+        this.curstart = this.start;
     }
 
     this.doScale = function(o)
@@ -1042,15 +1126,19 @@ function playerBit(bit)
                 }
             }
             o = ox;
-            if( o >= 72){
-                o -= 12;
-            }else if( o < 36){
-                o += 12;
-            }
-            this.arpnote = o;
         }else {
             o = this.arpnote;
         }
+        if(this.beat % this.beats == 0){
+            if( o > 60 ){
+                debugmsg("ARP reset "+o+" "+this.key);
+                o = this.key;
+            }else if(o < 36){
+                debugmsg("ARP reset "+o+" "+this.key);
+                o = this.key;
+            } 
+        }
+        this.arpnote = o;
         return o;
 
     }
@@ -1061,18 +1149,24 @@ function playerBit(bit)
         let n;
         let perrow = this.beats*this.bars;
         let o, ox;
-        let step = 0;       
+        let step = 0;
+        let tl = this.tracklist;
+        let t;
+        let cgrid = this.curgrid;
+        let octave = 1*this.octave * 12;  
 
         col=this.beat+this.bar*this.beats;
 //        if( this.transport.mode == 1){      // in global mode
 //            debugmsg("col="+col+" beat="+this.beat+" bar="+this.bar);
 //        }
-        for(i=0; i < this.gridRows; i++){
-            n = this.grid[col + i*perrow];
-            this.playing[this.gridRows - i -1] = n;
+        octave = 0;
+        for(i=0; i < this.gridRows; i++){       // for keyboard display
+            t = this.gridRows - i -1;
+            n = this.grid[col + t*perrow];
+            this.playing[i] = n;
         }
 
-        // look for highest note.
+        // look for highest note.   for output
         this.values[col] = 0;
         for(i=0; i < this.gridRows; i++){
             n = this.grid[col + i*perrow];
@@ -1087,8 +1181,41 @@ function playerBit(bit)
                 break;              // only process highest
             }
         }
-        if( this.effect == 1){
-            this.life();
+
+        // for life and cycle modes
+        tl = this.tracklist;
+        if( tl != null){
+            while(tl != null){
+                if( tl.player != null){
+                    if( cgrid < 0){
+                        cgrid = this.ngrids -1;
+                    }else if( cgrid >= this.ngrids){
+                        cgrid = 0;
+                    }
+                    for(i=0; i < tl.player.notes.length; i++){
+                        if( tl.player.notes[i] != 0){
+                            n = this.gridRows - i -1;
+                            n += this.octave * 12;
+                            if( n > 0){
+                                this.grids[cgrid].grid[col + n * perrow] = 1;
+                                if( this.active -1 == tl.track){
+                                    this.grids[this.curgrid].grid[col + n * perrow] = 1;
+                                }
+                            }
+                        }
+                    }
+                    cgrid--;
+                }
+                tl = tl.next;
+            }
+        }
+
+        // process life and cycle.
+        if( this.effect == 1 || this.effect == 2){
+            if(this.effect == 1){
+                this.life();
+            }
+            // cycle history.
             this.curgrid++;
             if( this.curgrid >= this.ngrids){
                 this.curgrid = 0;
@@ -1105,6 +1232,7 @@ function playerBit(bit)
         let perrow = this.beats*this.bars;
         let step;
         let gate = Math.floor(this.gate / this.beats);
+        const page = this.page;
 
         if( this.max >= perrow){
             this.max = perrow;
@@ -1128,6 +1256,7 @@ function playerBit(bit)
 				execmode = 2;
                 beat = this.transport.getBeat();
                 step = Math.floor(this.step %  Math.floor(256 / this.beats) );
+// debugmsg("Beat "+beat+" "+step);
                 if( step > gate){
                     this.bit.value = 0;
                 }
@@ -1135,8 +1264,11 @@ function playerBit(bit)
                     this.beat = beat % this.beats;
                     this.bar = Math.floor(beat / this.beats) % this.bars;
                     this.page = Math.floor(beat / (this.beats * this.bars));
-//                    debugmsg("Beat "+beat+" beat="+this.beat+" bar"+this.bar+" page="+this.page);
                     // new column
+                    if( page != this.page){
+                        this.start = this.page * this.beats*this.bars;  // moved to a new page
+                        debugmsg("Beat "+beat+" beat="+this.beat+" bar"+this.bar+" page="+this.page);
+                    }
                     this.newColumn();
 
                 }
@@ -1146,6 +1278,8 @@ function playerBit(bit)
                 if( this.prevdata.changed(data)){
                     this.transport.localPause();     // local only
                 }
+                // all notes off
+                this.allOff();
             }else {		
                 if( this.prevdata.changed(data)){
                     this.transport.localPause();     // local only
@@ -1177,10 +1311,12 @@ function playerBit(bit)
         let tl;
         let n;
         let style = "";
+        let bright = 180;
 
 		if( bitform != null){
 			bitform.innerHTML="";
 		}
+        this.curstart = -1;     // force a recalc when drawn
 		bitform = document.getElementById("bitform");
 		if( bitform != null){
 			msg = "<table>";
@@ -1189,9 +1325,11 @@ function playerBit(bit)
                 tl = this.tracklist;
                 while(tl != null){
                     if( this.active-1 == tl.track){
-                        style = " style='color:green' ";
-                    }else {
-                        style = " onclick='UIplayTrack("+tl.track+");' style='cursor:pointer;' ";
+
+                        style = " style='color:"+m_color(0,3,0)+"' ";   // black on white
+                    }else if( tl.hasnotes){
+                        style = " onclick='UIplayTrack("+tl.track+");' style='cursor:pointer; color:"+m_color(bright,3,0)+"' ";
+                        bright -= 10;
                     }
                     msg += "<tr><th><span "+style+">"+tl.track+"</span></th><th align='left' ><span "+style+">"+tl.name+"</span></th>";
                     if( tl.hasnotes == 1){
@@ -1208,16 +1346,21 @@ function playerBit(bit)
                 }
             }
             msg += "<tr><th>Beats</th><td><input type='text' id='beats' size='3' value='"+this.beats+"'  onchange='UIrefresh(1, 0);' /></td>";
-            msg += "<th>Bars</th><td><input type='text' id='bars' size='3' value='"+this.bars+"' onchange='UIrefresh(1, 0);'  ></input></td></tr>\n";
+            msg += "<th>Bars</th><td><input type='text' id='bars' size='3' value='"+this.bars+"' onchange='UIrefresh(1, 0);'  ></input></td>";
+            msg += "<th>Rows</th><td><input type='text' id='rows' size='3' value='"+this.gridRows+"' onchange='UIrefresh(1, 0);'  ></input></td>";
+            msg += "</tr>\n";
             // start position
             msg += "<tr><th><input type='button' value='<<' onclick='UIstartPos(-4);' /></th><th><input id='startposition' type='text' value='"+this.start+"' size='3'/></th>";
             msg += "<th><input type='button' value='>>' onclick='UIstartPos(4);' /></th></tr>\n";
             msg += "<tr><td colspan='4'>"+this.transport.setData()+"</td></tr>\n";
-			msg += "<tr><th>Gate</th><td colspan='2'><input type='text' id='gate' value='"+this.gate+"'  size='4'  onchange='UIrefresh(1, 0);' /></td></tr>\n";
+			msg += "<tr><th>Gate</th><td ><input type='text' id='gate' value='"+this.gate+"'  size='4'  onchange='UIrefresh(1, 0);' /></td>";
+			msg += "<th>PPQN</th><td >"+this.ppq+"</td>";
+            msg += "</tr>\n";
 //          msg += "<tr><th>Debug</th><td>"+this.mididev+"</td></tr>\n";
             msg += "<tr><th>Effect</th><td><select id='effect' >";
             msg += "<option value='0' "+isSelected(0, this.effect)+">None</option>";
             msg += "<option value='1' "+isSelected(1, this.effect)+">Life</option>";
+            msg += "<option value='2' "+isSelected(2, this.effect)+">Cycle</option>";
             msg += "</select></td></tr>\n";
             msg += "<tr><th>Scale</th><td><select id='scale' >";
             msg += "<option value='0' "+isSelected(0, this.scale)+">12 notes</option>";
@@ -1258,6 +1401,11 @@ function playerBit(bit)
         f = document.getElementById("bars");
         if( f != null){
             s.addarg("bars");
+            s.addarg(f.value);
+        }
+        f = document.getElementById("rows");
+        if( f != null){
+            s.addarg("rows");
             s.addarg(f.value);
         }
         f = document.getElementById("tempo");
@@ -1328,6 +1476,7 @@ function playerBit(bit)
         let md;
         let beats = this.beats;
         let bars = this.bars;
+        let rows = this.gridRows;
 
         for(n = 1; n < len ; n += 2){
 			param = initdata[idx+n];
@@ -1337,14 +1486,16 @@ function playerBit(bit)
 			}else if( param == "tempo"){
 				if( val < 10){
 					val = 10;
-				}else if( val > 300){
-					val = 300;
+				}else if( val > 480){
+					val = 480;
 				}
 				tempo = val;
 			}else if( param == "bars"){
 				this.bars = checkRange(val);
 			}else if( param == "beats"){
 				this.beats = checkRange(val);
+			}else if( param == "rows"){
+				this.gridRows = checkRange(val);
 			}else if( param == "gate"){
 				this.gate = checkRange(val);
 			}else if( param == "effect"){
@@ -1360,7 +1511,7 @@ function playerBit(bit)
                     while(t != null){
                         if( param == "groupname_"+t.track){     // interface name actually
                             if(t.midioutdev != val){
-                                debugmsg("Group "+(t.midioutdev-1)+" "+val);
+//                                debugmsg("Group "+(t.midioutdev-1)+" "+val);
                                 md = getMidiOutGroup(t.midioutdev-1);
                                 if( md != null){
                                     t.midiout = md.name;
@@ -1383,7 +1534,8 @@ function playerBit(bit)
             this.setTempo(tempo);
 //            debugmsg("Tempo "+tempo);
         }
-        if( this.beats != beats || this.bars != bars){
+        if( this.beats != beats || this.bars != bars || this.gridRows != rows){
+            this.image = null;
             this.setup();
         }
 
@@ -1411,6 +1563,7 @@ function playerBit(bit)
         note = Math.floor(y / bh);
         note = this.gridRows - note -1;
         this.playing[note] = 2;
+        debugmsg("SM2 "+note);
 
         if(  x > kw+perrow*bw){
             debugmsg("Past end");
@@ -1426,12 +1579,12 @@ function playerBit(bit)
 
 //        note = this.gridRows - note -1;
         note = note + this.octave * 12;
-//        debugmsg("MD "+note+" beat="+this.beat);
+        debugmsg("MD "+note+" beat="+this.beat);
 
-        val = this.setNote(note, this.beat, this.bar);
+        val = this.setNote(note, this.beat, this.bar, 0);
         if( val != 0){
             // was set so clear
-            this.setNote(-note, this.beat, this.bar);
+            this.setNote(-note, this.beat, this.bar, 0);
         }
 
     }
@@ -1451,6 +1604,8 @@ function playerBit(bit)
         note = Math.floor(y / bh);
         note = this.gridRows - note-1;
         this.playing[note] = 0;
+        debugmsg("SM0 "+note);
+        this.Draw();
 
     }
 
@@ -1541,21 +1696,21 @@ function playerBit(bit)
             
 //            if( now <= tick){
                 if( cmd == 9){        // note on
-                    debugmsg("Event("+now+") "+tick+" On "+ev.delta+" "+ev.status+" note="+ev.data+" "+ev.arg);
+//                    debugmsg("Event("+now+") "+tick+" On "+ev.delta+" "+ev.status+" note="+ev.data+" "+ev.arg);
                     if( Math.floor(now / this.ppq) < perrow){ // start is still on screen
                         allnotes[ev.data] = now;
                     }
                     hasnote = true;
                 }else if( cmd == 8 ){
 //                    allnotes[ev.data] = 2;
-                    debugmsg("Event("+now+") "+tick+" Off "+ev.delta+" "+ev.status+" note="+ev.data);
+//                    debugmsg("Event("+now+") "+tick+" Off "+ev.delta+" "+ev.status+" note="+ev.data);
                     if( allnotes[ev.data] != 0){
                         row = ev.data - this.octave*12;
                         row = this.gridRows - row-1;
                         row = row * perrow;
                         i = Math.floor(allnotes[ev.data]/this.ppq);
                         w = Math.floor((now - allnotes[ev.data]) / this.ppq);
-                        debugmsg("Grid "+row+" "+i+" "+w);
+//                        debugmsg("Grid "+row+" "+i+" "+w);
                         while( w > 0){
                             this.grid[row+i] = 1;
                             i++;
@@ -1581,6 +1736,21 @@ function playerBit(bit)
 
     // player
     // adjust by the scale mod.
+    this.allOff = function()
+    {   let n;
+        let note;
+        let len = this.gridRows;
+        let octave = this.octave * 12;
+
+        for(n=0; n < len ; n++){
+            if( this.noteStates[n] != 0 ){
+                this.noteoff(8, 0, this.gridRows - n + octave - 1, 127, this.mididev);
+                this.noteStates[n] = 0;
+            }
+        }
+
+    }
+
     this.doMidi = function()
     {   let col=this.beat+this.bar*this.beats;
         const perrow = this.beats*this.bars;
@@ -1673,14 +1843,14 @@ function playerBit(bit)
 
     this.noteon = function(op, chan, arg, arg2, dev)
     {   const md = MIDIindev[dev];
-        debugmsg("On("+arg+") "+dev);
+//        debugmsg("On("+arg+") "+dev);
         midiinsetvalues(1, chan, arg, arg2, dev);
     }
 
     this.noteoff = function(op, chan, arg, arg2, dev)
     {   const md = MIDIindev[dev];
      
-        debugmsg("Off("+arg+") "+dev);
+//        debugmsg("Off("+arg+") "+dev);
         midiinsetvalues(0, chan, arg, arg2, dev);
 
     }
@@ -1706,13 +1876,14 @@ function trackPlayer( data)
     this.midioutdev = 0;        // use 1 offset so 0 is not set.
     this.output = null;
     this.notes = new Uint8Array(128);
+    this.display = null;
 
 //    debugmsg("trackplayer "+data.name+" "+data.track);
 
     this.start = function()
     {   let i;
 
-        for(i=0; i < this.notes.size; i++){
+        for(i=0; i < this.notes.length; i++){
             this.notes[i] = 0;
         }
         this.period = 0;
@@ -1794,7 +1965,7 @@ function trackPlayer( data)
             } 
             if( skipping && now - this.period < 384){
                 skipping = false;
-                debugmsg("SKIP END"+Math.floor(this.period)+" "+Math.floor(now) );
+                debugmsg("SKIP END("+this.data.track+")"+Math.floor(this.period)+" "+Math.floor(now) );
             }
             cmd = ev.status & 0xf0;
             chan = ev.status & 0xf;

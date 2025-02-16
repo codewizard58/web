@@ -143,9 +143,9 @@ function selMIDIindev(dev)
 		return;
 	}
 
-	if( l != null){
-		debugmsg("Sel in "+dev+" "+l.ob.name+" "+l.ob.index);
-	}
+//	if( l != null){
+//		debugmsg("Sel in "+dev+" "+l.ob.name+" "+l.ob.index);
+//	}
 	while(l != null){
 		if( l.ob.index == dev){
 			useMIDIin = l.ob;
@@ -338,9 +338,12 @@ function midiCVBit(bit)
 	this.bitimg =this.bit.findImage(imagename);
 	this.bitname = imagename;
 
+	bit.value = 0;
+
     // Midi note bit self draw
 	this.Draw = function( )
-	{	var b = this.bit;
+	{	const b = this.bit;
+		let chanx = this.groupobj.channel;
 
 		if( b == null){
 			return;
@@ -353,6 +356,15 @@ function midiCVBit(bit)
 		}else {
 			drawImage( this.bitimg+1 , b.x, b.y);
 		}
+		b.color = "#00ff00";
+		b.background = "#ffffff";
+		b.font = "12px Georgia";
+		if( chanx == 0){
+			b.drawText(ctx, "OMNI");
+		}else {
+			b.drawText(ctx, " "+chanx);
+		}
+		b.color = "#000000";
 	}
 
 // midi CV (notes)
@@ -440,6 +452,7 @@ function midiCVBit(bit)
 			}
 		}
 		debugmsg("CV doload "+this.groupobj.name+" "+this.groupobj.channel);
+		this.bit.value = 0;
 
 	}
 
@@ -737,12 +750,14 @@ function midiCVOutBit(bit)
 
     // Midi note out bit self draw
 	this.Draw = function( )
-	{	var b = this.bit;
+	{	const b = this.bit;
+		let chanx;
 
 		if( b == null){
 			return;
 		}
 		bt = b.btype & 7;	// 0 = horiz, 1 == vert
+		chanx = this.groupobj.channel;
 
         ctx.fillStyle = "#ffffff";
 		if( bt == 0){
@@ -755,6 +770,15 @@ function midiCVOutBit(bit)
 			ctx.fillRect(b.x+b.w-10,  b.y, 10, 10);
 			ctx.fillStyle = "#ffffff";
 		}
+		b.color = "#00ff00";
+		b.background = "#ffffff";
+		b.font = "12px Georgia";
+		if( chanx == 0){
+			b.drawText(ctx, "OMNI");
+		}else {
+			b.drawText(ctx, " "+chanx);
+		}
+		b.color = "#000000";
 	}
 
 // midi cv output ( note on/off)
@@ -793,6 +817,9 @@ function midiCVOutBit(bit)
 			return;
 		}
 		output = grp.outdev.output;	
+		if( chanx < 0){
+			chanx = 0;
+		}
 
 		if( this.note != note){
 			if( this.note >= 16 || note == 0){
@@ -932,6 +959,15 @@ function midiCCOutBit(bit)
 			ctx.fillRect(b.x+b.w-10,  b.y, 10, 10);
 			ctx.fillStyle = "#ffffff";
 		}
+		b.color = "#00ff00";
+		b.background = "#ffffff";
+		b.font = "12px Georgia";
+		if( chanx == 0){
+			b.drawText(ctx, "OMNI");
+		}else {
+			b.drawText(ctx, " "+chanx);
+		}
+		b.color = "#000000";
 	}
 
 	//ccout
@@ -939,11 +975,9 @@ function midiCCOutBit(bit)
 	this.setValue = function(data, func)
 	{	let msg = [ 0xb0, 60, 127];
 		let note = Math.floor(data/ 2);		// 0-127
-		let mid = null;
 		let output = null;
 		const grp = this.groupobj;
 		let chanx = grp.channel-1;		// 0 based
-		let old;
 
 		if( func == 1){
 			if(this.mod == 0){			// see this.modnames
@@ -975,6 +1009,9 @@ function midiCCOutBit(bit)
 			note = 0;
 		}else if( note > 127){
 			note = 127;
+		}
+		if( chanx < 0){
+			chanx = 0;		// midi channel 1
 		}
 		if( this.prevnote.changed(note)){
 			msg[0] = 0xb0 | (chanx & 0xf);
