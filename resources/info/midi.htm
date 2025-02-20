@@ -1,0 +1,31 @@
+<script type="text/javascript">
+    info_list.addobj("Midi_info", 2);
+</script>
+<div id="Midi_info" style="display:none" >
+    <h1>Midi Kit</h1>
+    <p>The Midi kit has many modules.</p>
+    <p>Midi is has a lot of functionality. Multiple Midi interfaces can be used at the same time. The 
+        <span style='color: red;'>(Action )</span> Midi Group (in / Out) modules create and modify Midi Interface / Midi Channel groups. 
+        The input and output modules such as Midi CV (note) in and out are assigned to a group (Default initially).
+        You use the Midi Group modules to create as many groups as you need. Some modules such as the (Action ) player 
+        module will add interfaces and groups as needed.
+    </p>
+    <p>Most of the Midi wiring is not visible. The main Midi modules that have snaps are the Midi note (CV) and 
+        Control Change (CC) ones. The Midi input modules act like (Basic ) Power On and have an output that is 
+        determined by the note or control change value. The Midi output modules for notes (CV) and Control change 
+        (CC) have a pass through output which allows them to be chained. 
+    </p>
+    <p>Note Groups allow the tracking of note on and off data. Typically a notegroup will track a set number of notes.
+        The default is 3. When a note is started, a free slot in the notegroup is assigned and when that note stops 
+        playing that slot is marked as free. When a second note starts playing, it will be assigned the next free slot. 
+        Various slot assignment methods are supported. When the note is passed on, the Midi channel is set to the
+        slot number. This allows several Midi note inputs to each be assigned their own notegroup slot so they can
+        each then be connected to a monophonic sound generator such as the (Sound kit) Oscillator or a Midi note output 
+        module.
+    </p>
+    <p>The <span style='color: red;'>(Action )</span> Target module allows most knobs to be mapped to a Midi control change message. You select the 
+        Target module and click Add. You then move the know you want to map. The knob will be added to the target list
+        and then you adjust the Midi control and the knob will now be mapped to the control. The Target module allows 
+        many knobs to be mapped. You can clear mappings and also delete them.
+    </p>
+</div>

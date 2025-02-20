@@ -37,7 +37,7 @@ function MIDIremove(list, obj)
 			f.next = null;
 			f.prev = null;
 			f.ob = null;
-			debugmsg("unlinked");
+//			debugmsg("unlinked");
 			return;
 		}
 		f = fn;
@@ -528,7 +528,7 @@ function midiGroup(n, dir)
 	{	let n = this.note_list;
 		let c = this.cc_list;
 
-		debugmsg("___ Group "+this.name);
+		debugmsg("___ Group N "+this.name);
 		if( n != null){
 			n = n.head;
 			while(n != null){
@@ -539,6 +539,7 @@ function midiGroup(n, dir)
 				n = n.next;
 			}
 		}
+		debugmsg("___ Group CC "+this.name);
 		if(c != null){
 			c = c.head;
 			while(c != null){
@@ -546,6 +547,42 @@ function midiGroup(n, dir)
 					c.ob.print();
 				}
 				c = c.next;
+			}
+		}
+
+	}
+
+	this.onRemove = function()
+	{	let g = midiInGroups_list.head;
+		let gnext;
+
+		if( this.grouptype == 1){
+			debugmsg("MG onRemove "+this.name);
+
+			g = this.note_list.head;
+			while(g != null){
+				gnext = g.next;
+				this.disconnect_cv( g.ob);
+
+				g = gnext;
+			}
+
+			g = this.cc_list.head;
+			while(g != null){
+				gnext = g.next;
+				this.disconnect_cc( g.ob);
+
+				g = gnext;
+			}
+
+			g = midiInGroups_list.head;
+			while(g != null){
+				if( g.ob == this){
+					debugmsg("Remove group "+this.name);
+					midiInGroups_list.removeobj(g);
+					break;
+				}
+				g = g.next;
 			}
 		}
 
@@ -1238,15 +1275,6 @@ function MIDIinputobj(m)
 					this.filter_list.addobj(ng, null);
 					ng.interface = MIDIindev[this.index];
 					ng.name = name;
-//					inst = ng.notes.length;
-					
-//					while( inst > 1){
-//						ng = new noteGroup(0);
-//						this.filter_list.addobj(ng, null);
-//						ng.interface = MIDIindev[this.index];
-//						ng.name = name+"_"+inst;
-//						inst--;
-//					}
 				}
 				cnt = 3;
 				while(cnt < len){
@@ -2155,8 +2183,42 @@ function noteGroup(idx)
 	}
 
 	this.print = function()
-	{
+	{	let l = this.notefilters.head;
 		debugmsg("Notegroup "+this.name);
+
+		while(l != null){
+			l.ob.print();
+			l = l.next;
+		}
+		l = this.ccfilters.head;
+		while(l != null){
+			l.ob.print();
+			l = l.next;
+		}
+	}
+
+	this.onRemove = function()
+	{	let l = this.notefilters.head;
+		let lnext;
+		let f;
+	
+		debugmsg("NG onremove "+this.name);
+		while(l != null){
+			lnext = l.next;
+			f = l.ob;
+			this.disconnect(l.ob);
+			f.onRemove();
+			l = lnext;
+		}
+		// remove from notegrouplist
+		l = noteGroups_list.head;
+		while(l != null){
+			if( l.ob == this){
+				noteGroups_list.removeobj(l);
+				break;
+			}
+			l = l.next;
+		}
 	}
 
 	if( idx == 0){

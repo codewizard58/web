@@ -1,7 +1,9 @@
 ///////////////////////////////////////////////////////////
+pushSw.prototype = Object.create(control.prototype);
 
 function pushSw(bit)
-{	this.bit = bit;
+{	control.call(this, bit);
+	this.bit = bit;
 	this.l = 0;
 	this.r = 0;
 	this.t = 0;

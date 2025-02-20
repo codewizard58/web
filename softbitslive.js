@@ -652,7 +652,7 @@ function UIchooseKit(kit)
 		msg = chooseGroup(curbittype);
 		alist.innerHTML = msg;
 		alist.style.border = "2px solid "+curbitcolor;
-		setInfo(kit+"-info");
+		setInfo(kit);
 	}
 
 }
@@ -883,7 +883,7 @@ var bytecode = [
 
 
 	[ 4, 6, 5, 0, 9, 12, 3, 28, 0],		// 64 Mandlebrot  arg2? if exit fi setv 1 setv 2 getv [28] white]
-	null,
+	[ 4, 6, 5, 0, 9, 12, 3, 28, 0],		// 65 Lorenz  arg2? if exit fi setv 1 setv 2 getv [28] white]
 	null,
 	null,
 
@@ -2250,15 +2250,17 @@ function Snap(bit, side, x, srx, y, sry, w, h, idx)
 
 		if(p != null &&  p.bit.net == b.net ){
 			// still connected via another route
-			message("Another connection");
-			for(i=0; i < 4; i++){
-				s = b.snaps[i];
-				if( s != null && s != this){
-					p2 = s.paired;
-					if( p2 != null && p2.bit.net == b.net){
-						// unlink alternate path
-						s.unConnect();
-						reLabel(sketch.blist);
+			debugmsg("Another connection");
+			if( b.code != WIRE && b.code != CORNER){
+				for(i=0; i < 4; i++){
+					s = b.snaps[i];
+					if( s != null && s != this){
+						p2 = s.paired;
+						if( p2 != null && p2.bit.net == b.net){
+							// unlink alternate path
+							s.unConnect();
+							reLabel(sketch.blist);
+						}
 					}
 				}
 			}
@@ -3480,6 +3482,7 @@ function Sketch() {
 							scanning.bit.code != WIRE){
 							scanning.unDock();		// unlink the snap
 						}else {
+							debugmsg("Undock wire "+scanning.bit.code);
 							scanning.unDock();		// unlink the snap
 						}
 						sketch.drawProgram();

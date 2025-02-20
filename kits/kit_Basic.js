@@ -109,7 +109,10 @@ function kit_basic()
 		"control", "biglight",  100, 100,    "outputin", "outputout" , null,  null,
 		0,	13, "Big RGB Light",		"A colored light", 0x0011, "Output", 0, 1,		
 		"control", "mandle",  400, 400,    "outputin", "outputout" , "outputin",  null,
-		64,	14, "Mandlebrot",		"A mandlebrot display", 0x0111, "Output", 0, 1,		
+		64,	14, "Mandlebrot",		"A mandlebrot display", 0x0111, "Output", 0, 1,	
+
+		"control", "lorenz",  400, 400,    "outputin", "outputout" , "outputin",  null,
+		65,	16, "Lorenz_Chaos",		"A Lorenz Attractor display", 0x0111, "Output", 0, 1,		
 
 		null, null, null, null,				null, null, null, null
 	];
@@ -248,6 +251,12 @@ this.kitctrlcodes = [
 			ct = new splitterBit( bit);
 			bit.ctrl = ct;
 			bit.setOrientation(0);		// modify snaps.
+			return ct;
+		}else if( ctrl == 16){
+			// lorenz
+			ct = new lorenzBit( bit);
+			bit.ctrl = ct;
+			ct.setData();
 			return ct;
 		}else if( ctrl == 17){
 			// sequencer

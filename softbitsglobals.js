@@ -88,6 +88,9 @@ var audio_list = new objlist();		// for delayed audio setup.
 var history_list = new objlist();
 var copyBuffer = "";
 
+// info
+var current_info = "intro_info";
+
 ////////////////////////////////////////////////////////////////
 // link list of objects
 //
@@ -408,9 +411,23 @@ function outBitValues()
 /////////////////////////////////////////////////////////////////////////////////////////
 function setInfo(name)
 {	let f = document.getElementById("info");
+	let current;
+	let section;
 
 	if( f != null){
-		debugmsg("Show "+name);
+		debugmsg("Show_"+name);
+		if( current_info != ""){
+			current = document.getElementById(current_info);
+			if( current != null){
+				current.style.display="none";
+			}
+		}
+
+		section = document.getElementById(name+"_info");
+		if( section != null){
+			section.style.display="block";
+			current_info = name+"_info";
+		}
 	}
 
 }

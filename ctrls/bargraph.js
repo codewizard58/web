@@ -812,4 +812,163 @@ function mandleBit(bit)
 }
 
 
+lorenzBit.prototype = Object.create(control.prototype);
+
+function l_data(x,y,z)
+{
+	this.x = x;
+	this.y = y;
+	this.z = z;
+}
+
+function lorenzBit(bit)
+{	control.call(this, bit);
+	this.ls= 10;
+	this.lr= 27.5;
+	this.lb= 2.65;
+	this.ldt = 0.01;
+
+	this.lx = Math.random()/ 100.0;
+	this.ly = 1.0;
+	this.lz = 1.05;
+	this.lcnt = 0;
+	this.lmax = 0;
+	this.num_points = 200;
+	this.lpoints = [];
+	this.lscale = 8;
+	this.use = 1;
+	this.zfactor = 0;
+	this.usecolor = 1;
+
+
+	this.setup = function()
+	{	let i;
+		this.points = new Array(this.num_points);
+
+		for(i=0; i < this.num_points; i++){
+			this.lpoints[i] = new l_data(this.lx, this.ly , this.lz);
+		}
+
+
+	}
+
+	this.lorenz = function(x, y, z)
+	{
+		let x_dot = this.ls*(this.ly-this.lx);
+		let y_dot = this.lr*this.lx - this.ly - this.lx*this.lz;
+		let z_dot = this.lx*this.ly - this.lb*this.lz;
+
+		this.lx += x_dot * this.ldt;
+		this.ly += y_dot * this.ldt;
+		this.lz += z_dot * this.ldt;
+	}
+
+	// lorenz
+	this.setValue = function(data, chan)
+	{	let bit = this.bit;
+		let d = checkRange(data);  // 0-255
+		let z;
+
+		if(bit == null){
+			return;
+		}
+
+		if( chan == 0){
+			if( d == 255){
+				this.lcnt++;
+				if( this.lcnt < this.num_points){
+					this.lpoints[this.lcnt].x = this.lx;
+					this.lpoints[this.lcnt].y = this.ly;
+					this.lpoints[this.lcnt].z = this.lz;
+					if(this.zfactor == 1){
+						z = (this.lz)/ 45;
+					}else {
+						z = 1.0;
+					}
+					this.lorenz(this.lx, this.ly, this.lz);
+//					debugmsg("Lorenz x="+this.x+" y="+this.y+" z="+this.z);
+					if( this.lcnt > this.lmax){
+						this.lmax = this.lcnt;
+					}
+				}else {
+					this.lmax = this.lcnt;
+					this.lcnt = 0;
+				}
+				execmode = 2;
+				if( this.use == 0){
+					bit.value = checkRange((this.lx*(this.lz/45)*this.lscale+200)*256/bit.w);
+				}else {
+					bit.value = checkRange((this.ly*(this.lz/45)*this.lscale+200)*256/bit.w);
+				}
+			}
+		}
+	}
+
+	this.Draw = function()
+	{	const bit = this.bit;
+		let i;
+		let x;
+		let y;
+		let z;
+		let c = this.lcnt+1;
+
+		if( c < 0){
+			c += this.lmax;
+		}else if( c >= this.lmax){
+			c -= this.lmax;
+		}
+		ctx.fillStyle = "#0000ff";
+		ctx.fillRect(bit.x, bit.y, bit.w, bit.h);
+
+		ctx.strokeStyle = "#ffffff";
+		ctx.beginPath();
+		for(i=1; i < this.num_points && i < this.lmax; i++){
+			x = this.lpoints[i].x*this.lscale + 200;
+			y = this.lpoints[i].y*this.lscale + 200;
+			if(this.zfactor == 1){
+				z = (this.lpoints[i].z)/ 45;
+			}else {
+				z = 1.0;
+			}
+			if( i == c){
+				ctx.moveTo(bit.x+x+z, bit.y+y*z);
+			}else {
+				ctx.lineTo(bit.x+x+z, bit.y+y*z);
+			}
+		}
+		ctx.stroke();
+
+		drawmode = 2;
+	}
+
+	this.setData = function()
+	{	let msg="";
+		let i;
+
+		if( bitform != null){
+			bitform.innerHTML="";
+		}
+		bitform = document.getElementById("bitform");
+		if( bitform != null){
+			msg = "<table>";
+			for(i=1; i < 6; i++){
+				msg += "<tr><th>XYZ</th><td>"+this.lpoints[i].x+"</td><td>"+this.lpoints[i].y+"</td><td>"+this.lpoints[i].z+"</td></tr>\n";
+			}
+			msg+= "<tr><th>R</th><td><input type='text' size = 3 id='lorenz_r' value='"+this.lr+"' /></td></tr>\n";
+			msg+= "<tr><th>S</th><td><input type='text' size = 3 id='lorenz_s' value='"+this.ls+"' /></td></tr>\n";
+			msg+= "<tr><th>B</th><td><input type='text' size = 3 id='lorenz_b' value='"+this.lb+"' /></td></tr>\n";
+			msg += "</table>\n";
+
+			bitform.innerHTML = msg;
+			bitformaction = this;
+		}
+
+	}
+
+	this.setup();
+
+		
+}
+
+
 

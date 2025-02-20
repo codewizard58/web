@@ -232,6 +232,7 @@ function wireDoLoad(ctrl, initdata ,idx)
 	}
 }
 
+// wirebit
 function wireDoDrag(mx, my)
 {
 	let ldrag = dragging;
@@ -246,21 +247,21 @@ function wireDoDrag(mx, my)
 	const wiy = isnap.y;
 
 	if( selected == isnap ){
-		if( osnap.paired != null){		// output snap is paired. use as anchor.
+//		if( osnap.paired != null){		// output snap is paired. use as anchor.
 			sn = osnap;
 			ldrag = null;
 			dx = wox - mx;
 			dy = woy - my;
-		}
+//		}
 
 
 	}else if( selected == osnap){
-		if( isnap.paired != null){		// input snap is paired. use as anchor.
+//		if( isnap.paired != null){		// input snap is paired. use as anchor.
 			sn = isnap;
 			ldrag = null;
 			dx = mx - wix;
 			dy = my - wiy;
-		}
+//		}
 	}
 	if( ldrag == null){
 		

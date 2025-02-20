@@ -642,7 +642,7 @@ function playerBit(bit)
 
         if( this.mididev == -1){
             useMIDIin = new MIDIinputobj(this);
-            this.mididev = nextMidiIndex;       // setup by midiinputobj
+            this.mididev = useMIDIin.index;       // setup by midiinputobj
             useMIDIin.setup("Player");          // add notegroup
             debugmsg("Setup midi in "+"player"+" "+this.mididev);
         }
@@ -1852,6 +1852,44 @@ function playerBit(bit)
      
 //        debugmsg("Off("+arg+") "+dev);
         midiinsetvalues(0, chan, arg, arg2, dev);
+
+    }
+
+    this.onRemove = function()
+    {   let m = null;
+        let l = null;
+        let lnext;
+        let kit = findkit("Midi");
+        let f;
+
+        if( this.mididev != -1){
+
+            m = MIDIindev[this.mididev];
+            // remove notegroups etc
+            debugmsg("Before remove");
+            kit.print();
+            l = m.filter_list.head;
+            while(l != null){
+                lnext = l.next;
+                f = l.ob;
+                m.disconnect( l.ob);
+                f.onRemove();
+                l = lnext;
+            }
+            l = MIDIindev_list.head;
+            while(l != null){
+                if( l.ob == m){
+                    debugmsg("remove player from interfaces "+l.ob.name);
+                    MIDIindev_list.removeobj(l);
+                    break;
+                }
+                l = l.next;
+            }
+            MIDIindev[this.mididev] = null;   
+            debugmsg("After remove");
+            kit.print();
+            
+        }
 
     }
 

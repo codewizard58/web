@@ -1182,8 +1182,8 @@ this.Draw = function( )
 
 	this.setvcf = function()
 	{	let note;
-		let freq = this.vcffreq+(this.vcfmodfreq-128)/2;
-		let q = this.vcfq/32;
+		let freq = 1*this.vcffreq+(1*this.vcfmodfreq-128)/2;
+		let q = 1*this.vcfq/32;
 		
 		if( notetab == null){
 			setupnotetab();
@@ -1305,13 +1305,13 @@ this.Draw = function( )
 				continue;
 			}
 			if( param == "freq"){
-				this.values[0] = val;
+				this.values[0] = 1*val;
 				this.vcffreq = val;
 			}else if( param == "res"){
-				this.values[1] = val;
+				this.values[1] = 1*val;
 				this.vcfq = val;
 			}else if( param == "mod"){
-				this.mod = val;
+				this.mod = 1*val;
 			}
 		}
 		this.setvcf();
