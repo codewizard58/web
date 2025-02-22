@@ -108,7 +108,7 @@
   <meta name='apple-mobile-web-app-capable' content='yes'>
 </head>
   
-<body onload="sketchinit();">
+<body onload='sketchinit();' >
   <style>
     .box { border-style: solid;
       border-width: 2px;
@@ -117,19 +117,18 @@
   </style>
   <script  type="text/javascript">
   <?php include "softbitsglobals.js"; ?>
-  </script>
-  <script type="text/javascript">
   <?php include "softbitsctrls.js" ; ?>
+  <?php include "softbitslive.js"; ?>
   </script>
   <?php
     if( is_dir("ctrls")){
       $dir = new DirectoryIterator("ctrls");
       foreach ($dir as $fileinfo) {
         if (!$fileinfo->isDot()) {
-          echo("<script type=\"text/javascript\" >\n");
+          echo("<script  type='text/javascript'>\n");
           echo("// filename=".$fileinfo->getPathname()."\n");
           include($fileinfo->getPathname());
-          echo("</script>\n");
+          echo("</script >\n");
         }
       }
     }
@@ -139,17 +138,55 @@
       $dir = new DirectoryIterator("kits");
       foreach ($dir as $fileinfo) {
         if (!$fileinfo->isDot()) {
-          echo("<script type=\"text/javascript\" >\n");
+          echo("<script  type='text/javascript'>\n");
           echo("// filename=".$fileinfo->getPathname()."\n");
           include($fileinfo->getPathname());
-          echo("</script>\n");
+          echo("</script >\n");
         }
       }
     }
   ?>
-  <script type="text/javascript">
-  <?php include "softbitslive.js"; ?>
-  </script>
+  <?php
+    if( is_dir("mods")){
+      $dir = new DirectoryIterator("mods");
+      foreach ($dir as $fileinfo) {
+        if (!$fileinfo->isDot()) {
+          echo("<script  type='module'>\n");
+          echo("// filename=".$fileinfo->getPathname()."\n");
+          include($fileinfo->getPathname());
+          echo("</script >\n");
+        }
+      }
+    }
+    echo("<script  type='text/javascript'>\n");
+    echo "var initdataonLoad= [\n";
+    if( $loaddata == ""){
+      $loaddata = "12,'bit',1,'power_on',0,245,319,0,0,0,0,  1,
+      12,'bit',2,'power_off',16,426,319,0,0,0,0,  1,
+      ";
+    }
+    echo $loaddata;
+    echo "2,'end',\n";
+    echo "0\n";
+    echo "];\n";
+    
+    echo "var initdataonReset= [\n";
+      $loaddata = "12,'bit',1,'power_on',0,245,319,0,0,0,0,  1,
+      12,'bit',2,'power_off',16,426,319,0,0,0,0,  1,
+      6,'options',1,1,1,1,
+      ";
+    echo $loaddata;
+    echo "2,'end',\n";
+    echo "0\n";
+    echo "];\n";
+    
+    if( is_file("resources/imagemap.txt") ){
+      echo ("var imagemapdata = [\n");
+      include("resources/imagemap.txt");
+      echo ("];\n");
+    }
+    echo "</script>\n";
+    ?>
   <?php
     if( is_file("header.php") ){
       echo ("<div id='headerdiv' >\n");
@@ -181,36 +218,6 @@
       }
     ?>
     </div>
-    <?php
-    echo "<script type='text/javascript'>\n";
-    echo "var initdataonLoad= [\n";
-    if( $loaddata == ""){
-      $loaddata = "12,'bit',1,'power_on',0,245,319,0,0,0,0,  1,
-      12,'bit',2,'power_off',16,426,319,0,0,0,0,  1,
-      ";
-    }
-    echo $loaddata;
-    echo "2,'end',\n";
-    echo "0\n";
-    echo "];\n";
-    
-    echo "var initdataonReset= [\n";
-      $loaddata = "12,'bit',1,'power_on',0,245,319,0,0,0,0,  1,
-      12,'bit',2,'power_off',16,426,319,0,0,0,0,  1,
-      6,'options',1,1,1,1,
-      ";
-    echo $loaddata;
-    echo "2,'end',\n";
-    echo "0\n";
-    echo "];\n";
-    
-    if( is_file("resources/imagemap.txt") ){
-      echo ("var imagemapdata = [\n");
-      include("resources/imagemap.txt");
-      echo ("];\n");
-    }
-    echo "</script>\n";
-    ?>
     <div id="progdiv" >
       <table>
         <tr>
@@ -235,6 +242,9 @@
                 <input type="button" id="pausebutton" value="Pause" onclick="UItransport(1)"></input>
                 <input type="button" id="stopbutton" value="Stop" onclick="UItransport(0)"></input>
               </span>
+            </div>
+            <div style="padding:20px; display: none;" id="xrcontrols" >
+              <input type='button' id='xrbutton' value='No XR' />
             </div>
             <table>
               <tr>
@@ -369,4 +379,5 @@
   </div>
 
   </body>
+
 </html>

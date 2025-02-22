@@ -14,10 +14,10 @@ var miditargeting = null;	// if not null this is used to tell that the next knob
 var g_transport = null;
 var calldepth = 0;			// to stop recursive looping.
 
-MIDIoutdev_list = new objlist();
-MIDIindev_list = new objlist();
-MIDIindev = [ null, null, null, null, null];
-miditarget_list = new objlist();
+var MIDIoutdev_list = new objlist();
+var MIDIindev_list = new objlist();
+var MIDIindev = [ null, null, null, null, null];
+var miditarget_list = new objlist();
 
 function MIDIremove(list, obj)
 {	let f = list.head;

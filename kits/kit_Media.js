@@ -1,3 +1,9 @@
+// kits/kit media.js
+//
+
+const xrStuff = {};
+
+
 kit_media.prototype = Object.create(sbmodule.prototype);
 
 function kit_media()
@@ -38,14 +44,16 @@ function kit_media()
 		let ct = null;
 		let name = this.bitnames[ bit.btype+1];
 		let ctrl = this.bitnames[ bit.btype+9];
+		let f;
 
         // found control
 		if( ctrl == 1){
-			// headset
-			ct = new xrBit( bit);
-			bit.ctrl = ct;
-			ct.setData();
-			return ct;
+			f = document.getElementById("xrcontrols");
+			if( f != null){
+			  f.style.display="block";
+			}
+			mediaData = bit;
+			return null;
         }
 
         return null;
@@ -74,7 +82,20 @@ function kit_media()
 
 }
 
+var mediaData = null;
 
+function mediaGetBit()
+{	
+	debugmsg("Media getbit");
+	return mediaData;
+}
+
+function mediaSetBit(ctrl)
+{
+	debugmsg("mediaSetBit");
+	mediaData.ctrl = ctrl;
+	ctrl.setData();
+}
 
 
 addkit( new kit_media() );
