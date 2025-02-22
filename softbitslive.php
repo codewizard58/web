@@ -102,7 +102,10 @@
 <html xmlns="http://www.w3.org/1999/xhtml" >
 <head>
   <title>Softbits Live 2024.1124</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset='utf-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1, user-scalable=no'>
+  <meta name='mobile-web-app-capable' content='yes'>
+  <meta name='apple-mobile-web-app-capable' content='yes'>
 </head>
   
 <body onload="sketchinit();">

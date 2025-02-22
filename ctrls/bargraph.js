@@ -246,6 +246,9 @@ function mandleBit(bit)
 	this.gate = 128;
 
 	this.power = 2;
+	this.fetchState = 0;
+	this.stepx;
+	this.stepy;
 
 
 	this.sampler.setSize(this.bit.w, this.bit.h);
@@ -428,12 +431,36 @@ function mandleBit(bit)
 		if(b==null){
 			return;
 		}
+		if( this.fetchState == 0){
+			this.data = new Uint8Array(b.w*b.h);
+			this.stepx = (this.wx) / b.w;
+			this.stepy = (this.wy) / b.h;
 
-		this.image = ctx.createImageData(b.w, b.h);
-		this.data = new Uint8Array(b.w*b.h);
+		}else if( this.fetchState == 1){
+			this.image = ctx.createImageData(b.w, b.h);
 
-		stepx = (this.wx) / b.w;
-		stepy = (this.wy) / b.h;
+//				c = m_color(cnt*8, 3, this.bright);
+			n = 0;
+			iy = 0;
+
+			while( iy < this.image.data.length){
+				cnt = this.data[n];
+				this.image.data[iy+0] = (redMap[cnt]*this.contrast+this.bright) % 256; // red
+				this.image.data[iy+1] = (greenMap[cnt]*this.contrast+this.bright) % 256;
+				this.image.data[iy+2] = (blueMap[cnt]*this.contrast+this.bright) % 256;
+				this.image.data[iy+3] = 255;	// alpha
+				iy += 4;
+				n++;
+			}
+			this.sampler.setImage(this.image);
+			this.sampler.setData(this.data);
+			this.fetchState = 0;
+			return;
+		}
+
+
+		stepx = this.stepx;
+		stepy = this.stepy;
 
 		iy = 0;
 		ix = 0;
@@ -454,16 +481,6 @@ function mandleBit(bit)
 					this.mandle();
 				}
 				this.data[n] = cnt;
-
-//				c = m_color(cnt*8, 3, this.bright);
-
-				if( iy < this.image.data.length){
-					this.image.data[iy+0] = (redMap[cnt]*this.contrast+this.bright) % 256; // red
-					this.image.data[iy+1] = (greenMap[cnt]*this.contrast+this.bright) % 256;
-					this.image.data[iy+2] = (blueMap[cnt]*this.contrast+this.bright) % 256;
-					this.image.data[iy+3] = 255;	// alpha
-				}
-
 				iy += 4;
 				n++;
 			}
@@ -471,8 +488,7 @@ function mandleBit(bit)
 			n = ix*b.w;
 			iy = n *4;
 		}
-		this.sampler.setImage(this.image);
-		this.sampler.setData(this.data);
+		this.fetchState = 1;
 	}
 
 	this.setTempo = function(t)

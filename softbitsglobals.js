@@ -868,6 +868,7 @@ function sbmodule( name )
 		audiotinimg = findimage("audioin-t");
 		audioroutimg = findimage("audioout-r");
 		audioboutimg = findimage("audioout-b");
+		roundknobimg = findimage("roundknob");
 	}
 
 // sbmodule.addctrl
